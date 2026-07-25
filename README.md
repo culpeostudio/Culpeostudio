@@ -70,12 +70,6 @@ search, scoped per user and per project.
 Search Hugging Face, see **whether a model fits your hardware before
 downloading**, then manage what you have locally.
 
-## Screenshots
-
-> Not included yet. To generate them yourself:
-> `flutter run -d linux`, then capture the Chat, Engine and Marketplace screens.
-> Contributions welcome — see [CONTRIBUTING](#contributing).
-
 ## How it works
 
 ```
