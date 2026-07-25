@@ -220,5 +220,5 @@ host models commercially, check their terms first** — some prohibit it outrigh
 ---
 
 <div align="center">
-<sub>Built by <a href="https://fillystudio.com">fillystudio</a> · Powered by PhiloEngine</sub>
+<sub>Built by fillystudio · Powered by PhiloEngine</sub>
 </div>
