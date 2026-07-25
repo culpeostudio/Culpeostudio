@@ -32,3 +32,9 @@ AGENTS.md
 # Von Tests im Paketverzeichnis erzeugte Laufzeitdaten (relative Pfade in
 # module.go). Gehoeren nicht in die Versionierung.
 backend/modules/*/data/
+
+# Persoenliches Sync-Werkzeug (enthaelt lokale Pfade)
+sync-to-github.sh
+
+# Anweisungsdateien fuer KI-Assistenten (persoenliche Werkzeug-Konfiguration)
+CLAUDE.md
