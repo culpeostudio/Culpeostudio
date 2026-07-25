@@ -1,0 +1,62 @@
+Philox Modul - Skript Uebersicht
+Stand: 2026-07-21
+
+=======================================================================
+0) Wichtiger Hinweis: Agent-Backend entfernt
+=======================================================================
+
+Das externe Modell-Backend hinter Philox (frueher ein eigener HTTP-Client zu
+einem externen Anbieter) wurde entfernt. Philox hat damit KEIN LLM-Backend mehr.
+
+- Session anlegen/laden/listen/loeschen funktioniert weiter (Persistenz bleibt).
+- /message und /stream sowie der agentische gRPC-Pfad liefern eine klare
+  "deaktiviert"-Meldung (errPhiloxAgentDisabled) statt ein Modell aufzurufen.
+- Der Philox-Tab im Frontend bleibt bestehen; er traegt jetzt im Wesentlichen
+  nur noch den Thinking-Level-Selektor.
+- Normaler PhiloBot-Chat ist NICHT betroffen (laeuft ueber lokale Modelle +
+  Featherless, nicht ueber Philox).
+
+Viel des unten beschriebenen Codes (Tool-Executor, Planning, Kompression,
+Prompt-Aufbau) ist provider-neutral und bleibt erhalten, ist aber ohne
+Agent-Loop derzeit nicht aktiv angebunden.
+
+=======================================================================
+1) Produktionsskripte (Was macht was?)
+=======================================================================
+
+| Skript | Hauptaufgabe | Status |
+|---|---|---|
+| agent.go | Frueher der Agent-Loop (sync + streaming) | Reduziert auf Stubs, die errPhiloxAgentDisabled melden |
+| handler.go | HTTP API fuer Philox Sessions/Nachrichten | Aktiv; Session-Lifecycle + SSE-Setup; Message/Stream melden Deaktivierung |
+| grpc_server.go | Agentischer gRPC-Pfad (fuer PhiloBot Agentic) | Aktiv registriert; liefert dieselbe Deaktivierungs-Meldung; ListTools ist leer |
+| storage.go | Session persistent speichern/laden/listen/loeschen | Aktiv |
+| requests.go | Laufende Session-Requests verwalten (Cancel) | Aktiv |
+| stream.go | SSE Eventmodell und EventSink | Aktiv (fuer die Fehler-/Done-Events der Stubs) |
+| types.go | Zentrale Datentypen + Normalisierer (Thinking/Mode) | Aktiv |
+| compression.go | Kontextverbrauch schaetzen/komprimieren | Provider-neutral; estimateSessionUsage wird beim Session-Setup genutzt |
+| tools.go | Tool-Executor inkl. Root-Sandbox + Datei-Ops | Provider-neutral; derzeit ohne Agent-Loop nicht aktiv aufgerufen |
+| tool_args.go | Tool-Argumente normalisieren/reparieren | Provider-neutral; getestet |
+| planning.go | Planungsmodus-State-Machine | Provider-neutral; derzeit ohne Agent nicht aktiv |
+| prompts.go | System-Prompt dynamisch aufbauen | Provider-neutral; derzeit ohne Agent nicht aktiv |
+| frontend.go | Frontend/UI-Kontext erkennen fuer Prompt | Provider-neutral; derzeit ohne Agent nicht aktiv |
+| path_mentions.go | Pfad-Erkennung aus User-Text | Provider-neutral |
+| helpers.go | Kleine Utilities (envValue, Zeit, Preview) | Aktiv |
+
+=======================================================================
+2) Tests
+=======================================================================
+
+| Testskript | Prueft |
+|---|---|
+| handler_test.go | Session-CRUD/List/Metadata/Delete, ungueltige Eingaben, Pfad-Sandbox, Storage-Roundtrip, Kontextkompression, Pfad-Erkennung, sowie dass /message den deaktivierten Agent meldet |
+| tool_args_test.go | Reparatur und Validierung von Tool-Argumenten (Windows-Pfade, EOF, duplizierte JSONs) |
+
+=======================================================================
+3) Kurzfazit
+=======================================================================
+
+- Philox ist auf Session-Persistenz + Thinking-Level-UI reduziert; die
+  agentische Modellanbindung wurde entfernt.
+- Provider-neutrale Bausteine (Sandbox, Tool-Argument-Reparatur, Kompression,
+  Planning) bleiben im Code erhalten, falls Philox spaeter an das aktuelle
+  Modell-System (lokal/Featherless) angebunden werden soll.

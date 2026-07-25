@@ -1,0 +1,35 @@
+PhiloEngine
+Copyright (C) 2026 fillystudio
+Kontakt: kontakt@fillystudio.com
+
+Rechteinhaber ist der unter dieser Adresse erreichbare Betreiber von
+fillystudio. Sobald eine Gesellschaft gegruendet ist, gehen die Rechte per
+Vertrag auf sie ueber und dieser Vermerk wird entsprechend angepasst.
+
+Dieses Programm ist freie Software: Sie koennen es unter den Bedingungen der
+GNU Affero General Public License, Version 3, weitergeben und/oder aendern,
+wie sie von der Free Software Foundation veroeffentlicht wurde.
+
+Die Veroeffentlichung erfolgt in der Hoffnung, dass es nuetzlich ist, aber
+OHNE JEDE GEWAEHRLEISTUNG - sogar ohne die implizite Gewaehrleistung der
+MARKTGAENGIGKEIT oder EIGNUNG FUER EINEN BESTIMMTEN ZWECK. Einzelheiten
+stehen in der GNU Affero General Public License (Datei LICENSE).
+
+Sollten Sie keine Kopie erhalten haben: <https://www.gnu.org/licenses/>.
+
+
+VERWENDETE FREMDKOMPONENTEN
+---------------------------
+
+PhiloEngine startet und verwaltet Laufzeitumgebungen, die nicht Teil dieses
+Projekts sind und unter eigenen Lizenzen stehen:
+
+  llama.cpp        MIT          https://github.com/ggml-org/llama.cpp
+  vLLM             Apache-2.0   https://github.com/vllm-project/vllm
+  Transformers     Apache-2.0   https://github.com/huggingface/transformers
+
+Die Modelle selbst unterliegen jeweils eigenen Lizenzen der Anbieter. Wer
+Modelle herunterlaedt, betreibt oder anbietet, ist fuer die Einhaltung dieser
+Bedingungen selbst verantwortlich - insbesondere bei kommerzieller Nutzung
+(z. B. Llama Community License, Gemma Terms of Use, teils rein
+nicht-kommerzielle Lizenzen).

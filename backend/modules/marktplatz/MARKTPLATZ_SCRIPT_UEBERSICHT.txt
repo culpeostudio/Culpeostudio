@@ -1,0 +1,70 @@
+﻿Marktplatz Modul - Skript Uebersicht
+Pfad: C:\Users\david\Music\myphiloengine\modules\marktplatz
+Stand: 2026-03-31
+
+=======================================================================
+1) Gesamtzusammenhang (Ablauf)
+=======================================================================
+
+HTTP API (handler.go)
+  -> laedt Settings + Ollama Katalog
+  -> ruft Provider Adapter auf (HuggingFace / Civitai / Ollama)
+  -> reichert Ergebnisse mit Metadaten (Quantisierung) an
+  -> filtert und paginiert
+  -> startet Downloads als Hintergrund-Jobs
+
+Download Ablauf:
+  handleDownload
+    -> DownloadJobStore.Create (queued)
+    -> goroutine runDownloadJob
+      -> SetRunning / SetProgress
+      -> downloadHuggingFace ODER downloadCivitai ODER downloadOllama
+      -> SetDone oder SetFailed
+
+Gemeinsame Kernbausteine:
+- types.go: gemeinsame Datentypen + Provider/Format-Normalisierung
+- provider_common.go: HTTP JSON Requests + Datei-Download + Dateiname-Sicherheit
+- ollama_catalog_store.go: lokaler Katalogspeicher mit Mutex
+
+=======================================================================
+2) Produktionsskripte (Was macht was?)
+=======================================================================
+
+| Skript | Hauptaufgabe | Direkte Zusammenhaenge | Umsetzung (wie) |
+|---|---|---|---|
+| download_jobs.go | In-Memory Jobverwaltung fuer Downloads | Wird von handler.go (handleDownload, runDownloadJob, job APIs) genutzt | Thread-safe Store mit RWMutex, Status-Lifecycle (queued/running/done/failed), Fortschritt und Zeitstempel |
+| handler.go | API-Entry-Point des Moduls | Nutzt appsettings.Store, OllamaCatalogStore, DownloadJobStore, provider_*.go, search_metadata.go, suggestions.go, hardware_profile.go | Fiber-Routen, Input-Validierung, Provider-Dispatch, Pagination, Hintergrund-Download per goroutine |
+| hardware_profile.go | Hardwareprofil (OS, RAM, GPU, VRAM) erkennen | Wird von handler.go unter /hardware/profile verwendet | OS-spezifische Kommandos (wmic/powershell, /proc/meminfo, sysctl, nvidia-smi), Timeout via context |
+| huggface_filter.go | HuggingFace Asset-Optionen filtern/sortieren | Wird in provider_huggingface.go verwendet | Heuristisches Scoring je Dateiendung/Token, ignoriert Nebenfiles, bevorzugt z.B. gguf/safetensors/mlx |
+| ollama_catalog_store.go | Lokalen Ollama-Katalog laden/halten/suchen | Wird von handler.go, provider_ollama.go, suggestions.go genutzt | JSON-Datei mit Model-Entries, RWMutex, sortierte Reihenfolge, Query-Filter und default pull_command |
+| provider_common.go | Gemeinsame Provider-Helfer | Wird von provider_huggingface.go und provider_civitai.go verwendet | requestJSON mit Headern/Timeout, downloadFile mit .part-Datei, Progress-Callback, safeFileName |
+| provider_huggingface.go | HF Suche, Detail, Download | Ruft huggface_filter.go + provider_common.go + types.go auf | API Calls gegen /api/models, 401-Fallback ohne Token, Asset-Auswahl (bevorzugt GGUF), URL-Kandidaten + Retry |
+| provider_civitai.go | Civitai Suche, Detail, Download | Nutzt provider_common.go + types.go | Mappt API-Antworten auf ModelSummary/ModelDetail, Dateioptionen aus Versions/Files flatten, Token in URL bei Bedarf |
+| provider_ollama.go | Ollama Suche, Detail, Download | Nutzt ollama_catalog_store.go + types.go | Lokale Katalogdaten statt Websuche, Download via "ollama pull", harte Command-Validierung gegen Injection |
+| search_metadata.go | Quantisierungs-Metadaten extrahieren und filtern | Wird im Search-Flow in handler.go aufgerufen | Regex fuer q/int/fp/awq/gptq usw., Normalisierung (z.B. q4km -> q4_k_m), Filter auf ModelSummary |
+| suggestions.go | Default-Vorschlaege fuer leere/duenne Suche | Wird von handler.go genutzt | Provider-spezifische Suggestion-Listen, Merge + Deduplizierung + Limit |
+| types.go | Zentrale Modelle und Normalisierer | Von praktisch allen Dateien genutzt | Provider-Konstanten, ModelSummary/ModelDetail, normalizeFormat/normalizeProvider, Utility-Helper |
+
+=======================================================================
+3) Tests (Welche Umsetzung ist abgesichert?)
+=======================================================================
+
+| Testskript | Prueft | Zusammenhang |
+|---|---|---|
+| download_jobs_test.go | Job Lifecycle und Statuswechsel | Absicherung von download_jobs.go |
+| handler_api_test.go | API Endpunkte Search/Download/Job/Hardware | Integrationsnaher Test fuer handler.go + Stores |
+| huggface_filter_test.go | Format-Erkennung fuer HF Assets | Absicherung von huggface_filter.go |
+| pagination_test.go | Pagination + has_more Verhalten | Absicherung von paginateModels in handler.go |
+| provider_adapters_test.go | Mapping fuer HF und Civitai Responses | Absicherung von provider_huggingface.go / provider_civitai.go |
+| provider_ollama_test.go | Sichere Validierung von "ollama pull" | Absicherung von provider_ollama.go |
+| search_metadata_test.go | Quantisierungs-Extraktion und -Filter | Absicherung von search_metadata.go |
+| types_test.go | Format-Aliase und Matching | Absicherung von types.go |
+
+=======================================================================
+4) Kurzfazit Architektur
+=======================================================================
+
+- Das Modul ist klar in Schichten getrennt: API (handler), Provider-Adapter, Shared Utilities, Stores.
+- Suche und Download sind provider-unabhaengig orchestriert, provider-spezifisch implementiert.
+- Wichtige technische Muster: Mutex-Synchronisierung, Context-Timeouts, Input-Normalisierung,
+  defensive Command-Validierung, Retry/Fallback bei externen APIs.

@@ -1,0 +1,33 @@
+{
+  "folders": [
+    { "name": "Backend", "path": "backend" },
+    { "name": "Frontend", "path": "frontend" }
+  ],
+  "settings": {
+    "//": "SDK-Pfade bewusst nicht gesetzt: VS Code findet Go und Flutter ueber PATH. Wer eigene Installationspfade braucht, traegt sie lokal in .vscode/settings.json ein (git-ignoriert)."
+  },
+  "extensions": {
+    "recommendations": ["golang.go", "dart-code.dart-code", "dart-code.flutter"]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Backend: go run ./cmd/server",
+        "type": "go",
+        "request": "launch",
+        "mode": "auto",
+        "program": "${workspaceFolder:Backend}/cmd/server",
+        "cwd": "${workspaceFolder:Backend}"
+      },
+      {
+        "name": "Frontend: Flutter (Linux Desktop)",
+        "type": "dart",
+        "request": "launch",
+        "program": "lib/main.dart",
+        "cwd": "${workspaceFolder:Frontend}",
+        "deviceId": "linux"
+      }
+    ]
+  }
+}

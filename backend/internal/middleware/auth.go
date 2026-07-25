@@ -1,0 +1,110 @@
+package middleware
+
+import (
+	"log"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+func AuthMiddleware(secret string, activeUser ...func(string) bool) fiber.Handler {
+	var isActiveUser func(string) bool
+	if len(activeUser) > 0 {
+		isActiveUser = activeUser[0]
+	}
+	return func(c *fiber.Ctx) error {
+		if isPublicAuthRoute(c.Method(), c.Path()) {
+			return c.Next()
+		}
+
+		// Memory-Routen: JWT ist optional. Ohne gueltiges JWT laeuft der
+		// Request weiter und das Memory-Modul erzwingt seine eigene
+		// Bearer-Token-Auth (MEMORY_API_TOKEN) — nie unauthentifiziert.
+		memoryRoute := isMemoryRoute(c.Path())
+
+		auth := c.Get("Authorization")
+		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+			if memoryRoute {
+				return c.Next()
+			}
+			log.Printf("[AUTH] 401 %s %s (missing bearer token)", c.Method(), c.Path())
+			return c.Status(401).JSON(fiber.Map{"error": "Nicht autorisiert"})
+		}
+
+		tokenStr := strings.TrimPrefix(auth, "Bearer ")
+		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+			return []byte(secret), nil
+		})
+
+		if err != nil || !token.Valid {
+			if memoryRoute {
+				return c.Next()
+			}
+			log.Printf("[AUTH] 401 %s %s (invalid token)", c.Method(), c.Path())
+			return c.Status(401).JSON(fiber.Map{"error": "Ungueltiger Token"})
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			if memoryRoute {
+				return c.Next()
+			}
+			log.Printf("[AUTH] 401 %s %s (invalid claims)", c.Method(), c.Path())
+			return c.Status(401).JSON(fiber.Map{"error": "Ungueltige Claims"})
+		}
+		if isActiveUser != nil {
+			username, ok := claims["username"].(string)
+			if !ok || !isActiveUser(username) {
+				if memoryRoute {
+					return c.Next()
+				}
+				log.Printf("[AUTH] 401 %s %s (account no longer exists)", c.Method(), c.Path())
+				return c.Status(401).JSON(fiber.Map{"error": "Account existiert nicht mehr"})
+			}
+		}
+
+		c.Locals("user_id", claims["user_id"])
+		c.Locals("username", claims["username"])
+		return c.Next()
+	}
+}
+
+func isMemoryRoute(path string) bool {
+	return path == "/api/memory" || strings.HasPrefix(path, "/api/memory/")
+}
+
+func isPublicAuthRoute(method, path string) bool {
+	switch method + " " + path {
+	case "GET /health",
+		"POST /api/login",
+		"GET /api/auth/status",
+		"POST /api/auth/setup/start",
+		"POST /api/auth/setup/confirm",
+		"POST /api/accounts",
+		"POST /api/password/reset",
+		// Memory-Viewer: statische HTML-Seite ohne Nutzerdaten;
+		// der SSE-Feed schuetzt sich selbst ueber Einmal-Tickets
+		// (POST /api/memory/events/ticket erfordert Auth).
+		"GET /memory/view",
+		"GET /memory/events":
+		return true
+	default:
+		// EventSource kann keinen Authorization-Header setzen. Dieser eine GET-
+		// Endpoint ist nur mit einem kurzlebigen, einmalig konsumierbaren Ticket
+		// nutzbar, das zuvor ueber den JWT-geschuetzten POST-Endpunkt erstellt wird.
+		return method == "GET" && path == "/api/engine/events"
+	}
+}
+
+func CORSMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Set("Access-Control-Allow-Origin", "*")
+		c.Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+		c.Set("Access-Control-Allow-Headers", "Content-Type,Authorization")
+		if c.Method() == "OPTIONS" {
+			return c.SendStatus(204)
+		}
+		return c.Next()
+	}
+}

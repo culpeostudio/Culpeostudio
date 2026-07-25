@@ -1,0 +1,34 @@
+# Added by code-review-graph
+.code-review-graph/
+
+# Local credentials and runtime/user data
+.env
+.env.*
+backend/data/
+
+# Generated build and dependency output
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins-dependencies
+
+# Local Python environments, caches, and compiled server binaries
+backend/.venv/
+**/__pycache__/
+*.pyc
+*.log
+backend/logs/
+backend/server
+backend/server.exe
+backend/sidecar/server.exe
+*.bak
+
+# Local Codex/Claude runtime state
+.claude/scheduled_tasks.lock
+**/.claude/
+
+# Persoenliche KI-Werkzeug-Konfiguration (bleibt lokal)
+AGENTS.md
+
+# Von Tests im Paketverzeichnis erzeugte Laufzeitdaten (relative Pfade in
+# module.go). Gehoeren nicht in die Versionierung.
+backend/modules/*/data/

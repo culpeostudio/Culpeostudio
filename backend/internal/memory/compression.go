@@ -1,0 +1,191 @@
+package memory
+
+import (
+	"errors"
+	"log"
+	"strings"
+)
+
+// TriggerCompression runs one compression check for a session (same path the
+// automatic triggers use). Exposed for tests and manual maintenance.
+func (s *Service) TriggerCompression(userID, sessionID string) error {
+	return s.maybeCompress(userID, sessionID, "")
+}
+
+// maybeCompress runs the full compression cycle atomically: the repository
+// executes decide() inside one BEGIN IMMEDIATE transaction, so reading the
+// active observations, the threshold check, writing the compressed memory
+// and archiving happen as a unit. Parallel triggers serialize on the write
+// lock; the loser re-reads the archived state and backs off.
+func (s *Service) maybeCompress(userID, sessionID, reason string) error {
+	userID = normalizeUserID(userID, s.defaultUserID)
+	sessionID = strings.TrimSpace(sessionID)
+
+	// 1. Get session snapshot outside of any lock/transaction
+	session, err := s.repo.GetSession(userID, sessionID)
+	if err != nil {
+		return err
+	}
+
+	usage := EstimateUsage(session)
+	compressible := compressibleObservations(session.ActiveObservations)
+	threshold := s.compressionThreshold(compressible)
+	if reason == "complete" && len(compressible) > ActiveWindow {
+		threshold = ActiveWindow + 1
+	}
+	if usage < compressionThreshold && len(compressible) < threshold {
+		return nil
+	}
+	if len(compressible) <= ActiveWindow {
+		return nil
+	}
+
+	cutoff := len(compressible) - ActiveWindow
+	toCompress := append([]Observation{}, compressible[:cutoff]...)
+	obsIDs := collectObservationIDs(toCompress)
+
+	// 2. Call Summarize OUTSIDE the database transaction
+	summaryText, learned, openTasks, sumErr := s.summarizer.Summarize(toCompress)
+	if sumErr != nil {
+		return sumErr
+	}
+
+	memoryItem := &CompressedMemory{
+		UserID:         session.UserID,
+		ID:             newMemoryID(),
+		SessionID:      session.ID,
+		Layer:          dominantLayer(toCompress),
+		Category:       dominantCategory(toCompress),
+		Summary:        summaryText,
+		Learned:        learned,
+		OpenTasks:      openTasks,
+		ObservationIDs: obsIDs,
+		CreatedAt:      nowUTC(),
+	}
+
+	plan := &CompressionPlan{
+		Memory:      memoryItem,
+		Document:    BuildMemoryDocument(memoryItem, session.Project, session.Source),
+		UsageBefore: usage,
+		UsageAfter:  estimateUsageAfterCompression(session, memoryItem),
+	}
+
+	// 3. Write inside transaction (with double-check inside WriteCompressedMemory)
+	err = s.repo.WriteCompressedMemory(userID, sessionID, plan, obsIDs)
+	if err != nil {
+		if errors.Is(err, ErrAlreadyArchived) {
+			log.Printf("[memory-service] observations already archived, backing off compression")
+			return nil
+		}
+		return err
+	}
+
+	// 4. Update vector index (outside transaction)
+	if s.vector != nil {
+		if vectorErr := s.vector.Upsert(plan.Document); vectorErr != nil {
+			s.publish("vector_upsert_failed", map[string]string{"doc_id": plan.Document.DocID, "error": vectorErr.Error()})
+		}
+	}
+
+	s.publish("memory_compressed", map[string]interface{}{
+		"user_id":        userID,
+		"memory_id":      plan.Memory.ID,
+		"session_id":     sessionID,
+		"usage_before":   plan.UsageBefore,
+		"usage_after":    plan.UsageAfter,
+		"observations":   len(plan.Memory.ObservationIDs),
+		"memory_summary": plan.Memory.Summary,
+	})
+	return nil
+}
+
+func (s *Service) indexObservation(observation *Observation) error {
+	body := observationIndexBody(observation)
+	document := SearchDocument{
+		DocID:      "obs:" + observation.ID,
+		UserID:     observation.UserID,
+		SessionID:  observation.SessionID,
+		RefID:      observation.ID,
+		Kind:       "observation",
+		Project:    observation.Project,
+		Source:     observation.Source,
+		Layer:      observation.Layer,
+		Category:   observation.Category,
+		Type:       observation.Type,
+		Title:      fallbackTitle(observation.Title, observation.Type),
+		Body:       body,
+		SourcePath: observation.SourcePath,
+		Tags:       observationIndexTags(observation),
+		CreatedAt:  observation.CreatedAt,
+	}
+	if err := s.repo.UpsertSearchDocument(document); err != nil {
+		return err
+	}
+	if s.vector != nil {
+		if err := s.vector.Upsert(document); err != nil {
+			// FTS already covers the document; embeddings heal via reindexer.
+			s.publish("vector_upsert_failed", map[string]string{"doc_id": document.DocID, "error": err.Error()})
+		}
+	}
+	return nil
+}
+
+func observationIndexBody(observation *Observation) string {
+	parts := []string{
+		observation.Title,
+		observation.Narrative,
+		observation.Topic,
+		observation.Location,
+		strings.Join(observation.Keywords, " "),
+		strings.Join(observation.Persons, " "),
+		strings.Join(observation.Entities, " "),
+		observation.ValidFrom,
+	}
+	return strings.TrimSpace(strings.Join(parts, "\n"))
+}
+
+func observationIndexTags(observation *Observation) []string {
+	tags := append([]string{}, observation.Tags...)
+	tags = append(tags, observation.Keywords...)
+	tags = append(tags, observation.Persons...)
+	tags = append(tags, observation.Entities...)
+	tags = append(tags, observation.Topic, observation.Location)
+	return normalizeList(tags)
+}
+
+// BuildMemoryDocument renders the search document of a compressed memory.
+// Shared with the store so PATCH updates rebuild the same shape.
+func BuildMemoryDocument(memoryItem *CompressedMemory, project, source string) SearchDocument {
+	return SearchDocument{
+		DocID:     "mem:" + memoryItem.ID,
+		UserID:    memoryItem.UserID,
+		SessionID: memoryItem.SessionID,
+		RefID:     memoryItem.ID,
+		Kind:      "memory",
+		Project:   project,
+		Source:    source,
+		Layer:     memoryItem.Layer,
+		Category:  memoryItem.Category,
+		Type:      "memory",
+		Title:     "Compressed memory",
+		Body: strings.TrimSpace(
+			memoryItem.Summary + "\nLearned: " + strings.Join(memoryItem.Learned, " | ") + "\nOpen tasks: " + strings.Join(memoryItem.OpenTasks, " | "),
+		),
+		CreatedAt: memoryItem.CreatedAt,
+	}
+}
+
+func (s *Service) resolveContextQuery(session *Session, query string) string {
+	if strings.TrimSpace(query) != "" {
+		return strings.TrimSpace(query)
+	}
+	for i := len(session.Prompts) - 1; i >= 0; i-- {
+		if session.Prompts[i].Role == PromptRoleUser && strings.TrimSpace(session.Prompts[i].Text) != "" {
+			return session.Prompts[i].Text
+		}
+	}
+	if len(session.Goals) > 0 {
+		return strings.Join(session.Goals, " ")
+	}
+	return session.Project + " " + session.Source
+}
