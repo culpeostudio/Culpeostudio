@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
+
 void prepareWarmupRetryMessages(
   List<Map<String, dynamic>> messages,
   String originalMessage,
@@ -51,7 +53,7 @@ class ModelWarmupProgress extends ChangeNotifier {
     'gpu' => 'GPU',
     'ram' => 'RAM',
     'hybrid' => 'GPU + RAM',
-    _ => 'Platzierung wird geplant',
+    _ => tr('chatAux.warmup.placementPending'),
   };
 
   void begin({
@@ -65,7 +67,7 @@ class ModelWarmupProgress extends ChangeNotifier {
     operationId = '';
     status = 'queued';
     phase = 'queued';
-    message = 'Bitte kurz warten – Modell läuft warm';
+    message = tr('chatAux.warmup.waiting');
     errorCode = '';
     queuePosition = null;
     _displayProgress = 0.01;
@@ -130,7 +132,7 @@ class ModelWarmupProgress extends ChangeNotifier {
   void complete({String? message}) {
     status = 'ready';
     phase = 'ready';
-    this.message = message ?? 'Modell ist bereit';
+    this.message = message ?? tr('chat.warmup.modelReady');
     _displayProgress = 1;
     _phaseCeiling = 1;
     _timer?.cancel();
@@ -149,7 +151,7 @@ class ModelWarmupProgress extends ChangeNotifier {
 
   void cancel() {
     status = 'cancelled';
-    message = 'Modellstart wurde abgebrochen';
+    message = tr('chatAux.warmup.cancelled');
     errorCode = 'model_warmup_canceled';
     _timer?.cancel();
     _timer = null;
@@ -301,8 +303,11 @@ class ModelWarmupPanel extends StatelessWidget {
             : const Color(0xFFDFC077);
         return Semantics(
           liveRegion: true,
-          label:
-              '${progress.modelName}: ${(progress.displayProgress * 100).floor()} Prozent, ${_phaseLabel(progress.phase)}',
+          label: tr('chatAux.warmup.semanticProgress', {
+            'model': progress.modelName,
+            'percent': (progress.displayProgress * 100).floor().toString(),
+            'phase': _phaseLabel(progress.phase),
+          }),
           child: Container(
             key: const Key('model-warmup-panel'),
             width: double.infinity,
@@ -330,8 +335,8 @@ class ModelWarmupPanel extends StatelessWidget {
                         children: [
                           Text(
                             failed
-                                ? 'Modell konnte nicht gestartet werden'
-                                : 'Bitte kurz warten – Modell läuft warm',
+                                ? tr('chatAux.warmup.startFailed')
+                                : tr('chatAux.warmup.waiting'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -383,7 +388,7 @@ class ModelWarmupPanel extends StatelessWidget {
                           if (!failed &&
                               progress.message.isNotEmpty &&
                               progress.message !=
-                                  'Bitte kurz warten – Modell läuft warm' &&
+                                  tr('chatAux.warmup.waiting') &&
                               progress.message !=
                                   _phaseLabel(progress.phase)) ...[
                             const SizedBox(height: 2),
@@ -400,7 +405,9 @@ class ModelWarmupPanel extends StatelessWidget {
                     ),
                     if (progress.queuePosition != null)
                       Text(
-                        'Warteschlange: ${progress.queuePosition}',
+                        tr('chatAux.warmup.queuePosition', {
+                          'position': progress.queuePosition.toString(),
+                        }),
                         key: const Key('model-warmup-queue-position'),
                         style: const TextStyle(
                           color: Colors.white54,
@@ -429,18 +436,18 @@ class ModelWarmupPanel extends StatelessWidget {
                       if (onChooseAnother != null)
                         TextButton(
                           onPressed: onChooseAnother,
-                          child: const Text('Anderes Modell wählen'),
+                          child: Text(tr('chatAux.warmup.chooseAnother')),
                         ),
                       if (onChangeBinding != null)
                         TextButton(
                           onPressed: onChangeBinding,
-                          child: const Text('Bindung ändern'),
+                          child: Text(tr('chatAux.warmup.changeBinding')),
                         ),
                       if (onRetry != null)
                         FilledButton.tonalIcon(
                           onPressed: onRetry,
                           icon: const Icon(Icons.refresh, size: 17),
-                          label: const Text('Erneut versuchen'),
+                          label: Text(tr('common.retry')),
                         ),
                     ],
                   ),
@@ -452,7 +459,7 @@ class ModelWarmupPanel extends StatelessWidget {
                       key: const Key('model-warmup-cancel'),
                       onPressed: onCancel,
                       icon: const Icon(Icons.close, size: 17),
-                      label: const Text('Abbrechen'),
+                      label: Text(tr('common.cancel')),
                     ),
                   ),
                 ],
@@ -471,62 +478,66 @@ class ModelWarmupPanel extends StatelessWidget {
     );
     switch (normalized) {
       case 'queued':
-        return 'Wartet auf sichere Ressourcen';
+        return tr('chatAux.warmup.phase.queued');
       case 'admission':
-        return 'Ressourcenfreigabe wird geprüft';
+        return tr('chatAux.warmup.phase.admission');
       case 'preparing_runtime':
-        return 'Laufzeit wird vorbereitet';
+        return tr('chatAux.warmup.phase.preparingRuntime');
       case 'runtime_ready':
-        return 'Laufzeit ist bereit';
+        return tr('chatAux.warmup.phase.runtimeReady');
       case 'refreshing_plan':
-        return 'Speicherplan wird erneut geprüft';
+        return tr('chatAux.warmup.phase.refreshingPlan');
       case 'lru_evicting':
-        return 'Ungenutztes Modell wird entladen';
+        return tr('chatAux.warmup.phase.evicting');
       case 'starting_instances':
-        return 'Modellstart wird koordiniert';
+        return tr('chatAux.warmup.phase.startingInstances');
       case 'launching_worker':
-        return 'Modellprozess wird gestartet';
+        return tr('chatAux.warmup.phase.launchingWorker');
       case 'loading_model':
-        return 'Modellgewichte werden geladen';
+        return tr('chatAux.warmup.phase.loadingModel');
       case 'worker_initializing':
-        return 'Healthcheck: Modellserver startet';
+        return tr('chatAux.warmup.phase.workerInitializing');
       case 'worker_ready':
-        return 'Healthcheck erfolgreich';
+        return tr('chatAux.warmup.phase.workerReady');
       case 'verifying_worker':
-        return 'Mini-Inferenz wird geprüft';
+        return tr('chatAux.warmup.phase.verifyingWorker');
       case 'instance_verified':
-        return 'Mini-Inferenz erfolgreich';
+        return tr('chatAux.warmup.phase.instanceVerified');
       case 'ready':
-        return 'Modell ist bereit';
+        return tr('chat.warmup.modelReady');
     }
-    if (normalized.contains('queue')) return 'Wartet auf sichere Ressourcen';
+    if (normalized.contains('queue')) {
+      return tr('chatAux.warmup.phase.queued');
+    }
     if (normalized.contains('admission')) {
-      return 'Ressourcenfreigabe wird geprüft';
+      return tr('chatAux.warmup.phase.admission');
     }
     if (normalized.contains('resource') || normalized.contains('plan')) {
-      return 'Speicherplan wird geprüft';
+      return tr('chatAux.warmup.phase.resourcePlan');
     }
-    if (normalized.contains('runtime')) return 'Laufzeit wird vorbereitet';
+    if (normalized.contains('runtime')) {
+      return tr('chatAux.warmup.phase.preparingRuntime');
+    }
     if (normalized.contains('evict')) {
-      return 'Ungenutztes Modell wird entladen';
+      return tr('chatAux.warmup.phase.evicting');
     }
     if (normalized.contains('launch') || normalized.contains('spawn')) {
-      return 'Modellprozess wird gestartet';
+      return tr('chatAux.warmup.phase.launchingWorker');
     }
     if (normalized.contains('weight') || normalized.contains('load')) {
-      return 'Modellgewichte werden geladen';
+      return tr('chatAux.warmup.phase.loadingModel');
     }
     if (normalized.contains('health') ||
         normalized.contains('initializ') ||
         normalized.contains('worker_ready')) {
-      return 'Healthcheck des Modellservers läuft';
+      return tr('chatAux.warmup.phase.healthcheck');
     }
     if (normalized.contains('verify') ||
         normalized.contains('inference') ||
         normalized.contains('probe')) {
-      return 'Mini-Inferenz wird geprüft';
+      return tr('chatAux.warmup.phase.verifyingWorker');
     }
-    return 'Modellstart wird vorbereitet';
+    return tr('chatAux.warmup.phase.preparing');
   }
 }
 

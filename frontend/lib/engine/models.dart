@@ -1,3 +1,5 @@
+import '../l10n/remaining_ui_strings.dart';
+
 typedef JsonMap = Map<String, dynamic>;
 
 JsonMap _asMap(dynamic value) {
@@ -114,7 +116,7 @@ class ModelRecord {
       id: _string(_first(json, const ['id', 'model_id', 'modelId'])),
       name: _string(
         _first(json, const ['name', 'display_name', 'displayName']),
-        'Unbenanntes Modell',
+        remainingUiText('engineModel.unnamed'),
       ),
       format: _string(json['format'], 'unknown').toLowerCase(),
       relativePath: _string(
@@ -124,11 +126,11 @@ class ModelRecord {
       status: status,
       architecture: _string(
         json['architecture'] ?? metadata['architecture'],
-        'Unbekannt',
+        remainingUiText('engineModel.unknown'),
       ),
       quantization: _string(
         json['quantization'] ?? metadata['quantization'],
-        'Unbekannt',
+        remainingUiText('engineModel.unknown'),
       ),
       modelContextLimitTokens: _integer(
         _first(json, const [

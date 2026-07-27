@@ -1,0 +1,616 @@
+/// English UI texts. Key schema: `screen.context.key`.
+/// Placeholders are written as `{name}` and replaced via `tr(key, {...})`.
+const Map<String, String> appStringsEn = {
+  // Common
+  'common.ok': 'OK',
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+  'common.delete': 'Delete',
+  'common.close': 'Close',
+  'common.confirm': 'Confirm',
+  'common.loading': 'Loading…',
+  'common.error': 'Error',
+  'common.retry': 'Retry',
+
+  // Onboarding
+  'onboarding.title': 'Welcome!',
+  'onboarding.subtitle':
+      'Set up your personal preferences. You can change them anytime in the settings.',
+  'onboarding.languageTitle': 'Language',
+  'onboarding.languageGerman': 'Deutsch',
+  'onboarding.languageEnglish': 'English',
+  'onboarding.versionTitle': 'Frontend version',
+  'onboarding.versionClassic': 'Classic',
+  'onboarding.versionClassicDesc': 'All modules are shown.',
+  'onboarding.versionLite': 'Lite',
+  'onboarding.versionLiteDesc':
+      'Only Chat, Engine, Marketplace, News and Benchmark are shown.',
+  'onboarding.start': 'Get started',
+
+  // Sidebar / Modules
+  'sidebar.chat': 'Chat',
+  'sidebar.engine': 'Engine',
+  'sidebar.marketplace': 'Marketplace',
+  'sidebar.training': 'Training',
+  'sidebar.quantization': 'Quantization',
+  'sidebar.generative': 'Gen Studio',
+  'sidebar.news': 'News',
+  'sidebar.benchmark': 'Benchmark',
+
+  // Settings: Appearance
+  'settings.appearance': 'Appearance',
+  'settings.language': 'Language',
+  'settings.frontendVersion': 'Frontend version',
+  'settings.frontendVersionClassic': 'Classic (all modules)',
+  'settings.frontendVersionLite':
+      'Lite (Chat, Engine, Marketplace, News, Benchmark)',
+
+  // Dashboard
+  'dashboard.logoutTitle': 'Log out',
+  'dashboard.logoutConfirm': 'Do you really want to log out?',
+  'dashboard.logoutYes': 'Yes, log out',
+  'dashboard.benchmarkTitle': 'Open external website',
+  'dashboard.benchmarkBody':
+      'You are about to open artificialanalysis.ai in your browser. Do you really want to switch to this page?',
+  'dashboard.benchmarkContinue': 'Continue',
+  'dashboard.benchmarkOpenFailed':
+      'The external benchmark page could not be opened.',
+  'dashboard.benchmarkOpenError': 'Error opening the benchmark page: {error}',
+  'dashboard.tooltipLightTheme': 'Light theme',
+  'dashboard.tooltipDarkTheme': 'Dark theme',
+  'dashboard.tooltipSettings': 'Settings',
+  'dashboard.tooltipLogout': 'Log out',
+  'dashboard.tooltipNewChat': 'Create new chat',
+  'dashboard.tooltipRemove': 'Remove',
+  'dashboard.deletedModules': 'Deleted modules',
+  'dashboard.deletedModulesEmpty':
+      'No deleted modules.\nUse the "-" symbol on modules\nto remove them.',
+  'dashboard.codeBlockSwitch': 'Switch code block',
+  'dashboard.codeBlockN': 'Code block {n}',
+  'dashboard.codeClose': 'Close code view',
+  'dashboard.codeCopied': 'Code copied',
+  'dashboard.copy': 'Copy',
+
+  // Errors
+  'login.error.invalidCredentials': 'Invalid credentials',
+  'login.error.invalidCode': 'Invalid code',
+
+  // Validation
+  'login.validation.required': 'Required field',
+  'login.validation.codeInvalid': 'Enter the 6-digit code',
+
+  // Authenticator setup
+  'login.setup.title': 'Set up authenticator',
+  'login.setup.scanHint2fas': 'Open 2FAS, tap "+" and scan the QR code.',
+  'login.setup.scanHintGoogle':
+      'Open Google Authenticator, tap "+" and scan the QR code.',
+  'login.setup.codeHint': 'Code from the app',
+  'login.setup.confirm': 'Confirm setup',
+  'login.setup.loadError': 'Setup could not be loaded.',
+
+  // Welcome
+  'login.welcome.title': 'Welcome back',
+  'login.welcome.subtitle': 'Sign in to open your studio.',
+
+  // Form fields
+  'login.field.usernameLabel': 'USERNAME',
+  'login.field.usernameHint': 'Enter username',
+  'login.field.passwordLabel': 'PASSWORD',
+  'login.field.passwordHint': 'Enter password',
+  'login.field.showPassword': 'Show password',
+  'login.field.hidePassword': 'Hide password',
+
+  // Session
+  'login.remember.label': 'Stay signed in',
+  'login.remember.duration': 'Session duration',
+  'login.duration.8h': '8 hrs.',
+  'login.duration.24h': '24 hrs.',
+  'login.duration.48h': '48 hrs.',
+  'login.duration.permanent': 'Permanent',
+
+  // Actions
+  'login.action.login': 'Sign in',
+  'login.action.createAccount': 'Create account',
+  'login.action.forgotPassword': 'Forgot password',
+
+  // Footer
+  'login.footer.copyright': '© 2026 fillystudio. All rights reserved.',
+  'login.footer.credits':
+      'Powered by PhiloEngine • Design & Development by fillystudio',
+
+  // Account dialog
+  'login.dialog.passwordUpdated': 'Password has been updated.',
+  'login.dialog.accountCreated': 'Account has been created.',
+  'login.dialog.actionFailed': 'Action failed.',
+  'login.dialog.usernameHint': 'Username',
+  'login.dialog.newPasswordHint': 'New password',
+  'login.dialog.passwordHint': 'Password',
+  'login.dialog.confirmPasswordHint': 'Confirm password',
+  'login.dialog.passwordsMismatch': 'Passwords do not match',
+  'login.dialog.codeFromApp': 'Code from {app}',
+  'login.dialog.create': 'Create',
+
+  // Navigation
+  'settings.nav.title': 'SETTINGS',
+  'settings.nav.general': 'General',
+  'settings.nav.serverApi': 'Server / API',
+  'settings.nav.shortcuts': 'Shortcuts',
+  'settings.nav.botManagement': 'Bot Management',
+  'settings.nav.chatBot': 'Chat Bot',
+  'settings.nav.skills': 'Skills',
+
+  // General
+  'settings.general.title': 'General Studio Configuration',
+  'settings.general.modelDirLabel': 'MODEL DOWNLOAD PATH',
+  'settings.general.modelDirDescription':
+      'Folder on your hard drive where models downloaded from the marketplace '
+      'are stored. You can choose your own folder (e.g. on a large drive) – '
+      'the default is data/models.',
+  'settings.general.modelDirHint': 'e.g. ~/models or D:\\models',
+  'settings.general.modelDirPickerTitle': 'Choose model folder',
+  'settings.general.browse': 'Browse',
+  'settings.general.browseTooltip': 'Choose folder on hard drive',
+  'settings.general.apiUrlLabel': 'API HOST URL',
+  'settings.general.apiUrlDescription':
+      'The address of the backend server (default: http://localhost:8080/api). '
+      'The app sends all requests to this server to load models and run chats.',
+  'settings.general.saveButton': 'Save settings',
+  'settings.save.success': 'Settings saved successfully',
+
+  // Provider health
+  'settings.health.reachable': 'Reachable',
+  'settings.health.unreachable': 'Not reachable',
+  'settings.health.httpResponse': 'Responds with HTTP {code}',
+  'settings.health.error': 'Error',
+
+  // Server & API
+  'settings.serverApi.title': 'Server & API Interfaces',
+  'settings.serverApi.subtitle':
+      'Manage connections to local servers and cloud model providers',
+  'settings.serverApi.recheckTooltip': 'Re-check connections',
+  'settings.serverApi.addNode': 'Add node',
+  'settings.serverApi.localServer': 'Local Server',
+
+  // Custom node dialogs
+  'settings.customNode.fallbackName': 'Custom Node',
+  'settings.customNode.addTitle': 'Add custom node',
+  'settings.customNode.addDescription':
+      'Set up your own API connection to a custom server (e.g. Ollama or a '
+      'local OpenAI-compatible endpoint).',
+  'settings.customNode.editTitle': 'Edit custom node',
+  'settings.customNode.editDescription':
+      'Adjust the connection information for this node.',
+  'settings.customNode.nameLabel': 'NODE NAME',
+  'settings.customNode.nameHint': 'e.g. Local Ollama server',
+  'settings.customNode.urlLabel': 'API BASE URL',
+  'settings.customNode.urlHint': 'e.g. http://localhost:11434',
+  'settings.customNode.keyLabel': 'API KEY (OPTIONAL)',
+  'settings.customNode.keyHint': 'Enter token...',
+  'settings.customNode.add': 'Add',
+  'settings.customNode.delete': 'Delete node',
+  'settings.customNode.save': 'Save',
+
+  // Custom Nodes - Phase 2 note
+  'settings.serverApi.phaseNote.title': 'Coming in Phase 2',
+  'settings.serverApi.phaseNote.body':
+      'Custom API nodes can already be added and checked for reachability, but are not yet usable as an active connection in chat/engine. Full functionality arrives with Phase 2.',
+  'settings.customNode.phaseBadge': 'Phase 2',
+
+  // Token dialog
+  'settings.token.setupTitle': 'Set up {title}',
+  'settings.token.replaceDescription':
+      'A token is already configured. You can overwrite it by entering a new '
+      'one below, or delete it.',
+  'settings.token.enterDescription':
+      'Enter your API token for {title} to activate the service.',
+  'settings.token.hfLink': '🤗 Create token on huggingface.co',
+  'settings.token.orLink': '🤖 Manage API keys on openrouter.ai',
+  'settings.token.flLink': '☁️ Get API access on featherless.ai',
+  'settings.token.delete': 'Delete token',
+  'settings.token.updated': 'Token updated successfully',
+
+  // Provider card
+  'settings.provider.enabled': 'Enabled',
+  'settings.provider.keySet': 'Key configured',
+  'settings.provider.keyMissing': 'Key missing',
+  'settings.provider.checking': 'Checking...',
+
+  // Chat bot
+  'settings.chatBot.title': 'Chat Bot',
+  'settings.chatBot.description':
+      'Decide whether new chats use a specific bot or automatically select '
+      'the appropriate bot.',
+  'settings.chatBot.defaultLabel': 'DEFAULT FOR NEW CHATS',
+  'settings.chatBot.note': 'Running chats keep their previously used bot.',
+
+  // Skills
+  'settings.skills.title': 'Agent Skills',
+  'settings.skills.description':
+      'Imported skills are strictly validated against the Agent Skills '
+      'standard and copied to data/skills. They are not loaded into chats in this version yet.',
+  'settings.skills.rescanTooltip': 'Rescan',
+  'settings.skills.importFolder': 'Import skill folder',
+  'settings.skills.imported': 'Skill imported',
+  'settings.skills.rescanned': 'Skills rescanned',
+  'settings.skills.removed': 'Skill removed',
+  'settings.skills.empty': 'No skills imported yet.',
+  'settings.skills.unknown': 'Unknown skill',
+  'settings.skills.noDescription': 'No description available',
+  'settings.skills.removeTooltip': 'Remove',
+  'settings.skills.valid': 'valid',
+  'settings.skills.invalid': 'invalid',
+  'settings.skills.fileCount': '{count} files',
+
+  // Shortcuts
+  'settings.shortcuts.title': 'Keyboard Shortcuts',
+  'settings.shortcuts.description':
+      'Click a shortcut to re-record it. Then press the desired key combination.',
+  'settings.shortcuts.pressKeys': 'Press keys...',
+  'settings.shortcuts.action.switchToChat': 'Open chat',
+  'settings.shortcuts.action.switchToPhilox': 'Open Philox Agent',
+  'settings.shortcuts.action.switchToEngine': 'Open Engine',
+  'settings.shortcuts.action.switchToMarketplace': 'Open Marketplace',
+  'settings.shortcuts.action.switchToTraining': 'Open Training',
+  'settings.shortcuts.action.switchToQuantization': 'Open Quantization',
+  'settings.shortcuts.action.switchToGenerative': 'Open Gen Studio',
+  'settings.shortcuts.action.switchToNews': 'Open News',
+  'settings.shortcuts.action.switchToSettings': 'Open Settings',
+  'settings.shortcuts.action.toggleSidebar': 'Toggle sidebar',
+  'settings.shortcuts.action.focusChatInput': 'Focus chat input',
+  'settings.shortcuts.action.newChatSession': 'Start new chat',
+  'settings.shortcuts.action.toggleChatTab': 'Switch between chat tabs',
+  'settings.shortcuts.action.toggleEngine': 'Start/stop engine',
+  'settings.shortcuts.action.loadModel': 'Load model',
+  'settings.shortcuts.action.focusSearch': 'Focus search',
+  'settings.shortcuts.action.showHelp': 'Show shortcut help',
+  'settings.shortcuts.action.toggleTheme': 'Toggle theme',
+
+  // System info & help
+  'settings.systemInfo.title': 'System Information',
+  'settings.systemInfo.noGpu': 'No GPU detected',
+  'settings.systemInfo.cpuDetecting': 'Detecting CPU …',
+  'settings.systemInfo.diskFree': 'DISK FREE',
+  'settings.systemInfo.detection': 'DETECTION',
+  'settings.systemInfo.source.philoengineHardware':
+      'PhiloEngine Hardware Detection',
+  'settings.systemInfo.source.philoengineHardwareLive':
+      'PhiloEngine Hardware Detection + live data',
+  'settings.systemInfo.source.nativeLive': 'Local live detection',
+  'settings.systemInfo.source.localFallback': 'Local fallback detection',
+  'settings.help.title': 'Help & Documentation',
+  'settings.help.body':
+      'Make sure the myphiloengine backend is running before performing '
+      'operations. By default it listens on port 8080.',
+
+  // Plus menu (file/action)
+  'chat.plusMenu.webSearch': 'Web search',
+  'chat.plusMenu.webSearchDesc': 'Real-time information',
+  'chat.plusMenu.restart': 'Restart',
+  'chat.plusMenu.restartDesc': 'Reset conversation',
+  'chat.plusMenu.uploadFile': 'Upload file',
+  'chat.plusMenu.uploadFileDesc': 'Select local file',
+
+  // Model choice / working indicator
+  'chat.modelChoice.localReady': 'Local • Ready',
+  'chat.working.modelLoading': 'Loading model',
+  'chat.working.thinking': 'PhiloBot is thinking',
+  'chat.noActiveChat': 'No active chat',
+  'chat.header.showFileTree': 'Show file tree',
+
+  // Notifications
+  'chat.notification.modelSwitched': 'Model switched: {label}',
+  'chat.notification.startModelFirst':
+      'Please start a local engine or API model first',
+  'chat.notification.chatStarted': 'New chat with {label} started',
+  'chat.notification.chooseAnotherModel': 'Please select another model now',
+  'chat.notification.botSaved': '{name} has been saved in the bot management',
+  'chat.notification.memoryCompressed': 'Memory has been compressed',
+  'chat.notification.replyCopied': 'Reply copied',
+
+  // Errors
+  'chat.error.modelSwitchFailed': 'Model switch failed',
+  'chat.error.sessionStartFailed': 'Could not start chat session',
+  'chat.error.settingsAction': 'Settings',
+  'chat.error.responseFailed': 'Response could not be generated',
+
+  // Model warmup
+  'chat.warmup.modelUnavailable': 'The local model is no longer available.',
+  'chat.warmup.modelReady': 'Model is ready',
+  'chat.warmup.queueTimeout': 'The model start took too long.',
+  'chat.warmup.startFailed': 'The local model could not be started: {error}',
+  'chat.warmup.localModelFallback': 'Local model',
+
+  // Bot test
+  'chat.botTest.newBotFallback': 'the new bot',
+  'chat.botTest.prompt': '{keyword}: Test {name} with a short sample response.',
+
+  // Loading / empty states
+  'chat.loading.preparing': 'Preparing chat …',
+  'chat.loading.initNewChat': 'Initializing new chat...',
+  'chat.empty.noModelReady': 'No model ready yet',
+  'chat.empty.startModelHint':
+      'Start a local engine or API model to get started.',
+  'chat.empty.startLocalModel': 'Start local model',
+  'chat.empty.chooseApiModel': 'Choose API model',
+
+  // Agentic events
+  'chat.events.toolStartedGeneric': 'Tool started',
+  'chat.events.toolStarted': '{tool} started',
+  'chat.events.toolFinishedGeneric': 'Tool finished',
+  'chat.events.toolFinished': '{tool} finished',
+  'chat.events.planningQuestions': 'Planning questions',
+  'chat.events.planReady': 'Plan ready',
+  'chat.events.approvalNeeded': 'Approval required',
+  'chat.events.permissionRequested': 'External access requested',
+  'chat.events.permissionOnce': 'Access granted (once)',
+  'chat.events.permissionSession': 'Access granted (session)',
+  'chat.events.permissionDenied': 'Access denied',
+  'chat.events.fileCreated': 'File created',
+  'chat.events.fileDeleted': 'File deleted',
+  'chat.events.fileMoved': 'File moved',
+  'chat.events.fileModified': 'File modified',
+  'chat.events.memoryCompressed': 'Memory compressed',
+
+  // File tree
+  'chat.fileTree.title': 'Files',
+  'chat.fileTree.refresh': 'Refresh',
+
+  // File changes
+  'chat.fileChange.new': 'New',
+  'chat.fileChange.deleted': 'Deleted',
+  'chat.fileChange.moved': 'Moved',
+  'chat.fileChange.modified': 'Modified',
+
+  // Plan approval
+  'chat.planApproval.title': 'Plan approval',
+  'chat.planApproval.reject': 'Reject',
+  'chat.planApproval.approve': 'Approve',
+  'chat.planApproval.approvedMessage': 'Plan approved',
+
+  // Permission request
+  'chat.permission.requestClosed': 'Access request was no longer open',
+
+  // Created bot
+  'chat.createdBot.nameFallback': 'New bot',
+  'chat.createdBot.saved': '{name} saved',
+  'chat.createdBot.test': 'Test',
+  'chat.createdBot.edit': 'Edit',
+
+  // Inline editor
+  'chat.editor.hint': 'Edit message …',
+  'chat.editor.cancel': 'Cancel',
+  'chat.editor.resend': 'Resend',
+
+  // Message navigator
+  'chat.navigator.jumpToMessage': 'Jump to your message',
+
+  // Message actions
+  'chat.messageActions.edit': 'Edit',
+  'chat.messageActions.copy': 'Copy text',
+  'chat.messageActions.actions': 'Actions',
+
+  // Quick prompts
+  'chat.quickPrompt.shorter': 'Rephrase the last response much more concisely.',
+  'chat.quickPrompt.critical':
+      'Review the last response more critically and point out weaknesses.',
+  'chat.quickPrompt.structure':
+      'Structure the last response more clearly with sections and next steps.',
+  'chat.quickPrompt.tune':
+      'Botbuilder: Refine the bot just created based on my previous responses.',
+  'chat.quickPrompt.thisBotFallback': 'this bot',
+  'chat.quickPrompt.rule':
+      'Botbuilder: Rework {bot} so that this response quality is permanently adopted as a bot rule.',
+
+  // Message menu
+  'chat.menu.shorter': 'Shorter',
+  'chat.menu.critical': 'More critical',
+  'chat.menu.moreStructure': 'More structure',
+  'chat.menu.tune': 'Fine-tune',
+  'chat.menu.asRule': 'As rule',
+
+  // Input bar
+  'chat.input.hint': 'Message...',
+  'chat.input.addTooltip': 'File or chat action',
+  'chat.input.modelBoundToBot':
+      'The model is permanently bound to the selected bot',
+  'chat.input.modelWarmingUp': 'The model is currently warming up',
+  'chat.input.voiceMessage': 'Voice message',
+
+  // Send button
+  'chat.send.selectModelFirst': 'Please select a model first',
+  'chat.send.botWorking': 'PhiloBot is still working …',
+  'chat.send.waitForModel': 'Waiting for the model to be ready',
+  'chat.send.sendMessage': 'Send message',
+
+  // Thinking slider
+  'chat.thinkingSlider.faster': 'Faster',
+  'chat.thinkingSlider.smarter': 'Smarter',
+  'chat.thinkingSlider.inDevelopment': 'In development',
+
+  // Chat history: rename / delete
+  'chatHistory.rename.title': 'Rename chat',
+  'chatHistory.rename.hint': 'Title',
+  'chatHistory.rename.cancel': 'Cancel',
+  'chatHistory.rename.save': 'Save',
+  'chatHistory.delete.title': 'Delete chat?',
+  'chatHistory.delete.body': '"{title}" will be permanently deleted.',
+  'chatHistory.delete.cancel': 'Cancel',
+  'chatHistory.delete.confirm': 'Delete',
+  'chatHistory.deleteProject.title': 'Delete folder?',
+  'chatHistory.deleteProject.body':
+      '"{name}" will be deleted. The chats it contains are kept and move back to the general list.',
+  'chatHistory.deleteProject.cancel': 'Cancel',
+  'chatHistory.deleteProject.confirm': 'Delete',
+
+  // Chat history: panel
+  'chatHistory.newFolder': 'New folder',
+  'chatHistory.sectionProjects': 'Projects',
+  'chatHistory.sectionHistory': 'History',
+  'chatHistory.sectionChats': 'Chats',
+  'chatHistory.empty':
+      'No chats yet — start a new conversation or create a folder.',
+
+  // Chat history: project dialog
+  'chatHistory.projectDialog.titleEdit': 'Edit folder',
+  'chatHistory.projectDialog.titleNew': 'New folder',
+  'chatHistory.projectDialog.nameHint': 'Project name',
+  'chatHistory.projectDialog.nameError': 'Please enter a name',
+  'chatHistory.projectDialog.pathError': 'Please provide a path or disable it',
+  'chatHistory.projectDialog.colorLabel': 'COLOR',
+  'chatHistory.projectDialog.iconLabel': 'ICON',
+  'chatHistory.projectDialog.pathToggle':
+      'Set project path (file access in chat)',
+  'chatHistory.projectDialog.pathHint': '/path/to/project',
+  'chatHistory.projectDialog.browse': 'Browse',
+  'chatHistory.projectDialog.browseTitle': 'Choose project path',
+  'chatHistory.projectDialog.cancel': 'Cancel',
+  'chatHistory.projectDialog.save': 'Save',
+  'chatHistory.projectDialog.create': 'Create',
+
+  // Chat history: row actions
+  'chatHistory.projectRow.newChat': 'New chat in folder',
+  'chatHistory.projectRow.edit': 'Edit folder',
+  'chatHistory.projectRow.delete': 'Delete folder',
+  'chatHistory.chatRow.move': 'Move to folder',
+  'chatHistory.chatRow.removeFromFolder': 'Remove from folder',
+  'chatHistory.chatRow.noFolders': 'No folders available',
+  'chatHistory.chatRow.rename': 'Rename',
+  'chatHistory.chatRow.delete': 'Delete',
+
+  // Philox tab
+  'philox.header.agentSession': 'Agent session: {id}',
+  'philox.header.sessionConfig': 'Session configuration',
+  'philox.header.toggleParams': 'Show/hide parameters',
+  'philox.loading.initAgent': 'Initializing agent...',
+  'philox.empty.noSession': 'No active session',
+  'philox.planApproval.title': 'Plan approval required',
+  'philox.planApproval.body':
+      'The Philox agent has drafted an execution plan and is waiting for your approval.',
+  'philox.planApproval.reject': 'Reject',
+  'philox.planApproval.approve': 'Approve plan',
+  'philox.params.title': 'Agent parameters',
+  'philox.params.thinkingLevel': 'THINKING LEVEL',
+  'philox.params.executionMode': 'EXECUTION MODE',
+  'philox.params.allowedRoots': 'ALLOWED PATHS (ROOTS)',
+  'philox.params.endSession': 'End session',
+  'philox.input.hint': 'Instruct the agent...',
+  'philox.input.voiceControl': 'Voice control',
+
+  // News
+  'news.title': 'AI & Tech Feed',
+  'news.subtitle': 'Live news aggregated from leading hardware and AI sources.',
+  'news.refresh': 'Refresh',
+  'news.searchHint': 'Search keywords, content or tags...',
+  'news.categoryLabel': 'CATEGORY:',
+  'news.categoryAll': 'All',
+  'news.categoryReleases': 'AI Releases',
+  'news.categoryHardware': 'Hardware',
+  'news.categoryOpenSource': 'Open Source',
+  'news.categoryResearch': 'Research',
+  'news.noResults': 'No matching articles found.',
+  'news.empty': 'No articles available at the moment.',
+  'news.resetFilters': 'Reset filters',
+  'news.loadError': 'Error loading news: {error}',
+  'news.readMore': 'Read more',
+
+  // Bots Management
+  'bots.title': 'Bot Management',
+  'bots.subtitle': 'Create and manage specialized AI assistants and bots.',
+  'bots.newBot': 'New Bot',
+  'bots.createTitle': 'Create new Bot',
+  'bots.editTitle': 'Edit Bot: {name}',
+  'bots.nameLabel': 'BOT NAME',
+  'bots.nameHint': 'e.g. Code Assistant',
+  'bots.promptLabel': 'SYSTEM PROMPT / INSTRUCTIONS',
+  'bots.promptHint': 'Provide rules and domain knowledge for the bot...',
+  'bots.keywordsLabel': 'KEYWORDS (AUTO-ROUTING)',
+  'bots.keywordsHint': 'e.g. python, refactor, code',
+  'bots.rootsLabel': 'ALLOWED PATHS (ROOTS)',
+  'bots.rootsHint': '/path/to/project',
+  'bots.defaultLabel': 'Set as default bot',
+  'bots.agenticLabel': 'Enable agentic tools (files, search)',
+  'bots.styleLabel': 'RESPONSE STYLE',
+  'bots.styleBalanced': 'Balanced',
+  'bots.stylePrecise': 'Precise / Logical',
+  'bots.styleCreative': 'Creative',
+  'bots.modelBindingLabel': 'MODEL BINDING',
+  'bots.modelBindingAuto': 'Automatic (Use active model)',
+  'bots.save': 'Save Bot',
+  'bots.delete': 'Delete Bot',
+  'bots.deleteConfirm': 'Do you really want to delete "{name}"?',
+  'bots.saved': 'Bot "{name}" successfully saved',
+  'bots.deleted': 'Bot "{name}" deleted',
+  'bots.lockedBotHint': 'System bot (cannot be edited or deleted)',
+
+  // Training
+  'training.title': 'Start Fine-Tuning (Axolotl / Unsloth)',
+  'training.subtitle': 'Adapt existing language models to custom datasets.',
+  'training.baseModelId': 'BASE MODEL ID',
+  'training.datasetPath': 'DATASET PATH',
+  'training.hyperparams': 'HYPERPARAMETERS (JSON)',
+  'training.start': 'Start Training',
+  'training.queueTitle': 'Training Queue & Jobs',
+  'training.emptyJobs': 'No active training jobs.',
+
+  // Quantization
+  'quantization.title': 'Quantize Model (llama.cpp)',
+  'quantization.subtitle': 'Compress GGUF/Safetensors models for higher speed.',
+  'quantization.sourcePath': 'SOURCE MODEL PATH',
+  'quantization.outputPath': 'TARGET PATH',
+  'quantization.targetType': 'TARGET QUANTIZATION (TYPE)',
+  'quantization.start': 'Start Quantization',
+  'quantization.queueTitle': 'Quantization Queue & Jobs',
+  'quantization.emptyJobs': 'No active quantization jobs.',
+
+  // GenStudio
+  'genstudio.imageGenTab': 'Image Generation',
+  'genstudio.videoGenTab': 'Video Generation',
+  'genstudio.imageTitle': 'Generate Image',
+  'genstudio.videoTitle': 'Generate Video',
+  'genstudio.promptLabel': 'PROMPT / CONTENT',
+  'genstudio.promptPlaceholderImage':
+      'An oil painting of a philosopher in ancient Greece...',
+  'genstudio.promptPlaceholderVideo':
+      'A zoom into the eyes of an ancient owl...',
+  'genstudio.modelLabel': 'MODEL',
+  'genstudio.submitImage': 'Generate Image',
+  'genstudio.submitVideo': 'Generate Video',
+
+  // Marketplace
+  'marketplace.title': 'Model Marketplace',
+  'marketplace.searchHint': 'Search models, providers or tags...',
+  'marketplace.providerAll': 'All Providers',
+  'marketplace.categoryAll': 'All Categories',
+  'marketplace.sortPopularity': 'Popularity',
+  'marketplace.sortIntelligence': 'Intelligence Score',
+  'marketplace.sortContext': 'Context Window',
+  'marketplace.sortNewest': 'Newest First',
+  'marketplace.gpuFit': 'Only GPU fitting models',
+  'marketplace.localOnly': 'Only local models (HuggingFace)',
+  'marketplace.download': 'Download',
+  'marketplace.downloading': 'Downloading... {progress}%',
+  'marketplace.startModel': 'Start Model',
+  'marketplace.starting': 'Starting...',
+  'marketplace.stopModel': 'Stop',
+  'marketplace.details': 'Show Details',
+  'marketplace.noResults': 'No matching models found.',
+
+  // Engine
+  'engine.title': 'Engine & Instances',
+  'engine.subtitle': 'Manage local model instances and server workload.',
+  'engine.syncStatus': 'SYSTEM DATA IS AUTOMATICALLY SYNCHRONIZED',
+  'engine.removeInstance': 'Remove Model Instance',
+  'engine.stopInstance': 'Stop',
+  'engine.startInstance': 'Start',
+  'engine.restartInstance': 'Restart',
+  'engine.responseBehavior': 'Response Behavior',
+  'engine.context': 'Context',
+  'engine.detailsMore': 'Details',
+  'engine.detailsLess': 'Less',
+  'engine.samplingDefaults': 'Sampling Defaults',
+  'engine.liveApply': 'Apply Live',
+  'engine.runCodeConfirm': 'Execute Model Code?',
+  'engine.agreeAndStart': 'Agree & Start',
+  'engine.recalcRam': 'Recalculate with RAM',
+  'engine.confirmDelete': 'Delete Permanently',
+};

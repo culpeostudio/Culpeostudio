@@ -25,14 +25,19 @@ import (
 	modMemory "github.com/fillyengine/backend/modules/memory"
 	modNews "github.com/fillyengine/backend/modules/news"
 	modPhilobot "github.com/fillyengine/backend/modules/philobot"
-	modPhilox "github.com/fillyengine/backend/modules/philox"
+	modPhilosearch "github.com/fillyengine/backend/modules/philosearch"
 	modSettings "github.com/fillyengine/backend/modules/settings"
 	modSkills "github.com/fillyengine/backend/modules/skills"
 )
 
 func main() {
 	cfg := config.Load()
-	loginModule := modLogin.New(cfg.JWTSecret, cfg.LoginAccountsFile, cfg.AuthConfigFile)
+	loginModule := modLogin.New(
+		cfg.JWTSecret,
+		cfg.LoginAccountsFile,
+		cfg.AuthConfigFile,
+		cfg.UserPreferencesFile,
+	)
 
 	// ══════════════════════════════════════════════════════
 	// 1. Fiber HTTP/HTTPS Server
@@ -98,17 +103,12 @@ func main() {
 		cfg.MemoryTokenizerModelPath,
 	)
 
-	// Philox schreibt Prompts, Tool-Laeufe und Antworten ins Projektgedaechtnis
-	// und bekommt daraus Kontext in seine Prompts injiziert.
-	philoxModule := modPhilox.New()
-	philoxModule.SetMemory(memoryModule)
 	philobotModule := modPhilobot.New(cfg.SettingsFile)
 	// PhiloBot bekommt lesenden Zugriff aufs Projektgedaechtnis, damit dauerhafte
 	// Nutzerfakten (z. B. der Name) auch in neuen Chats erinnert werden.
 	philobotModule.SetMemory(memoryModule)
 	philobotModule.SetExistingUsers(loginModule.ListUserIDs)
 	loginModule.SetUserCreatedHook(philobotModule.EnsureUser)
-	philobotModule.SetPhiloxClient(modPhilobot.NewPhiloxGRPCClient("127.0.0.1:"+cfg.GRPCPort, time.Duration(cfg.AgenticTimeoutSec)*time.Second))
 	engineModule := modEngine.New(cfg.SettingsFile)
 	philobotModule.SetLocalModels(engineModule)
 	skillsModule := modSkills.New("data/skills")
@@ -118,11 +118,11 @@ func main() {
 		loginModule,
 		modMarktplatz.New(cfg.SettingsFile),
 		philobotModule,
-		philoxModule,
 		modSettings.New(cfg.SettingsFile),
 		skillsModule,
 		engineModule,
 		modNews.New(),
+		modPhilosearch.New(),
 	}
 
 	for _, m := range modules {
@@ -177,7 +177,6 @@ func main() {
 	// pb.RegisterQuantizationServiceServer(grpcSrv.GetGRPC(), &quantGrpc{})
 	// pb.RegisterMarktplatzServiceServer(grpcSrv.GetGRPC(), &marktplatzGrpc{})
 	skillsModule.RegisterGRPC(grpcSrv.GetGRPC())
-	philoxModule.RegisterGRPC(grpcSrv.GetGRPC())
 
 	go func() {
 		if err := grpcSrv.Start(); err != nil {

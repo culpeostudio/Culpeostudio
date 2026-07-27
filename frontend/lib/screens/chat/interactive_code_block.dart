@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import '../../l10n/chat_aux_strings.dart';
 import 'chat_markdown_helpers.dart';
 import 'chat_visual_block.dart';
 
@@ -106,7 +107,8 @@ class InteractiveCodeElementBuilder extends MarkdownElementBuilder {
                   children: [
                     Expanded(
                       child: Text(
-                        language?.toUpperCase() ?? 'CODE',
+                        language?.toUpperCase() ??
+                            tr('chatAux.code.defaultLanguage'),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.5),
                           fontSize: fontSize,
@@ -126,7 +128,7 @@ class InteractiveCodeElementBuilder extends MarkdownElementBuilder {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'Anschauen',
+                        tr('chatAux.code.view'),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.3),
                           fontSize: fontSize,

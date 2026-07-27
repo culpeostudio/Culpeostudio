@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_strings.dart';
+import '../../l10n/remaining_ui_strings.dart';
 import '../../widgets/phase_lock.dart';
 
 // Das Gen Studio (Bild- und Videogenerierung) ist fuer Phase 4 geplant und
@@ -47,9 +49,9 @@ class _GenStudioScreenState extends State<GenStudioScreen>
               indicatorColor: const Color(0xFFC9A24A),
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white38,
-              tabs: const [
-                Tab(text: 'Bildgenerierung'),
-                Tab(text: 'Videogenerierung'),
+              tabs: [
+                Tab(text: tr('genstudio.imageGenTab')),
+                Tab(text: tr('genstudio.videoGenTab')),
               ],
             ),
           ),
@@ -57,29 +59,25 @@ class _GenStudioScreenState extends State<GenStudioScreen>
       ),
       body: PhaseLockOverlay(
         phase: 4,
-        feature: 'Gen Studio',
+        feature: tr('sidebar.generative'),
         child: TabBarView(
           controller: _tabController,
-          children: const [
+          children: [
             _GenTab(
-              title: 'Bild generieren',
-              promptLabel: 'PROMPT / INHALT',
-              promptText:
-                  'Ein Ölgemälde eines Philosophen im antiken Griechenland, '
-                  'der den Sternenhimmel betrachtet, detailliert, 4k',
+              title: tr('genstudio.imageTitle'),
+              promptLabel: tr('genstudio.promptLabel'),
+              promptText: tr('genstudio.promptPlaceholderImage'),
               modelText: 'sdxl-turbo',
               showSteps: true,
-              submitLabel: 'Bild generieren',
+              submitLabel: tr('genstudio.submitImage'),
             ),
             _GenTab(
-              title: 'Video generieren',
-              promptLabel: 'PROMPT / VIDEO-BESCHREIBUNG',
-              promptText:
-                  'Ein Zoom in die Augen einer antiken Eule, mystische Lichter, '
-                  'Cinemagraph-Stil',
+              title: tr('genstudio.videoTitle'),
+              promptLabel: tr('genstudio.promptLabel'),
+              promptText: tr('genstudio.promptPlaceholderVideo'),
               modelText: 'stable-video-diffusion',
               showSteps: false,
-              submitLabel: 'Video generieren',
+              submitLabel: tr('genstudio.submitVideo'),
             ),
           ],
         ),
@@ -213,9 +211,9 @@ class _GenTabState extends State<_GenTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'MODELL ID',
-                      style: TextStyle(
+                    Text(
+                      remainingUiText('genStudio.modelId'),
+                      style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 10,
                         letterSpacing: 0.8,
@@ -243,9 +241,9 @@ class _GenTabState extends State<_GenTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'STEPS',
-                        style: TextStyle(
+                      Text(
+                        remainingUiText('genStudio.steps'),
+                        style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 10,
                           letterSpacing: 0.8,
@@ -302,9 +300,9 @@ class _GenTabState extends State<_GenTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Aktive Renderings',
-          style: TextStyle(
+        Text(
+          remainingUiText('genStudio.activeRenderings'),
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -314,7 +312,7 @@ class _GenTabState extends State<_GenTab> {
         Expanded(
           child: Center(
             child: Text(
-              'Keine aktiven Render-Jobs.',
+              remainingUiText('genStudio.noActiveRenderJobs'),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.25),
                 fontSize: 12,

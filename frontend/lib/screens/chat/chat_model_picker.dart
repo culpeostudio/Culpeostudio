@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../state/app_state.dart';
 import '../../engine/models.dart';
+import '../../l10n/chat_aux_strings.dart';
+import '../../state/app_state.dart';
 
 enum ChatModelSource { cloud, local }
 
@@ -43,7 +44,9 @@ class ChatModelChoice {
       _ => '',
     };
     if (label.isEmpty) return '';
-    return isReady ? label : 'Geplant: $label';
+    return isReady
+        ? label
+        : tr('chatAux.modelPicker.plannedPlacement', {'placement': label});
   }
 
   factory ChatModelChoice.cloud(ActiveApiModel model) {
@@ -74,8 +77,8 @@ class ChatModelChoice {
       instanceId: instance.id,
       label: displayName,
       subtitle: instance.isReady
-          ? 'Lokal • Bereit'
-          : 'Lokal • Ausgeschaltet – startet bei Auswahl',
+          ? tr('chat.modelChoice.localReady')
+          : tr('chatAux.modelPicker.localStarting'),
       state: instance.state,
       placement: instance.placement,
     );
@@ -103,8 +106,8 @@ class ChatModelChoice {
           ? displayName!.trim()
           : modelId,
       subtitle: isLocal
-          ? 'Lokal • Derzeit nicht bereit'
-          : '$provider • Derzeit nicht aktiv',
+          ? tr('chatAux.modelPicker.localUnavailable')
+          : tr('chatAux.modelPicker.providerInactive', {'provider': provider}),
       selectable: false,
       state: isLocal ? 'unavailable' : 'ready',
     );
@@ -124,8 +127,10 @@ class ChatModelChoice {
           ? binding.displayName
           : binding.modelId,
       subtitle: isLocal
-          ? 'Lokal • Gebundenes Modell ist nicht verfügbar'
-          : '${binding.provider} • Gebundenes Modell ist nicht aktiv',
+          ? tr('chatAux.modelPicker.boundLocalUnavailable')
+          : tr('chatAux.modelPicker.boundProviderInactive', {
+              'provider': binding.provider,
+            }),
       selectable: false,
       state: isLocal ? 'unavailable' : 'ready',
     );
@@ -234,7 +239,7 @@ class ChatModelPicker extends StatelessWidget {
   Widget _buildPopupMenu(BuildContext context) {
     return _ModelPopupTrigger(
       enabled: enabled,
-      tooltip: disabledReason ?? 'Modell für einen neuen Chat auswählen',
+      tooltip: disabledReason ?? tr('chatAux.modelPicker.newChatTooltip'),
       choices: choices,
       selected: selected,
       onSelected: onSelected,
@@ -246,7 +251,7 @@ class ChatModelPicker extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: disabledReason ?? 'Modell auswählen',
+      label: disabledReason ?? tr('chatAux.modelPicker.select'),
       child: InkWell(
         key: const Key('chat-model-picker'),
         onTap: enabled ? () => _showBottomSheet(context) : null,
@@ -260,7 +265,9 @@ class ChatModelPicker extends StatelessWidget {
     final isLocal = selected?.isLocal == true;
     final label =
         selected?.label ??
-        (loadingLocalModels ? 'Modelle werden gesucht…' : 'Modell auswählen');
+        (loadingLocalModels
+            ? tr('chatAux.modelPicker.searching')
+            : tr('chatAux.modelPicker.select'));
     return Padding(
       key: const Key('chat-model-picker-label'),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -317,11 +324,11 @@ class ChatModelPicker extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
               child: Text(
-                'Chat-Modell auswählen',
-                style: TextStyle(
+                tr('chatAux.modelPicker.title'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -333,7 +340,7 @@ class ChatModelPicker extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 20),
                 children: [
                   if (choices.isEmpty)
-                    _sheetMessage('Noch kein Modell verfügbar')
+                    _sheetMessage(tr('chatAux.modelPicker.noneAvailable'))
                   else
                     ...choices.map((choice) => _sheetChoice(context, choice)),
                 ],
@@ -476,11 +483,14 @@ class _ModelPopupTriggerState extends State<_ModelPopupTrigger> {
                   ],
                 ),
                 child: widget.choices.isEmpty
-                    ? const Padding(
+                    ? Padding(
                         padding: EdgeInsets.all(16),
                         child: Text(
-                          'Noch kein Modell verfügbar',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                          tr('chatAux.modelPicker.noneAvailable'),
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
                         ),
                       )
                     : Column(

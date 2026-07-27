@@ -35,8 +35,8 @@ sensibly when a configuration does not hold.
 
 ### Run models locally
 
-- **Hardware-aware planning** — detects GPUs, VRAM and RAM, then proposes a
-  context size that will actually load
+- **PhiloEngine Hardware Detection** — detects GPUs, VRAM and RAM, then
+  proposes a context size that will actually load
 - **Three runtimes**: llama.cpp, vLLM and Transformers, selected per model
 - **Graceful fallbacks** instead of hard failures: GPU → CPU, smaller context,
   alternate KV cache type — each step is shown, not hidden
@@ -127,8 +127,53 @@ no setup step required.
 No GPU? Use an API provider instead: *Settings → Server / API*, add an
 OpenRouter or Featherless key, then start a model from the marketplace.
 
+## Automatic updates
+
+Both supported installation styles update without a manual reinstall:
+
+- **Source checkout:** start with `./start.sh`. Before opening the developer
+  console, its bootstrap updater fetches `main` from
+  `kuchenboss/MyPhiloEngine` and applies only a clean fast-forward. Local
+  changes, another branch, a diverged history, or an offline machine are never
+  overwritten; the existing checkout starts with a warning instead.
+- **Compiled quick install:** download the `quickinstall` archive for your
+  platform from the [latest
+  release](https://github.com/kuchenboss/MyPhiloEngine/releases), extract it
+  once, and always start the top-level `myphiloengine` launcher
+  (`myphiloengine.exe` on Windows). Before every launch it reads
+  `quikinstall/manifest.json`, selects the current OS/architecture, downloads
+  and verifies the complete frontend/backend bundle, and atomically activates
+  it. User data lives outside versioned bundles.
+
+The compiled launcher verifies the trusted GitHub origin, declared size,
+SHA-256 checksum, archive paths, and all three entrypoints before activation. A
+failed download never replaces the working version, and an offline start uses
+the last verified bundle.
+
+A release that installs but fails to start is rolled back to the previous
+version and recorded in `quarantine.json`, so the next launch skips it instead
+of downloading and failing again every time. The record is keyed on version and
+asset checksum, so a rebuilt archive of the same version number is offered
+again. Superseded bundles are pruned; the active version and the rollback
+target are kept.
+
+Releases are built by
+[`.github/workflows/release.yml`](.github/workflows/release.yml): pushing a
+`v*` tag builds every platform on a native runner, uploads the archives as
+release assets, and publishes the manifest only after each asset is confirmed
+reachable. A single platform can also be built locally:
+
+```bash
+python3 quikinstall/build_release.py --version 1.1.0-alpha
+```
+
+The complete manifest contract and publishing order are documented in
+[`quikinstall/README.md`](quikinstall/README.md). Set
+`PHILOENGINE_SKIP_UPDATE=1` only when a deliberate offline/development start is
+needed.
+
 <details>
-<summary>Optional: developer console (<code>start.sh</code>)</summary>
+<summary>Source checkout: developer console prerequisites</summary>
 
 A terminal UI that supervises backend and frontend together with live logs.
 Needs Python and [Textual](https://textual.textualize.io/):
@@ -214,8 +259,9 @@ changes.
 Names and logos are not covered by the code licence — see
 [TRADEMARK.md](TRADEMARK.md). Forks are welcome under their own name.
 
-Runtimes and models carry their own licences, see [NOTICE](NOTICE). **If you
-host models commercially, check their terms first** — some prohibit it outright.
+Runtimes and models carry their own licences; see [NOTICE](NOTICE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). **If you host models
+commercially, check their terms first** — some prohibit it outright.
 
 ---
 

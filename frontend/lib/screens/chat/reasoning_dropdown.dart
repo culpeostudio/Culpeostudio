@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
+
 /// Zusammengeklappter Gedankengang (`<think>...</think>` Inhalt) unter einer
 /// fertigen Antwort. Waehrend des Streamings zeigt der Chat den Rohtext als
 /// Live-Vorschau; sobald die finale Antwort steht, ersetzt dieses Dropdown sie
@@ -55,8 +57,10 @@ class _ReasoningDropdownState extends State<ReasoningDropdown> {
                   Expanded(
                     child: Text(
                       wordCount > 0
-                          ? 'Gedankengang · $wordCount Wörter'
-                          : 'Gedankengang',
+                          ? tr('chatAux.reasoning.titleWithWords', {
+                              'count': wordCount.toString(),
+                            })
+                          : tr('chatAux.reasoning.title'),
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,

@@ -173,10 +173,6 @@ func (m *MemoryModule) RegisterRoutes(router fiber.Router) {
 	if m.captureLimiter != nil {
 		captureGroup.Use(m.captureLimiter.Middleware())
 	}
-	captureGroup.Post("/philox/session_start", m.handleCapturePhiloxSessionStart)
-	captureGroup.Post("/philox/prompt", m.handleCapturePhiloxPrompt)
-	captureGroup.Post("/philox/tool", m.handleCapturePhiloxTool)
-	captureGroup.Post("/philox/assistant", m.handleCapturePhiloxAssistant)
 	captureGroup.Post("/chat/message", m.handleCaptureChatMessage)
 	captureGroup.Post("/event", m.handleCaptureEvent)
 }
@@ -330,58 +326,6 @@ func (m *MemoryModule) handleContext(c *fiber.Ctx) error {
 		return respondError(c, err)
 	}
 	return c.JSON(context)
-}
-
-func (m *MemoryModule) handleCapturePhiloxSessionStart(c *fiber.Ctx) error {
-	var body memorycapture.PhiloxSessionStartInput
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "ungueltige Anfrage"})
-	}
-	body.UserID = requestUserID(c)
-	session, err := m.capture.CapturePhiloxSessionStart(body)
-	if err != nil {
-		return respondError(c, err)
-	}
-	return c.JSON(session)
-}
-
-func (m *MemoryModule) handleCapturePhiloxPrompt(c *fiber.Ctx) error {
-	var body memorycapture.PhiloxPromptInput
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "ungueltige Anfrage"})
-	}
-	body.UserID = requestUserID(c)
-	context, err := m.capture.CapturePhiloxPrompt(body)
-	if err != nil {
-		return respondError(c, err)
-	}
-	return c.JSON(context)
-}
-
-func (m *MemoryModule) handleCapturePhiloxTool(c *fiber.Ctx) error {
-	var body memorycapture.PhiloxToolInput
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "ungueltige Anfrage"})
-	}
-	body.UserID = requestUserID(c)
-	observation, err := m.capture.CapturePhiloxTool(body)
-	if err != nil {
-		return respondError(c, err)
-	}
-	return c.JSON(observation)
-}
-
-func (m *MemoryModule) handleCapturePhiloxAssistant(c *fiber.Ctx) error {
-	var body memorycapture.AssistantReplyInput
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "ungueltige Anfrage"})
-	}
-	body.UserID = requestUserID(c)
-	observation, err := m.capture.CaptureAssistantReply(body, "philox")
-	if err != nil {
-		return respondError(c, err)
-	}
-	return c.JSON(observation)
 }
 
 func (m *MemoryModule) handleCaptureChatMessage(c *fiber.Ctx) error {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../engine/widgets.dart';
+import '../../l10n/app_strings.dart';
 
 // Kleine Bausteine der Kopfzeile und Arbeitsbereich-Umschaltung.
 
@@ -44,12 +45,12 @@ class AutoSyncStatus extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text(
-            'SYSTEMDATEN WERDEN AUTOMATISCH SYNCHRONISIERT',
+            tr('engine.syncStatus'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white38,
               fontSize: 10,
               fontWeight: FontWeight.w800,

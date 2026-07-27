@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../engine/models.dart';
 import '../../engine/widgets.dart';
+import '../../l10n/app_strings.dart';
 
 // Wiederverwendbare Bausteine des Einrichtungs-Assistenten: Schrittleiste
 // und die Fortschrittsanzeige der GPU-Runtime-Reparatur. Zustandslos — der
@@ -71,7 +72,7 @@ Widget gpuRepairProgress(EngineOperation? operation) {
       ? operation!.detailMessage
       : operation?.message?.isNotEmpty == true
       ? operation!.message!
-      : 'Das Betriebssystem wartet auf die Administratorfreigabe.';
+      : tr('engineWidget.wizard.awaitingAdminConsent');
   final progress = operation?.progress ?? 0;
   return Container(
     key: const Key('engine-gpu-repair-progress'),
@@ -84,14 +85,18 @@ Widget gpuRepairProgress(EngineOperation? operation) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(Icons.build_circle_outlined, color: engineAccent, size: 18),
-            SizedBox(width: 9),
+            const Icon(
+              Icons.build_circle_outlined,
+              color: engineAccent,
+              size: 18,
+            ),
+            const SizedBox(width: 9),
             Expanded(
               child: Text(
-                'GPU-Unterstützung wird eingerichtet',
-                style: TextStyle(
+                tr('engineWidget.wizard.gpuRepairTitle'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),

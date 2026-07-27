@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../l10n/remaining_ui_strings.dart';
 import 'engine_api.dart';
 import 'models.dart';
 
@@ -395,8 +396,8 @@ class EngineController extends ChangeNotifier {
       _acceptMutation(result);
       final operationId = result.operationId;
       if (operationId == null || operationId.isEmpty) {
-        throw const EngineApiException(
-          'Der Vulkan-Runtime-Neubau lieferte keinen Vorgang zurück.',
+        throw EngineApiException(
+          remainingUiText('engineController.vulkanOperationMissing'),
           code: 'missing_operation',
         );
       }
@@ -431,8 +432,8 @@ class EngineController extends ChangeNotifier {
       _acceptMutation(result);
       final operationId = result.operationId;
       if (operationId == null || operationId.isEmpty) {
-        throw const EngineApiException(
-          'Die GPU-Einrichtung lieferte keinen Vorgang zurück.',
+        throw EngineApiException(
+          remainingUiText('engineController.gpuSetupOperationMissing'),
           code: 'missing_operation',
         );
       }
@@ -478,7 +479,7 @@ class EngineController extends ChangeNotifier {
         onTimeout: () => null,
       );
       if (operation == null && !_disposed) {
-        error = 'Zeitüberschreitung bei der GPU-Einrichtung.';
+        error = remainingUiText('engineController.gpuSetupTimedOut');
         _notify();
       }
       return operation;

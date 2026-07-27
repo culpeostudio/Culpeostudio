@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../state/app_state.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/top_notification.dart';
@@ -66,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!success && mounted) {
       _showSnack(
-        _appState.authError ?? 'Anmeldedaten ungueltig',
+        _appState.authError ?? tr('login.error.invalidCredentials'),
         isError: true,
       );
     }
@@ -79,7 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _authenticatorApp,
     );
     if (!success && mounted) {
-      _showSnack(_appState.authError ?? 'Code ist ungueltig', isError: true);
+      _showSnack(
+        _appState.authError ?? tr('login.error.invalidCode'),
+        isError: true,
+      );
     }
   }
 
@@ -108,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Pflichtfeld';
+      return tr('login.validation.required');
     }
     return null;
   }
@@ -116,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _codeValidator(String? value) {
     final clean = (value ?? '').replaceAll(' ', '').trim();
     if (clean.length != 6 || int.tryParse(clean) == null) {
-      return '6-stelligen Code eingeben';
+      return tr('login.validation.codeInvalid');
     }
     return null;
   }
@@ -246,10 +250,10 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           _header(),
           const SizedBox(height: 28),
-          const Text(
-            'Authenticator einrichten',
+          Text(
+            tr('login.setup.title'),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w600,
               fontSize: 17,
@@ -276,8 +280,8 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 12),
           Text(
             _authenticatorApp == '2fas'
-                ? '2FAS öffnen, „+“ wählen und den QR-Code scannen.'
-                : 'Google Authenticator öffnen, „+“ wählen und den QR-Code scannen.',
+                ? tr('login.setup.scanHint2fas')
+                : tr('login.setup.scanHintGoogle'),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.48),
@@ -314,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
               maxLength: 6,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: _inputDecoration(
-                'Code aus der App',
+                tr('login.setup.codeHint'),
                 Icons.verified_user_outlined,
               ).copyWith(counterText: ''),
               validator: _codeValidator,
@@ -323,11 +327,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton.icon(
               onPressed: _appState.isLoading ? null : _handleConfirmSetup,
               icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Einrichtung bestätigen'),
+              label: Text(tr('login.setup.confirm')),
             ),
           ] else
             Text(
-              _appState.authError ?? 'Setup konnte nicht geladen werden.',
+              _appState.authError ?? tr('login.setup.loadError'),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.redAccent),
             ),
@@ -346,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _header(),
           const SizedBox(height: 28),
           Text(
-            'Willkommen zurück',
+            tr('login.welcome.title'),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.88),
@@ -356,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Melde dich an, um dein Studio zu öffnen.',
+            tr('login.welcome.subtitle'),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.42),
@@ -364,9 +368,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 30),
-          const Text(
-            'BENUTZERNAME',
-            style: TextStyle(
+          Text(
+            tr('login.field.usernameLabel'),
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: Color(0xFFC9A24A),
@@ -378,15 +382,15 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _userController,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: _inputDecoration(
-              'Benutzername eingeben',
+              tr('login.field.usernameHint'),
               Icons.person_outline,
             ),
             validator: _requiredValidator,
           ),
           const SizedBox(height: 24),
-          const Text(
-            'PASSWORT',
-            style: TextStyle(
+          Text(
+            tr('login.field.passwordLabel'),
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: Color(0xFFC9A24A),
@@ -399,12 +403,12 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: _obscurePassword,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: _inputDecoration(
-              'Passwort eingeben',
+              tr('login.field.passwordHint'),
               Icons.lock_outline,
               suffixIcon: IconButton(
                 tooltip: _obscurePassword
-                    ? 'Passwort anzeigen'
-                    : 'Passwort verbergen',
+                    ? tr('login.field.showPassword')
+                    : tr('login.field.hidePassword'),
                 onPressed: () =>
                     setState(() => _obscurePassword = !_obscurePassword),
                 icon: Icon(
@@ -443,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      'Angemeldet bleiben',
+                      tr('login.remember.label'),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.76),
                         fontSize: 13,
@@ -457,7 +461,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (_rememberSession) ...[
             const SizedBox(height: 8),
             Text(
-              'Sitzungsdauer',
+              tr('login.remember.duration'),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.46),
                 fontSize: 11,
@@ -468,10 +472,10 @@ class _LoginScreenState extends State<LoginScreen> {
               spacing: 7,
               runSpacing: 7,
               children: [
-                _sessionChip('8h', '8 Std.'),
-                _sessionChip('24h', '24 Std.'),
-                _sessionChip('48h', '48 Std.'),
-                _sessionChip('permanent', 'Dauerhaft'),
+                _sessionChip('8h', tr('login.duration.8h')),
+                _sessionChip('24h', tr('login.duration.24h')),
+                _sessionChip('48h', tr('login.duration.48h')),
+                _sessionChip('permanent', tr('login.duration.permanent')),
               ],
             ),
           ],
@@ -488,7 +492,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   )
                 : const Icon(Icons.login),
-            label: const Text('Anmelden'),
+            label: Text(tr('login.action.login')),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC9A24A),
               foregroundColor: Colors.white,
@@ -509,14 +513,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? null
                     : () => _showAccountDialog(resetPassword: false),
                 icon: const Icon(Icons.person_add_alt_1, size: 18),
-                label: const Text('Account erstellen'),
+                label: Text(tr('login.action.createAccount')),
               ),
               TextButton.icon(
                 onPressed: _appState.isLoading
                     ? null
                     : () => _showAccountDialog(resetPassword: true),
                 icon: const Icon(Icons.lock_reset, size: 18),
-                label: const Text('Passwort vergessen'),
+                label: Text(tr('login.action.forgotPassword')),
               ),
             ],
           ),
@@ -589,7 +593,7 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '© 2026 fillystudio. Alle Rechte vorbehalten.',
+                  tr('login.footer.copyright'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.35),
@@ -599,7 +603,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Powered by PhiloEngine • Design & Development by fillystudio',
+                  tr('login.footer.credits'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.18),
@@ -661,7 +665,7 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Pflichtfeld';
+      return tr('login.validation.required');
     }
     return null;
   }
@@ -669,7 +673,7 @@ class _AccountDialogState extends State<_AccountDialog> {
   String? _codeValidator(String? value) {
     final clean = (value ?? '').replaceAll(' ', '').trim();
     if (clean.length != 6 || int.tryParse(clean) == null) {
-      return '6-stelligen Code eingeben';
+      return tr('login.validation.codeInvalid');
     }
     return null;
   }
@@ -738,14 +742,14 @@ class _AccountDialogState extends State<_AccountDialog> {
       }
       widget.showSnack(
         widget.resetPassword
-            ? 'Passwort wurde aktualisiert.'
-            : 'Account wurde erstellt.',
+            ? tr('login.dialog.passwordUpdated')
+            : tr('login.dialog.accountCreated'),
       );
       return;
     }
 
     widget.showSnack(
-      widget.appState.authError ?? 'Aktion fehlgeschlagen.',
+      widget.appState.authError ?? tr('login.dialog.actionFailed'),
       isError: true,
     );
   }
@@ -762,7 +766,9 @@ class _AccountDialogState extends State<_AccountDialog> {
       ),
       contentTextStyle: const TextStyle(color: Colors.white70, fontSize: 13),
       title: Text(
-        widget.resetPassword ? 'Passwort vergessen' : 'Account erstellen',
+        widget.resetPassword
+            ? tr('login.action.forgotPassword')
+            : tr('login.action.createAccount'),
       ),
       content: Form(
         key: _formKey,
@@ -776,7 +782,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                   controller: _userController,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(
-                    'Benutzername',
+                    tr('login.dialog.usernameHint'),
                     Icons.person_outline,
                   ),
                   validator: _requiredValidator,
@@ -787,7 +793,9 @@ class _AccountDialogState extends State<_AccountDialog> {
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(
-                    widget.resetPassword ? 'Neues Passwort' : 'Passwort',
+                    widget.resetPassword
+                        ? tr('login.dialog.newPasswordHint')
+                        : tr('login.dialog.passwordHint'),
                     Icons.lock_outline,
                   ),
                   validator: _requiredValidator,
@@ -798,7 +806,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(
-                    'Passwort bestaetigen',
+                    tr('login.dialog.confirmPasswordHint'),
                     Icons.lock_reset_outlined,
                   ),
                   validator: (value) {
@@ -807,7 +815,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                       return error;
                     }
                     if (value != _passwordController.text) {
-                      return 'Passwoerter stimmen nicht ueberein';
+                      return tr('login.dialog.passwordsMismatch');
                     }
                     return null;
                   },
@@ -819,7 +827,9 @@ class _AccountDialogState extends State<_AccountDialog> {
                   maxLength: 6,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(
-                    'Code aus ${widget.appState.authenticatorAppLabel}',
+                    tr('login.dialog.codeFromApp', {
+                      'app': widget.appState.authenticatorAppLabel,
+                    }),
                     Icons.verified_user_outlined,
                   ).copyWith(counterText: ''),
                   validator: _codeValidator,
@@ -832,7 +842,7 @@ class _AccountDialogState extends State<_AccountDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
+          child: Text(tr('common.cancel')),
         ),
         ElevatedButton.icon(
           onPressed: _busy ? null : _submit,
@@ -850,7 +860,11 @@ class _AccountDialogState extends State<_AccountDialog> {
                       ? Icons.lock_reset
                       : Icons.person_add_alt_1,
                 ),
-          label: Text(widget.resetPassword ? 'Speichern' : 'Erstellen'),
+          label: Text(
+            widget.resetPassword
+                ? tr('common.save')
+                : tr('login.dialog.create'),
+          ),
         ),
       ],
     );

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 
+import '../l10n/app_strings.dart';
 import 'models.dart';
 
 const enginePanelColor = Color(0xFF16161D);
@@ -108,15 +109,15 @@ class EngineUsageGauge extends StatelessWidget {
 )
 Widget engineUsageGaugePreview() => MaterialApp(
   theme: ThemeData.dark(useMaterial3: true),
-  home: const Scaffold(
+  home: Scaffold(
     backgroundColor: engineInsetColor,
     body: Padding(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: EngineUsageGauge(
         icon: Icons.memory_rounded,
-        label: 'Arbeitsspeicher',
+        label: tr('engineWidget.preview.memoryLabel'),
         value: '62 %',
-        detail: '19,8 GB von 32 GB belegt',
+        detail: tr('engineWidget.preview.memoryDetail'),
         fraction: 0.62,
       ),
     ),
@@ -209,7 +210,7 @@ class EngineStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final presentation = _presentation(status);
     return Semantics(
-      label: 'Status: ${presentation.label}',
+      label: tr('engineWidget.status', {'label': presentation.label}),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
@@ -243,104 +244,104 @@ class EngineStatusBadge extends StatelessWidget {
       case 'available':
       case 'complete':
       case 'completed':
-        return const _StatusPresentation(
-          'Bereit',
+        return _StatusPresentation(
+          tr('engineWidget.status.ready'),
           Color(0xFF4CAF50),
           Icons.check_circle_outline,
         );
       case 'installing':
       case 'installing_packages':
-        return const _StatusPresentation(
-          'Wird installiert',
+        return _StatusPresentation(
+          tr('engineWidget.status.installing'),
           Color(0xFFC9A24A),
           Icons.downloading,
         );
       case 'creating_environment':
-        return const _StatusPresentation(
-          'Wird eingerichtet',
+        return _StatusPresentation(
+          tr('engineWidget.status.creatingEnvironment'),
           Color(0xFFDFC077),
           Icons.settings_suggest_outlined,
         );
       case 'probing':
-        return const _StatusPresentation(
-          'Wird geprüft',
+        return _StatusPresentation(
+          tr('engineWidget.status.probing'),
           Color(0xFFDFC077),
           Icons.fact_check_outlined,
         );
       case 'running':
-        return const _StatusPresentation(
-          'Läuft',
+        return _StatusPresentation(
+          tr('engineWidget.status.running'),
           Color(0xFFDFC077),
           Icons.sync,
         );
       case 'queued':
-        return const _StatusPresentation(
-          'Warteschlange',
+        return _StatusPresentation(
+          tr('engineWidget.status.queued'),
           Color(0xFFEBD9A8),
           Icons.schedule,
         );
       case 'starting':
-        return const _StatusPresentation(
-          'Startet',
+        return _StatusPresentation(
+          tr('engineWidget.status.starting'),
           Color(0xFFDFC077),
           Icons.play_circle_outline,
         );
       case 'draining':
-        return const _StatusPresentation(
-          'Wird geleert',
+        return _StatusPresentation(
+          tr('engineWidget.status.draining'),
           Color(0xFFDFC077),
           Icons.hourglass_bottom,
         );
       case 'restarting':
-        return const _StatusPresentation(
-          'Neustart',
+        return _StatusPresentation(
+          tr('engineWidget.status.restarting'),
           Color(0xFFBA68C8),
           Icons.restart_alt,
         );
       case 'failed':
       case 'failed_rollback':
       case 'error':
-        return const _StatusPresentation(
-          'Fehlgeschlagen',
+        return _StatusPresentation(
+          tr('engineWidget.status.failed'),
           Color(0xFFEF5350),
           Icons.error_outline,
         );
       case 'incomplete':
       case 'invalid':
-        return const _StatusPresentation(
-          'Unvollständig',
+        return _StatusPresentation(
+          tr('engineWidget.status.incomplete'),
           Color(0xFFFF7043),
           Icons.warning_amber_rounded,
         );
       case 'stopped':
-        return const _StatusPresentation(
-          'Gestoppt',
+        return _StatusPresentation(
+          tr('engineWidget.status.stopped'),
           Color(0xFFB0BEC5),
           Icons.stop_circle_outlined,
         );
       case 'missing':
-        return const _StatusPresentation(
-          'Nicht eingerichtet',
+        return _StatusPresentation(
+          tr('engineWidget.status.missing'),
           Color(0xFFB0BEC5),
           Icons.download_for_offline_outlined,
         );
       case 'incompatible':
       case 'unsupported':
-        return const _StatusPresentation(
-          'Nicht benötigt',
+        return _StatusPresentation(
+          tr('engineWidget.status.notNeeded'),
           Color(0xFF90A4AE),
           Icons.do_not_disturb_alt_outlined,
         );
       case 'cancelled':
       case 'canceled':
-        return const _StatusPresentation(
-          'Abgebrochen',
+        return _StatusPresentation(
+          tr('engineWidget.status.cancelled'),
           Color(0xFFB0BEC5),
           Icons.cancel_outlined,
         );
       default:
         return _StatusPresentation(
-          raw.isEmpty ? 'Unbekannt' : raw,
+          raw.isEmpty ? tr('engineWidget.status.unknown') : raw,
           Colors.white54,
           Icons.help_outline,
         );
@@ -364,12 +365,12 @@ class EnginePlacementBadge extends StatelessWidget {
       'gpu' => 'GPU',
       'ram' => 'RAM',
       'hybrid' => 'GPU + RAM',
-      _ => 'Nicht geplant',
+      _ => tr('engineWidget.placement.notPlanned'),
     };
     return Tooltip(
       message: planned
-          ? 'Aus dem Engine-Speicherplan'
-          : 'Aktuelle Speicherplatzierung',
+          ? tr('engineWidget.placement.planTooltip')
+          : tr('engineWidget.placement.currentTooltip'),
       child: Container(
         key: const Key('engine-placement-badge'),
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -379,7 +380,9 @@ class EnginePlacementBadge extends StatelessWidget {
           border: Border.all(color: engineBlue.withValues(alpha: 0.24)),
         ),
         child: Text(
-          planned ? 'Geplant: $label' : label,
+          planned
+              ? tr('engineWidget.placement.planned', {'label': label})
+              : label,
           style: const TextStyle(
             color: Color(0xFFEBD9A8),
             fontSize: 10,
@@ -401,21 +404,25 @@ class EngineGuardBadge extends StatelessWidget {
     if (state == 'normal' || state.isEmpty) return const SizedBox.shrink();
     final (label, color, icon) = switch (state) {
       'warning' => (
-        'Speicherwarnung',
+        tr('engineWidget.guard.warning'),
         const Color(0xFFDFC077),
         Icons.warning_amber,
       ),
       'critical' => (
-        'Speicher kritisch',
+        tr('engineWidget.guard.critical'),
         const Color(0xFFFF7043),
         Icons.memory,
       ),
       'emergency' => (
-        'Notfallschutz aktiv',
+        tr('engineWidget.guard.emergency'),
         const Color(0xFFEF5350),
         Icons.health_and_safety_outlined,
       ),
-      _ => ('Ressourcenschutz', Colors.white60, Icons.shield_outlined),
+      _ => (
+        tr('engineWidget.guard.protection'),
+        Colors.white60,
+        Icons.shield_outlined,
+      ),
     };
     return Semantics(
       label: label,
@@ -483,14 +490,32 @@ class EngineContextBar extends StatelessWidget {
       0.0,
       1.0,
     );
-    final effectiveLabel = compact ? 'Aktiv & geprüft' : 'Geplant';
+    final effectiveLabel = compact
+        ? tr('engineWidget.context.activeChecked')
+        : tr('engineWidget.context.planned');
 
     return Semantics(
       label: ramAddsContext
-          ? 'Kontextplan: ohne zusätzlichen RAM geschätzt ${plan.gpuOnlyMaxContextTokens}, $effectiveLabel ${plan.effectiveContextTokens}, GPU und RAM geschätzt ${plan.hybridMaxContextTokens}, Modellgrenze ${plan.modelContextLimitTokens} Token'
+          ? tr('engineWidget.context.semanticWithRam', {
+              'gpu': '${plan.gpuOnlyMaxContextTokens}',
+              'effectiveLabel': effectiveLabel,
+              'effective': '${plan.effectiveContextTokens}',
+              'hybrid': '${plan.hybridMaxContextTokens}',
+              'limit': '${plan.modelContextLimitTokens}',
+            })
           : gpuReachesModelLimit
-          ? 'Kontextplan: ohne zusätzlichen RAM geschätzt ${plan.gpuOnlyMaxContextTokens}, $effectiveLabel ${plan.effectiveContextTokens}; die Modellgrenze von ${plan.modelContextLimitTokens} Token ist bereits erreicht'
-          : 'Kontextplan: ohne zusätzlichen RAM geschätzt ${plan.gpuOnlyMaxContextTokens}, $effectiveLabel ${plan.effectiveContextTokens}; RAM bringt aktuell keinen zusätzlichen Kontext, Modellgrenze ${plan.modelContextLimitTokens} Token',
+          ? tr('engineWidget.context.semanticAtLimit', {
+              'gpu': '${plan.gpuOnlyMaxContextTokens}',
+              'effectiveLabel': effectiveLabel,
+              'effective': '${plan.effectiveContextTokens}',
+              'limit': '${plan.modelContextLimitTokens}',
+            })
+          : tr('engineWidget.context.semanticNoRamGain', {
+              'gpu': '${plan.gpuOnlyMaxContextTokens}',
+              'effectiveLabel': effectiveLabel,
+              'effective': '${plan.effectiveContextTokens}',
+              'limit': '${plan.modelContextLimitTokens}',
+            }),
       child: Column(
         key: const Key('context-plan-bar'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -556,33 +581,38 @@ class EngineContextBar extends StatelessWidget {
             children: [
               _Legend(
                 color: engineBlue,
-                label:
-                    'Ohne extra RAM (Schätzung): ${formatTokenCount(plan.gpuOnlyMaxContextTokens)}',
+                label: tr('engineWidget.context.gpuEstimate', {
+                  'tokens': formatTokenCount(plan.gpuOnlyMaxContextTokens),
+                }),
               ),
               _Legend(
                 color: Colors.white,
-                label:
-                    '$effectiveLabel: ${formatTokenCount(plan.effectiveContextTokens)}',
+                label: tr('engineWidget.context.effective', {
+                  'label': effectiveLabel,
+                  'tokens': formatTokenCount(plan.effectiveContextTokens),
+                }),
               ),
               if (ramAddsContext)
                 _Legend(
                   key: const Key('context-plan-ram-extension'),
                   color: const Color(0xFFC9A24A),
-                  label:
-                      'GPU + RAM (Schätzung): ${formatTokenCount(plan.hybridMaxContextTokens)}',
+                  label: tr('engineWidget.context.hybridEstimate', {
+                    'tokens': formatTokenCount(plan.hybridMaxContextTokens),
+                  }),
                 )
               else
                 _Legend(
                   key: const Key('context-plan-no-ram-gain'),
                   color: gpuReachesModelLimit ? engineAccent : Colors.white38,
                   label: gpuReachesModelLimit
-                      ? 'Modelllimit bereits vollständig auf GPU'
-                      : 'RAM bringt aktuell keinen zusätzlichen Kontext',
+                      ? tr('engineWidget.context.modelLimitOnGpu')
+                      : tr('engineWidget.context.noRamGain'),
                 ),
               _Legend(
                 color: Colors.white38,
-                label:
-                    'Modellgrenze: ${formatTokenCount(plan.modelContextLimitTokens)}',
+                label: tr('engineWidget.context.modelLimit', {
+                  'tokens': formatTokenCount(plan.modelContextLimitTokens),
+                }),
               ),
             ],
           ),
@@ -609,17 +639,22 @@ class EnginePreflightCard extends StatelessWidget {
         plan.gpuOnlyMaxContextTokens >= plan.modelContextLimitTokens;
     final cpuOnly = plan.memory.gpuBytes <= 0 && plan.memory.ramBytes > 0;
     final headline = cpuOnly
-        ? 'Der Plan benötigt System-RAM; die GPU wird dafür nicht verwendet.'
+        ? tr('engineWidget.preflight.cpuOnly')
         : ramAddsContext
-        ? 'Rechnerisch kann System-RAM den Kontext von ${formatTokenCount(plan.gpuOnlyMaxContextTokens)} auf bis zu ${formatTokenCount(plan.hybridMaxContextTokens)} erweitern. Der echte Start prüft diesen Schätzwert.'
+        ? tr('engineWidget.preflight.ramExpands', {
+            'gpu': formatTokenCount(plan.gpuOnlyMaxContextTokens),
+            'hybrid': formatTokenCount(plan.hybridMaxContextTokens),
+          })
         : gpuAtHardLimit
-        ? 'Die GPU erreicht bereits das feste Modelllimit von ${formatTokenCount(plan.modelContextLimitTokens)}.'
-        : 'System-RAM bringt für diesen Plan keinen zusätzlichen Kontext.';
+        ? tr('engineWidget.preflight.gpuAtLimit', {
+            'limit': formatTokenCount(plan.modelContextLimitTokens),
+          })
+        : tr('engineWidget.preflight.noRamGain');
     final speedHint = cpuOnly
-        ? 'CPU/RAM ist nutzbar, aber meist deutlich langsamer als GPU-Ausführung.'
+        ? tr('engineWidget.preflight.cpuSpeed')
         : plan.usesRam
-        ? 'Der RAM-Anteil spart VRAM, kann Antworten aber langsamer machen.'
-        : 'GPU-only ist die schnellste Speicheraufteilung für diesen Plan.';
+        ? tr('engineWidget.preflight.ramSpeed')
+        : tr('engineWidget.preflight.gpuSpeed');
     final metadataEstimated = plan.preflight.metadataConfidence == 'estimated';
 
     return Container(
@@ -643,10 +678,10 @@ class EnginePreflightCard extends StatelessWidget {
                   size: 18,
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Start-Check',
-                    style: TextStyle(
+                    tr('engineWidget.preflight.title'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
@@ -654,8 +689,8 @@ class EnginePreflightCard extends StatelessWidget {
                 ),
                 _PreflightPill(
                   label: metadataEstimated
-                      ? 'Metadaten geschätzt'
-                      : 'Metadaten geprüft',
+                      ? tr('engineWidget.preflight.metadataEstimated')
+                      : tr('engineWidget.preflight.metadataVerified'),
                   color: metadataEstimated
                       ? engineAccent
                       : const Color(0xFF76C893),
@@ -678,9 +713,9 @@ class EnginePreflightCard extends StatelessWidget {
               childrenPadding: const EdgeInsets.only(bottom: 4),
               iconColor: engineAccent,
               collapsedIconColor: Colors.white54,
-              title: const Text(
-                'Warum dieser Plan sicher ist',
-                style: TextStyle(
+              title: Text(
+                tr('engineWidget.preflight.whySafe'),
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -688,20 +723,20 @@ class EnginePreflightCard extends StatelessWidget {
               ),
               children: [
                 _preflightLine(
-                  'Gewichte',
+                  tr('engineWidget.preflight.weights'),
                   formatBytes(plan.memory.weightsBytes),
                 ),
                 _preflightLine(
-                  'Kontextspeicher',
+                  tr('engineWidget.preflight.contextMemory'),
                   formatBytes(plan.memory.kvCacheBytes),
                 ),
                 _preflightLine(
-                  'Runtime-Reserve',
+                  tr('engineWidget.preflight.runtimeReserve'),
                   formatBytes(plan.memory.runtimeBytes),
                 ),
                 if (plan.preflight.hardwareSnapshotId.isNotEmpty)
                   _preflightLine(
-                    'Hardware-Snapshot',
+                    tr('engineWidget.preflight.hardwareSnapshot'),
                     plan.preflight.hardwareSnapshotId,
                   ),
                 if (plan.preflight.checks.isNotEmpty) ...[
@@ -709,11 +744,14 @@ class EnginePreflightCard extends StatelessWidget {
                   for (final check in plan.preflight.checks)
                     _PreflightCheckLine(check: check),
                 ] else
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      'Vor dem Workerstart werden Hardware, Cache-Modus und eine lokale Modellantwort nochmals geprüft.',
-                      style: TextStyle(color: Colors.white38, fontSize: 11),
+                      tr('engineWidget.preflight.noChecks'),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
               ],

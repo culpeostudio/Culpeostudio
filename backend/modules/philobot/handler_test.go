@@ -1197,7 +1197,7 @@ func TestLockedBotLocalBindingWarmsAndForwardsOriginalMessageOnce(t *testing.T) 
 	}
 }
 
-func TestAgenticLockedLocalBindingUsesWarmupPipelineWithoutPhilox(t *testing.T) {
+func TestAgenticLockedLocalBindingUsesWarmupPipeline(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.json")
 	if err := os.WriteFile(settingsPath, []byte(`{}`), 0o600); err != nil {
@@ -1210,9 +1210,6 @@ func TestAgenticLockedLocalBindingUsesWarmupPipelineWithoutPhilox(t *testing.T) 
 	module.SetLocalModels(local)
 	if err := module.Initialize(); err != nil {
 		t.Fatal(err)
-	}
-	if module.philoxClient != nil {
-		t.Fatal("test requires nil Philox client")
 	}
 	if err := module.botStore.SaveBotForUser("alice", BotConfig{
 		ID: "agentic-bound", Name: "Agentic Bound", SystemPrompt: "bound",
@@ -1250,9 +1247,6 @@ func TestAgenticLockedLocalBindingUsesWarmupPipelineWithoutPhilox(t *testing.T) 
 	if !strings.Contains(streamText, "event: model_warmup") || !strings.Contains(streamText, "event: text_delta") || !strings.Contains(streamText, "event: done") {
 		t.Fatalf("bound agentic SSE contract incomplete: %s", streamText)
 	}
-	if strings.Contains(streamText, "Philox gRPC Client ist nicht konfiguriert") {
-		t.Fatalf("bound agentic request fell through to Philox: %s", streamText)
-	}
 	local.mu.Lock()
 	ensureCalls := local.ensureCalls
 	streamCalls := local.streamCalls
@@ -1263,7 +1257,7 @@ func TestAgenticLockedLocalBindingUsesWarmupPipelineWithoutPhilox(t *testing.T) 
 	}
 }
 
-func TestAgenticMissingLockedBindingReturnsStructuredErrorBeforePhilox(t *testing.T) {
+func TestAgenticMissingLockedBindingReturnsStructuredError(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.json")
 	if err := os.WriteFile(settingsPath, []byte(`{}`), 0o600); err != nil {
@@ -1312,7 +1306,7 @@ func TestAgenticMissingLockedBindingReturnsStructuredErrorBeforePhilox(t *testin
 	if !strings.Contains(streamText, `"code":"model_binding_missing"`) || !strings.Contains(streamText, `"status":404`) {
 		t.Fatalf("missing bound model did not produce structured agentic error: %s", streamText)
 	}
-	if strings.Contains(streamText, "Philox gRPC Client ist nicht konfiguriert") || strings.Contains(streamText, "warm reply") {
+	if strings.Contains(streamText, "warm reply") {
 		t.Fatalf("missing binding silently fell through: %s", streamText)
 	}
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/marketplace_detail_strings.dart';
+
 // Vorschau der Filter-Chip-Optik in den Marktplatz-Einstellungen.
 
 class MarketplaceFilterStylePreview extends StatelessWidget {
@@ -17,20 +19,36 @@ class MarketplaceFilterStylePreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
       ),
-      child: const Wrap(
+      child: Wrap(
         spacing: 7,
         runSpacing: 7,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            'Kategorie',
-            style: TextStyle(color: Colors.white54, fontSize: 12),
+            tr('marketplaceDetail.filter.category'),
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
-          PreviewFilterChip(label: 'Chat', color: chat, selected: true),
-          PreviewFilterChip(label: 'Code', color: code),
-          PreviewFilterChip(label: 'Reasoning', color: reasoning),
-          PreviewFilterChip(label: 'Vision', color: Color(0xFFF48FB1)),
-          PreviewFilterChip(label: 'Nur lokal', color: Color(0xFFFFC107)),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.chat'),
+            color: chat,
+            selected: true,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.code'),
+            color: code,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.reasoning'),
+            color: reasoning,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.vision'),
+            color: const Color(0xFFF48FB1),
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.localOnly'),
+            color: const Color(0xFFFFC107),
+          ),
         ],
       ),
     );

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_strings.dart';
+import 'settings_widgets.dart';
+
 // Eingabefeld, das eine gedrueckte Tastenkombination aufzeichnet.
 
 class ShortcutRecorder extends StatefulWidget {
@@ -163,12 +166,12 @@ class _ShortcutRecorderState extends State<ShortcutRecorder> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: _isRecording
-                  ? const Color(0xFFC9A24A).withValues(alpha: 0.15)
-                  : const Color(0xFF16161D),
+                  ? SettingsPalette.accent.withValues(alpha: 0.15)
+                  : SettingsPalette.surfaceRaised,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: _isRecording
-                    ? const Color(0xFFC9A24A)
+                    ? SettingsPalette.accent
                     : Colors.white.withValues(alpha: 0.08),
                 width: 1,
               ),
@@ -181,15 +184,15 @@ class _ShortcutRecorderState extends State<ShortcutRecorder> {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFC9A24A),
+                      color: SettingsPalette.accent,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Drücke Tasten...',
-                    style: TextStyle(
-                      color: Color(0xFFC9A24A),
+                  Text(
+                    tr('settings.shortcuts.pressKeys'),
+                    style: const TextStyle(
+                      color: SettingsPalette.accent,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -199,7 +202,7 @@ class _ShortcutRecorderState extends State<ShortcutRecorder> {
                     widget.shortcut.toUpperCase(),
                     style: TextStyle(
                       color: widget.shortcut.isNotEmpty
-                          ? const Color(0xFFC9A24A)
+                          ? SettingsPalette.accent
                           : Colors.white24,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

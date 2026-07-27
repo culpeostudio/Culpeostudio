@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import '../../l10n/app_strings.dart';
+import '../../l10n/user_preferences_strings.dart';
 import '../../services/api_service.dart';
 import '../../state/app_state.dart';
 import '../../widgets/top_notification.dart';
@@ -128,14 +130,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             response.statusCode >= 200 && response.statusCode < 400;
         _providerHealthStatus[id] = reachable ? 'ok' : 'error';
         _providerHealthMessage[id] = reachable
-            ? 'Erreichbar'
-            : 'Antwortet mit HTTP ${response.statusCode}';
+            ? tr('settings.health.reachable')
+            : tr('settings.health.httpResponse', {
+                'code': '${response.statusCode}',
+              });
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _providerHealthStatus[id] = 'error';
-        _providerHealthMessage[id] = 'Nicht erreichbar';
+        _providerHealthMessage[id] = tr('settings.health.unreachable');
       });
     }
   }
@@ -154,19 +158,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (res.containsKey('error')) {
           setState(() {
             _providerHealthStatus['backend'] = 'error';
-            _providerHealthMessage['backend'] = 'Nicht erreichbar';
+            _providerHealthMessage['backend'] = tr(
+              'settings.health.unreachable',
+            );
           });
         } else {
           setState(() {
             _providerHealthStatus['backend'] = 'ok';
-            _providerHealthMessage['backend'] = 'Erreichbar';
+            _providerHealthMessage['backend'] = tr('settings.health.reachable');
           });
         }
       } catch (_) {
         if (!mounted) return;
         setState(() {
           _providerHealthStatus['backend'] = 'error';
-          _providerHealthMessage['backend'] = 'Nicht erreichbar';
+          _providerHealthMessage['backend'] = tr('settings.health.unreachable');
         });
       }
       return;
@@ -186,7 +192,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _providerHealthStatus[provider] = reachable ? 'ok' : 'error';
           _providerHealthMessage[provider] =
               res['message']?.toString() ??
-              (reachable ? 'Erreichbar' : 'Fehler');
+              (reachable
+                  ? tr('settings.health.reachable')
+                  : tr('settings.health.error'));
         });
       }
     } catch (e) {
@@ -284,7 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _importSkill() async {
     final selectedPath = await FilePicker.getDirectoryPath(
-      dialogTitle: 'Skill-Ordner einbinden',
+      dialogTitle: tr('settings.skills.importFolder'),
     );
     if (selectedPath == null || selectedPath.trim().isEmpty) return;
 
@@ -296,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showSettingsMessage(res['error'].toString(), isError: true);
       return;
     }
-    _showSettingsMessage('Skill eingebunden');
+    _showSettingsMessage(tr('settings.skills.imported'));
     await _fetchSkills();
   }
 
@@ -317,7 +325,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (res.containsKey('error')) {
       _showSettingsMessage(res['error'].toString(), isError: true);
     } else {
-      _showSettingsMessage('Skills neu gescannt');
+      _showSettingsMessage(tr('settings.skills.rescanned'));
     }
   }
 
@@ -346,7 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showSettingsMessage(res['error'].toString(), isError: true);
       return;
     }
-    _showSettingsMessage('Skill entfernt');
+    _showSettingsMessage(tr('settings.skills.removed'));
     await _fetchSkills();
   }
 
@@ -390,7 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else {
         showTopNotification(
           context,
-          'Einstellungen erfolgreich gespeichert',
+          tr('settings.save.success'),
           color: Colors.green,
         );
         _hfTokenController.clear();
@@ -431,13 +439,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     switch (_selectedSectionIndex) {
       case 0:
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(flex: 3, child: _buildGeneralSettingsCard()),
             const SizedBox(width: 24),
             Expanded(
               flex: 2,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   settingsSystemInfoCard(_systemInfo),
                   const SizedBox(height: 20),
@@ -467,12 +476,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildRightNavigationMenu() {
     final menuItems = [
-      {'label': 'Allgemein', 'icon': Icons.settings_outlined},
-      {'label': 'Server / API', 'icon': Icons.dns_outlined},
-      {'label': 'Shortkarts', 'icon': Icons.keyboard_outlined},
-      {'label': 'Bot-Verwaltung', 'icon': Icons.smart_toy_outlined},
-      {'label': 'Chat-Bot', 'icon': Icons.auto_awesome_outlined},
-      {'label': 'Skills', 'icon': Icons.extension_outlined},
+      {'label': tr('settings.nav.general'), 'icon': Icons.settings_outlined},
+      {'label': tr('settings.nav.serverApi'), 'icon': Icons.dns_outlined},
+      {'label': tr('settings.nav.shortcuts'), 'icon': Icons.keyboard_outlined},
+      {
+        'label': tr('settings.nav.botManagement'),
+        'icon': Icons.smart_toy_outlined,
+      },
+      {
+        'label': tr('settings.nav.chatBot'),
+        'icon': Icons.auto_awesome_outlined,
+      },
+      {'label': tr('settings.nav.skills'), 'icon': Icons.extension_outlined},
     ];
 
     return Container(
@@ -482,7 +497,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [const Color(0xFF1B1B24), const Color(0xFF131317)],
+          colors: [
+            SettingsPalette.surfaceNavStart,
+            SettingsPalette.surfaceNavEnd,
+          ],
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
@@ -504,15 +522,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 width: 4,
                 height: 14,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC9A24A),
+                  color: SettingsPalette.accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'EINSTELLUNGEN',
-                style: TextStyle(
-                  color: Colors.white38,
+              Text(
+                tr('settings.nav.title'),
+                style: const TextStyle(
+                  color: SettingsPalette.textFaint,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.8,
@@ -536,17 +554,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        const Color(0xFFC9A24A).withValues(alpha: 0.24),
-                        const Color(0xFFC9A24A).withValues(alpha: 0.05),
+                        SettingsPalette.accent.withValues(alpha: 0.24),
+                        SettingsPalette.accent.withValues(alpha: 0.05),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(13),
                     border: Border.all(
-                      color: const Color(0xFFC9A24A).withValues(alpha: 0.45),
+                      color: SettingsPalette.accent.withValues(alpha: 0.45),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFC9A24A).withValues(alpha: 0.18),
+                        color: SettingsPalette.accent.withValues(alpha: 0.18),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -580,9 +598,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   height: 34,
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(
-                                            0xFFC9A24A,
-                                          ).withValues(alpha: 0.20)
+                                        ? SettingsPalette.accent.withValues(
+                                            alpha: 0.20,
+                                          )
                                         : Colors.white.withValues(alpha: 0.04),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -590,8 +608,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     item['icon'] as IconData,
                                     size: 17,
                                     color: isSelected
-                                        ? const Color(0xFFC9A24A)
-                                        : Colors.white54,
+                                        ? SettingsPalette.accent
+                                        : SettingsPalette.textMuted,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -617,7 +635,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   child: const Icon(
                                     Icons.chevron_right_rounded,
                                     size: 18,
-                                    color: Color(0xFFC9A24A),
+                                    color: SettingsPalette.accent,
                                   ),
                                 ),
                               ],
@@ -638,178 +656,362 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildGeneralSettingsCard() {
     return settingsGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Allgemeine Studio-Konfiguration',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              tr('settings.general.title'),
+              style: const TextStyle(
+                color: SettingsPalette.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 24),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      tr('settings.general.modelDirLabel'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textMuted,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tr('settings.general.modelDirDescription'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textFaint,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _modelDirController,
+                            onChanged: (_) {
+                              if (!_modelDirValid) {
+                                setState(() {
+                                  _modelDirValid = true;
+                                  _modelDirError = '';
+                                });
+                              }
+                            },
+                            style: const TextStyle(
+                              color: SettingsPalette.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: SettingsPalette.surfaceInput,
+                              hintText: tr('settings.general.modelDirHint'),
+                              hintStyle: const TextStyle(
+                                color: SettingsPalette.textHint,
+                                fontSize: 13,
+                              ),
+                              errorText: _modelDirValid ? null : _modelDirError,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Tooltip(
+                          message: tr('settings.general.browseTooltip'),
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final selected =
+                                  await FilePicker.getDirectoryPath(
+                                    dialogTitle: tr(
+                                      'settings.general.modelDirPickerTitle',
+                                    ),
+                                  );
+                              if (selected != null &&
+                                  selected.trim().isNotEmpty &&
+                                  mounted) {
+                                setState(() {
+                                  _modelDirController.text = selected;
+                                });
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.folder_open_rounded,
+                              size: 18,
+                            ),
+                            label: Text(tr('settings.general.browse')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: SettingsPalette.accent,
+                              side: BorderSide(
+                                color: SettingsPalette.hairlineStrong,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      tr('settings.general.apiUrlLabel'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textMuted,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tr('settings.general.apiUrlDescription'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textFaint,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _apiUrlController,
+                      style: const TextStyle(
+                        color: SettingsPalette.textPrimary,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: SettingsPalette.surfaceInput,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      tr('settings.appearance').toUpperCase(),
+                      style: const TextStyle(
+                        color: SettingsPalette.textMuted,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildAppearanceSettings(),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _isSaving ? null : _saveSettings,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SettingsPalette.accent,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(
+                          SettingsPalette.textPrimary,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      tr('settings.general.saveButton'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeLanguage(String language) async {
+    final saved = await _appState.setLanguage(language);
+    if (!saved && mounted) {
+      _showSettingsMessage(userPreferencesText('saveFailed'), isError: true);
+    }
+  }
+
+  Future<void> _changeFrontendVersion(String frontendVersion) async {
+    final saved = await _appState.setFrontendVersion(frontendVersion);
+    if (!saved && mounted) {
+      _showSettingsMessage(userPreferencesText('saveFailed'), isError: true);
+    }
+  }
+
+  Future<void> _retryUserPreferencesSave() async {
+    final saved = await _appState.retryUserPreferencesSave();
+    if (!saved && mounted) {
+      _showSettingsMessage(userPreferencesText('saveFailed'), isError: true);
+    }
+  }
+
+  /// Sprach- und Frontend-Versionswahl. The authenticated profile is the
+  /// source of truth; AppState updates the controls only after a successful
+  /// server response and exposes a retry path on failure.
+  Widget _buildAppearanceSettings() {
+    InputDecoration dropdownDecoration() => InputDecoration(
+      filled: true,
+      fillColor: SettingsPalette.surfaceInput,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide.none,
+      ),
+    );
+
+    const labelStyle = TextStyle(
+      color: SettingsPalette.textSecondary,
+      fontSize: 12,
+    );
+
+    return AnimatedBuilder(
+      animation: _appState,
+      builder: (context, _) {
+        final isSaving = _appState.isSavingUserPreferences;
+        final saveFailed = _appState.userPreferencesError != null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(tr('settings.language'), style: labelStyle),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              key: ValueKey('settings-language-${_appState.language}'),
+              initialValue: _appState.language,
+              isExpanded: true,
+              dropdownColor: SettingsPalette.surfaceNavStart,
+              style: const TextStyle(
+                color: SettingsPalette.textPrimary,
+                fontSize: 14,
+              ),
+              decoration: dropdownDecoration(),
+              items: [
+                DropdownMenuItem(
+                  value: 'de',
+                  child: Text(
+                    tr('onboarding.languageGerman'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'en',
+                  child: Text(
+                    tr('onboarding.languageEnglish'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+              onChanged: isSaving
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        _changeLanguage(value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 16),
+            Text(tr('settings.frontendVersion'), style: labelStyle),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                'settings-frontend-version-${_appState.frontendVersion}',
+              ),
+              initialValue: _appState.frontendVersion,
+              isExpanded: true,
+              dropdownColor: SettingsPalette.surfaceNavStart,
+              style: const TextStyle(
+                color: SettingsPalette.textPrimary,
+                fontSize: 14,
+              ),
+              decoration: dropdownDecoration(),
+              items: [
+                DropdownMenuItem(
+                  value: 'classic',
+                  child: Text(
+                    tr('settings.frontendVersionClassic'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'lite',
+                  child: Text(
+                    tr('settings.frontendVersionLite'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+              onChanged: isSaving
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        _changeFrontendVersion(value);
+                      }
+                    },
+            ),
+            if (isSaving) ...[
+              const SizedBox(height: 12),
+              Row(
                 children: [
-                  const Text(
-                    'MODELL DOWNLOAD PFAD',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 10,
-                      letterSpacing: 0.8,
-                    ),
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ordner auf deiner Festplatte, in den heruntergeladene Modelle '
-                    'aus dem Marktplatz gespeichert werden. Du kannst einen eigenen '
-                    'Ordner waehlen (z.B. auf einer grossen Festplatte) – der '
-                    'Standard ist data/models.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.38),
-                      fontSize: 11,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _modelDirController,
-                          onChanged: (_) {
-                            if (!_modelDirValid) {
-                              setState(() {
-                                _modelDirValid = true;
-                                _modelDirError = '';
-                              });
-                            }
-                          },
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: const Color(0xFF0F0F12),
-                            hintText: 'z.B. ~/models oder D:\\models',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              fontSize: 13,
-                            ),
-                            errorText: _modelDirValid ? null : _modelDirError,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message: 'Ordner auf der Festplatte auswaehlen',
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final selected = await FilePicker.getDirectoryPath(
-                              dialogTitle: 'Modell-Ordner waehlen',
-                            );
-                            if (selected != null &&
-                                selected.trim().isNotEmpty &&
-                                mounted) {
-                              setState(() {
-                                _modelDirController.text = selected;
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.folder_open_rounded, size: 18),
-                          label: const Text('Durchsuchen'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFC9A24A),
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.12),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'API HOST URL',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 10,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Die Adresse des Backend-Servers (Standard: http://localhost:8080/api). '
-                    'Die App sendet alle Anfragen an diesen Server, um Modelle zu laden und Chats auszuführen.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.38),
-                      fontSize: 11,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _apiUrlController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFF0F0F12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(width: 8),
+                  Text(userPreferencesText('saving'), style: labelStyle),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _isSaving ? null : _saveSettings,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC9A24A),
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            ],
+            if (saveFailed) ...[
+              const SizedBox(height: 12),
+              Text(
+                userPreferencesText('saveFailed'),
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
               ),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'Einstellungen speichern',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+              if (_appState.canRetryUserPreferencesSave)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: isSaving ? null : _retryUserPreferencesSave,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: Text(userPreferencesText('retry')),
                   ),
-          ),
-        ],
-      ),
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -830,19 +1032,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 4,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC9A24A),
+                        color: SettingsPalette.accent,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Flexible(
+                    Flexible(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Server & API-Schnittstellen',
-                            style: TextStyle(
-                              color: Colors.white,
+                            tr('settings.serverApi.title'),
+                            style: const TextStyle(
+                              color: SettingsPalette.textPrimary,
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.5,
@@ -850,11 +1052,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'Verbindung zu lokalen Servern und Cloud-Modell-Anbietern verwalten',
-                            style: TextStyle(
-                              color: Colors.white38,
+                            tr('settings.serverApi.subtitle'),
+                            style: const TextStyle(
+                              color: SettingsPalette.textFaint,
                               fontSize: 12,
                             ),
                             maxLines: 2,
@@ -871,8 +1073,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   IconButton(
                     onPressed: _checkAllProviders,
                     icon: const Icon(Icons.refresh_rounded, size: 20),
-                    color: Colors.white70,
-                    tooltip: 'Verbindungen neu prüfen',
+                    color: SettingsPalette.textSecondary,
+                    tooltip: tr('settings.serverApi.recheckTooltip'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
@@ -880,19 +1082,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: const Icon(
                       Icons.add_circle_outline_rounded,
                       size: 15,
-                      color: Colors.white,
+                      color: SettingsPalette.textPrimary,
                     ),
-                    label: const Text(
-                      'Node hinzufügen',
-                      style: TextStyle(
-                        color: Colors.white,
+                    label: Text(
+                      tr('settings.serverApi.addNode'),
+                      style: const TextStyle(
+                        color: SettingsPalette.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.3,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFC9A24A),
+                      backgroundColor: SettingsPalette.accent,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
                         vertical: 12,
@@ -901,14 +1103,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       elevation: 4,
-                      shadowColor: const Color(
-                        0xFFC9A24A,
-                      ).withValues(alpha: 0.4),
+                      shadowColor: SettingsPalette.accent.withValues(
+                        alpha: 0.4,
+                      ),
                     ),
                   ),
                 ],
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+          settingsPhaseNoteBanner(
+            title: tr('settings.serverApi.phaseNote.title'),
+            body: tr('settings.serverApi.phaseNote.body'),
           ),
           const SizedBox(height: 24),
           Expanded(
@@ -919,7 +1126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   _buildProviderCard(
                     id: 'backend',
-                    title: 'Lokaler Server',
+                    title: tr('settings.serverApi.localServer'),
                     subtitle: _apiUrlController.text,
                     icon: Icons.computer_rounded,
                     emoji: '',
@@ -990,7 +1197,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final idx = entry.key;
                     final node = entry.value;
                     final color = customNodeColor(idx);
-                    final name = node['name']?.toString() ?? 'Custom Node';
+                    final name =
+                        node['name']?.toString() ??
+                        tr('settings.customNode.fallbackName');
                     final url = node['url']?.toString() ?? '';
                     final isKeySet =
                         node['key']?.toString().isNotEmpty ?? false;
@@ -1006,7 +1215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       accentColor: color,
                       gradientColors: [
                         color.withValues(alpha: 0.08),
-                        const Color(0xFF16161D),
+                        SettingsPalette.surfaceRaised,
                       ],
                       onTap: () => _showEditCustomNodeDialog(node),
                       isCustom: true,
@@ -1118,7 +1327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: StatefulBuilder(
             builder: (context, setDialogState) {
               return Dialog(
-                backgroundColor: const Color(0xE6121216),
+                backgroundColor: SettingsPalette.dialogScrim,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
@@ -1136,14 +1345,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             const Icon(
                               Icons.hub_outlined,
-                              color: Color(0xFFC9A24A),
+                              color: SettingsPalette.accent,
                               size: 20,
                             ),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Custom Node hinzufügen',
-                                style: TextStyle(
+                                tr('settings.customNode.addTitle'),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -1155,7 +1364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               icon: const Icon(
                                 Icons.close_rounded,
                                 size: 18,
-                                color: Colors.white38,
+                                color: SettingsPalette.textFaint,
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -1163,19 +1372,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Richte eine eigene API-Verbindung zu einem benutzerdefinierten Server ein (z.B. Ollama oder ein lokaler OpenAI-kompatibler Endpunkt).',
-                          style: TextStyle(
-                            color: Colors.white54,
+                        Text(
+                          tr('settings.customNode.addDescription'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textMuted,
                             fontSize: 12,
                             height: 1.5,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'NODE NAME',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.nameLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1184,13 +1393,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: nameController,
-                          hintText: 'z.B. Lokaler Ollama Server',
+                          hintText: tr('settings.customNode.nameHint'),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'API BASE URL',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.urlLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1199,13 +1408,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: urlController,
-                          hintText: 'z.B. http://localhost:11434',
+                          hintText: tr('settings.customNode.urlHint'),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'API KEY (OPTIONAL)',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.keyLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1214,14 +1423,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: keyController,
-                          hintText: 'Token eingeben...',
+                          hintText: tr('settings.customNode.keyHint'),
                           obscureText: obscureText,
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscureText
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: Colors.white30,
+                              color: SettingsPalette.textVeryFaint,
                               size: 18,
                             ),
                             onPressed: () {
@@ -1239,13 +1448,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             TextButton(
                               onPressed: () => Navigator.pop(context),
                               style: TextButton.styleFrom(
-                                foregroundColor: Colors.white38,
+                                foregroundColor: SettingsPalette.textFaint,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text('Abbrechen'),
+                              child: Text(tr('common.cancel')),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
@@ -1269,7 +1478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC9A24A),
+                                backgroundColor: SettingsPalette.accent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -1278,9 +1487,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text(
-                                'Hinzufügen',
-                                style: TextStyle(
+                              child: Text(
+                                tr('settings.customNode.add'),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1318,7 +1527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: StatefulBuilder(
             builder: (context, setDialogState) {
               return Dialog(
-                backgroundColor: const Color(0xE6121216),
+                backgroundColor: SettingsPalette.dialogScrim,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
@@ -1336,14 +1545,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             const Icon(
                               Icons.hub_outlined,
-                              color: Color(0xFFC9A24A),
+                              color: SettingsPalette.accent,
                               size: 20,
                             ),
                             const SizedBox(width: 10),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Custom Node bearbeiten',
-                                style: TextStyle(
+                                tr('settings.customNode.editTitle'),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -1355,7 +1564,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               icon: const Icon(
                                 Icons.close_rounded,
                                 size: 18,
-                                color: Colors.white38,
+                                color: SettingsPalette.textFaint,
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -1363,19 +1572,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Passe die Verbindungsinformationen für dieses Node an.',
-                          style: TextStyle(
-                            color: Colors.white54,
+                        Text(
+                          tr('settings.customNode.editDescription'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textMuted,
                             fontSize: 12,
                             height: 1.5,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'NODE NAME',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.nameLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1384,13 +1593,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: nameController,
-                          hintText: 'z.B. Lokaler Ollama Server',
+                          hintText: tr('settings.customNode.nameHint'),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'API BASE URL',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.urlLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1399,13 +1608,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: urlController,
-                          hintText: 'z.B. http://localhost:11434',
+                          hintText: tr('settings.customNode.urlHint'),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'API KEY (OPTIONAL)',
-                          style: TextStyle(
-                            color: Colors.white38,
+                        Text(
+                          tr('settings.customNode.keyLabel'),
+                          style: const TextStyle(
+                            color: SettingsPalette.textFaint,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -1414,14 +1623,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 6),
                         settingsDialogTextField(
                           controller: keyController,
-                          hintText: 'Token eingeben...',
+                          hintText: tr('settings.customNode.keyHint'),
                           obscureText: obscureText,
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscureText
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: Colors.white30,
+                              color: SettingsPalette.textVeryFaint,
                               size: 18,
                             ),
                             onPressed: () {
@@ -1455,22 +1664,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text(
-                                'Node löschen',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                              child: Text(
+                                tr('settings.customNode.delete'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             const Spacer(),
                             TextButton(
                               onPressed: () => Navigator.pop(context),
                               style: TextButton.styleFrom(
-                                foregroundColor: Colors.white38,
+                                foregroundColor: SettingsPalette.textFaint,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text('Abbrechen'),
+                              child: Text(tr('common.cancel')),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
@@ -1489,7 +1700,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC9A24A),
+                                backgroundColor: SettingsPalette.accent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -1498,9 +1709,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text(
-                                'Speichern',
-                                style: TextStyle(
+                              child: Text(
+                                tr('settings.customNode.save'),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1536,7 +1747,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: StatefulBuilder(
             builder: (context, setDialogState) {
               return Dialog(
-                backgroundColor: const Color(0xE6121216),
+                backgroundColor: SettingsPalette.dialogScrim,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
@@ -1557,13 +1768,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : (provider == 'openrouter'
                                       ? Icons.route_rounded
                                       : Icons.cloud_queue_rounded),
-                            color: const Color(0xFFC9A24A),
+                            color: SettingsPalette.accent,
                             size: 20,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '$title einrichten',
+                              tr('settings.token.setupTitle', {'title': title}),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -1576,7 +1787,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             icon: const Icon(
                               Icons.close_rounded,
                               size: 18,
-                              color: Colors.white38,
+                              color: SettingsPalette.textFaint,
                             ),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -1586,10 +1797,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 16),
                       Text(
                         isSet
-                            ? 'Es ist bereits ein Token konfiguriert. Du kannst ihn überschreiben, indem du unten einen neuen eingibst, oder ihn löschen.'
-                            : 'Gib deinen API-Token für $title ein, um den Dienst zu aktivieren.',
+                            ? tr('settings.token.replaceDescription')
+                            : tr('settings.token.enterDescription', {
+                                'title': title,
+                              }),
                         style: const TextStyle(
-                          color: Colors.white54,
+                          color: SettingsPalette.textMuted,
                           fontSize: 12,
                           height: 1.5,
                         ),
@@ -1617,14 +1830,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFC9A24A,
-                              ).withValues(alpha: 0.06),
+                              color: SettingsPalette.accent.withValues(
+                                alpha: 0.06,
+                              ),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: const Color(
-                                  0xFFC9A24A,
-                                ).withValues(alpha: 0.15),
+                                color: SettingsPalette.accent.withValues(
+                                  alpha: 0.15,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -1632,17 +1845,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const Icon(
                                   Icons.open_in_new_rounded,
                                   size: 14,
-                                  color: Color(0xFFDFC077),
+                                  color: SettingsPalette.accentSoft,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   provider == 'huggingface'
-                                      ? '🤗 Token auf huggingface.co erstellen'
+                                      ? tr('settings.token.hfLink')
                                       : provider == 'openrouter'
-                                      ? '🤖 API-Keys auf openrouter.ai verwalten'
-                                      : '☁️ API-Schnittstelle auf featherless.ai abrufen',
+                                      ? tr('settings.token.orLink')
+                                      : tr('settings.token.flLink'),
                                   style: const TextStyle(
-                                    color: Color(0xFFDFC077),
+                                    color: SettingsPalette.accentSoft,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1655,14 +1868,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 16),
                       settingsDialogTextField(
                         controller: controller,
-                        hintText: 'Token eingeben...',
+                        hintText: tr('settings.customNode.keyHint'),
                         obscureText: obscureText,
                         suffixIcon: IconButton(
                           icon: Icon(
                             obscureText
                                 ? Icons.visibility_off
                                 : Icons.visibility,
-                            color: Colors.white30,
+                            color: SettingsPalette.textVeryFaint,
                             size: 18,
                           ),
                           onPressed: () {
@@ -1690,9 +1903,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text(
-                                'Token löschen',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                              child: Text(
+                                tr('settings.token.delete'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             const Spacer(),
@@ -1700,13 +1915,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextButton(
                             onPressed: () => Navigator.pop(context),
                             style: TextButton.styleFrom(
-                              foregroundColor: Colors.white38,
+                              foregroundColor: SettingsPalette.textFaint,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 12,
                               ),
                             ),
-                            child: const Text('Abbrechen'),
+                            child: Text(tr('common.cancel')),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
@@ -1718,7 +1933,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC9A24A),
+                              backgroundColor: SettingsPalette.accent,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -1728,9 +1943,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               elevation: 2,
                             ),
-                            child: const Text(
-                              'Speichern',
-                              style: TextStyle(
+                            child: Text(
+                              tr('common.save'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1762,7 +1977,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (res.containsKey('error')) {
       _showSettingsMessage(res['error'].toString(), isError: true);
     } else {
-      _showSettingsMessage('Token erfolgreich aktualisiert');
+      _showSettingsMessage(tr('settings.token.updated'));
       await _fetchSettings();
       _checkProviderHealth(provider);
     }
@@ -1779,9 +1994,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Chat-Bot',
-            style: TextStyle(
+          Text(
+            tr('settings.chatBot.title'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -1789,7 +2004,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Lege fest, ob neue Chats einen bestimmten Bot verwenden oder den passenden Bot automatisch auswählen.',
+            tr('settings.chatBot.description'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.52),
               fontSize: 13,
@@ -1797,10 +2012,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          const Text(
-            'STANDARD FÜR NEUE CHATS',
-            style: TextStyle(
-              color: Colors.white54,
+          Text(
+            tr('settings.chatBot.defaultLabel'),
+            style: const TextStyle(
+              color: SettingsPalette.textMuted,
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.1,
@@ -1825,7 +2040,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           const SizedBox(height: 14),
           Text(
-            'Laufende Chats behalten ihren bisher verwendeten Bot.',
+            tr('settings.chatBot.note'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.34),
               fontSize: 12,
@@ -1843,10 +2058,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Agent Skills',
-                  style: TextStyle(
+                  tr('settings.skills.title'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1856,19 +2071,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               IconButton(
                 onPressed: _isSkillsLoading ? null : _rescanSkills,
                 icon: const Icon(Icons.refresh, size: 18),
-                color: Colors.white70,
-                tooltip: 'Neu scannen',
+                color: SettingsPalette.textSecondary,
+                tooltip: tr('settings.skills.rescanTooltip'),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: _isSkillsLoading ? null : _importSkill,
                 icon: const Icon(Icons.create_new_folder_outlined, size: 16),
-                label: const Text(
-                  'Skill-Ordner einbinden',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                label: Text(
+                  tr('settings.skills.importFolder'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC9A24A),
+                  backgroundColor: SettingsPalette.accent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1882,9 +2100,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Importierte Skills werden strikt gegen den Agent-Skills-Standard geprüft und nach data/skills kopiert. Sie werden in dieser Version noch nicht in Chats geladen.',
-            style: TextStyle(color: Colors.white38, fontSize: 12, height: 1.4),
+          Text(
+            tr('settings.skills.description'),
+            style: const TextStyle(
+              color: SettingsPalette.textFaint,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 24),
           Expanded(
@@ -1898,7 +2120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Center(
                         child: CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFFC9A24A),
+                            SettingsPalette.accent,
                           ),
                         ),
                       ),
@@ -1907,21 +2129,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F0F12),
+                        color: SettingsPalette.surfaceInput,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.extension_outlined, color: Colors.white24),
+                          Icon(
+                            Icons.extension_outlined,
+                            color: SettingsPalette.textHintFaint,
+                          ),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'Noch keine Skills eingebunden.',
-                              style: TextStyle(
-                                color: Colors.white54,
+                              tr('settings.skills.empty'),
+                              style: const TextStyle(
+                                color: SettingsPalette.textMuted,
                                 fontSize: 13,
                               ),
                             ),
@@ -1951,42 +2176,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildShortcutsCard() {
     final actionLabels = {
-      'switch_to_chat': 'Chat öffnen',
-      'switch_to_philox': 'Philox Agent öffnen',
-      'switch_to_engine': 'Engine öffnen',
-      'switch_to_marketplace': 'Marktplatz öffnen',
-      'switch_to_training': 'Training öffnen',
-      'switch_to_quantization': 'Quantisierung öffnen',
-      'switch_to_generative': 'Gen Studio öffnen',
-      'switch_to_news': 'News öffnen',
-      'switch_to_settings': 'Einstellungen öffnen',
-      'toggle_sidebar': 'Seitenleiste umschalten',
-      'focus_chat_input': 'Chat-Eingabe fokussieren',
-      'new_chat_session': 'Neuen Chat starten',
-      'toggle_chat_tab': 'Zwischen Chat-Tabs wechseln',
-      'toggle_engine': 'Engine starten/stoppen',
-      'load_model': 'Modell laden',
-      'focus_search': 'Suche fokussieren',
-      'show_help': 'Tastenkürzel-Hilfe anzeigen',
-      'toggle_theme': 'Theme umschalten',
+      'switch_to_chat': tr('settings.shortcuts.action.switchToChat'),
+      'switch_to_philox': tr('settings.shortcuts.action.switchToPhilox'),
+      'switch_to_engine': tr('settings.shortcuts.action.switchToEngine'),
+      'switch_to_marketplace': tr(
+        'settings.shortcuts.action.switchToMarketplace',
+      ),
+      'switch_to_training': tr('settings.shortcuts.action.switchToTraining'),
+      'switch_to_quantization': tr(
+        'settings.shortcuts.action.switchToQuantization',
+      ),
+      'switch_to_generative': tr(
+        'settings.shortcuts.action.switchToGenerative',
+      ),
+      'switch_to_news': tr('settings.shortcuts.action.switchToNews'),
+      'switch_to_settings': tr('settings.shortcuts.action.switchToSettings'),
+      'toggle_sidebar': tr('settings.shortcuts.action.toggleSidebar'),
+      'focus_chat_input': tr('settings.shortcuts.action.focusChatInput'),
+      'new_chat_session': tr('settings.shortcuts.action.newChatSession'),
+      'toggle_chat_tab': tr('settings.shortcuts.action.toggleChatTab'),
+      'toggle_engine': tr('settings.shortcuts.action.toggleEngine'),
+      'load_model': tr('settings.shortcuts.action.loadModel'),
+      'focus_search': tr('settings.shortcuts.action.focusSearch'),
+      'show_help': tr('settings.shortcuts.action.showHelp'),
+      'toggle_theme': tr('settings.shortcuts.action.toggleTheme'),
     };
 
     return settingsGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Tastenkombinationen (Shortkarts)',
-            style: TextStyle(
+          Text(
+            tr('settings.shortcuts.title'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Klicken Sie auf ein Tastenkürzel, um es neu aufzunehmen. Drücken Sie anschließend die gewünschte Tastenkombination.',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          Text(
+            tr('settings.shortcuts.description'),
+            style: const TextStyle(
+              color: SettingsPalette.textFaint,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 24),
           Expanded(
@@ -2004,7 +2238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F0F12),
+                      color: SettingsPalette.surfaceInput,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -2013,7 +2247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           label,
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: SettingsPalette.textSecondary,
                             fontSize: 14,
                           ),
                         ),
@@ -2036,7 +2270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: _isSaving ? null : _saveSettings,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC9A24A),
+              backgroundColor: SettingsPalette.accent,
               padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -2051,9 +2285,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       valueColor: AlwaysStoppedAnimation(Colors.white),
                     ),
                   )
-                : const Text(
-                    'Einstellungen speichern',
-                    style: TextStyle(
+                : Text(
+                    tr('settings.general.saveButton'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,

@@ -1,34 +1,59 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
 import 'settings_widgets.dart';
 
 // Groessere, aber zustandslose Karten der Einstellungen: System-Infos,
 // Hilfe-Hinweis und die Kachel eines einzelnen Skills. Daten und Aktionen
 // kommen vom Screen herein.
 
+String? settingsHardwareDetectionSourceLabel(String? source) {
+  final normalized = source?.trim();
+  if (normalized == null || normalized.isEmpty) return null;
+
+  switch (normalized.toLowerCase()) {
+    case 'philoengine_hardware':
+    case 'whichllm':
+      return tr('settings.systemInfo.source.philoengineHardware');
+    case 'philoengine_hardware+native_live':
+    case 'whichllm+native_live':
+      return tr('settings.systemInfo.source.philoengineHardwareLive');
+    case 'native_live':
+      return tr('settings.systemInfo.source.nativeLive');
+    case 'go_fallback':
+      return tr('settings.systemInfo.source.localFallback');
+    default:
+      return normalized;
+  }
+}
+
 Widget settingsSystemInfoCard(Map<String, dynamic> systemInfo) {
   final gpu =
-      systemInfo['gpu_name'] ?? systemInfo['gpu'] ?? 'Keine GPU erkannt';
-  final cpu = systemInfo['cpu_name'] ?? 'CPU wird erkannt …';
+      systemInfo['gpu_name'] ??
+      systemInfo['gpu'] ??
+      tr('settings.systemInfo.noGpu');
+  final cpu = systemInfo['cpu_name'] ?? tr('settings.systemInfo.cpuDetecting');
   final ram = systemInfo['ram_gb'] ?? systemInfo['ram_mb'] ?? 0;
   final vram = systemInfo['vram_gb'] ?? systemInfo['vram_mb'] ?? 0;
   final disk = systemInfo['disk_free'] ?? 'N/A';
-  final source = systemInfo['detection_source']?.toString();
+  final source = settingsHardwareDetectionSourceLabel(
+    systemInfo['detection_source']?.toString(),
+  );
 
   return Container(
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
-      color: const Color(0xFF16161D),
+      color: SettingsPalette.surfaceRaised,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      border: Border.all(color: SettingsPalette.hairlineSoft),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Systeminformationen',
-          style: TextStyle(
-            color: Colors.white,
+        Text(
+          tr('settings.systemInfo.title'),
+          style: const TextStyle(
+            color: SettingsPalette.textPrimary,
             fontSize: 15,
             fontWeight: FontWeight.bold,
           ),
@@ -42,10 +67,10 @@ Widget settingsSystemInfoCard(Map<String, dynamic> systemInfo) {
         const Divider(color: Colors.white10),
         settingsSpecRow('VRAM', '${vram.toString()} GB'),
         const Divider(color: Colors.white10),
-        settingsSpecRow('DISK FREE', disk.toString()),
+        settingsSpecRow(tr('settings.systemInfo.diskFree'), disk.toString()),
         if (source != null && source.isNotEmpty) ...[
           const Divider(color: Colors.white10),
-          settingsSpecRow('ERKENNUNG', source),
+          settingsSpecRow(tr('settings.systemInfo.detection'), source),
         ],
       ],
     ),
@@ -56,24 +81,24 @@ Widget settingsHelpCard() {
   return Container(
     padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
-      color: const Color(0xFF16161D),
+      color: SettingsPalette.surfaceRaised,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      border: Border.all(color: SettingsPalette.hairlineSoft),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Hilfe & Dokumentation',
-          style: TextStyle(
-            color: Colors.white,
+        Text(
+          tr('settings.help.title'),
+          style: const TextStyle(
+            color: SettingsPalette.textPrimary,
             fontSize: 15,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          'Stellen Sie sicher, dass das myphiloengine Backend läuft, bevor Sie Operationen aufrufen. Standardmäßig lauscht es auf Port 8080.',
+          tr('settings.help.body'),
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.65),
             fontSize: 12,
@@ -102,7 +127,7 @@ Widget settingsSkillTile(
       ? Map<String, dynamic>.from(skill['file_summary'])
       : <String, dynamic>{};
   final chips = <String>[
-    '${summary['file_count'] ?? 0} Dateien',
+    tr('settings.skills.fileCount', {'count': '${summary['file_count'] ?? 0}'}),
     if (summary['has_scripts'] == true) 'scripts',
     if (summary['has_references'] == true) 'references',
     if (summary['has_assets'] == true) 'assets',
@@ -112,12 +137,12 @@ Widget settingsSkillTile(
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: const Color(0xFF0F0F12),
+      color: SettingsPalette.surfaceInput,
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
         color: valid
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.redAccent.withValues(alpha: 0.45),
+            ? SettingsPalette.dividerLine
+            : SettingsPalette.danger.withValues(alpha: 0.45),
       ),
     ),
     child: Column(
@@ -128,7 +153,7 @@ Widget settingsSkillTile(
           children: [
             Icon(
               valid ? Icons.extension_outlined : Icons.error_outline,
-              color: valid ? const Color(0xFFC9A24A) : Colors.redAccent,
+              color: valid ? SettingsPalette.accent : SettingsPalette.danger,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -137,9 +162,9 @@ Widget settingsSkillTile(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name.isEmpty ? 'Unbekannter Skill' : name,
+                    name.isEmpty ? tr('settings.skills.unknown') : name,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: SettingsPalette.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -147,7 +172,7 @@ Widget settingsSkillTile(
                   const SizedBox(height: 4),
                   Text(
                     description.isEmpty
-                        ? 'Keine Beschreibung verfügbar'
+                        ? tr('settings.skills.noDescription')
                         : description,
                     style: const TextStyle(
                       color: Colors.white60,
@@ -160,7 +185,7 @@ Widget settingsSkillTile(
             ),
             Switch(
               value: enabled,
-              activeThumbColor: const Color(0xFFC9A24A),
+              activeThumbColor: SettingsPalette.accent,
               onChanged: valid && name.isNotEmpty
                   ? (value) => onToggle(name, value)
                   : null,
@@ -168,8 +193,8 @@ Widget settingsSkillTile(
             IconButton(
               onPressed: name.isNotEmpty ? () => onDelete(name) : null,
               icon: const Icon(Icons.delete_outline, size: 18),
-              color: Colors.redAccent,
-              tooltip: 'Entfernen',
+              color: SettingsPalette.danger,
+              tooltip: tr('settings.skills.removeTooltip'),
             ),
           ],
         ),
@@ -178,7 +203,12 @@ Widget settingsSkillTile(
           spacing: 8,
           runSpacing: 8,
           children: [
-            settingsSkillChip(valid ? 'gültig' : 'ungültig', valid),
+            settingsSkillChip(
+              valid
+                  ? tr('settings.skills.valid')
+                  : tr('settings.skills.invalid'),
+              valid,
+            ),
             ...chips.map((chip) => settingsSkillChip(chip, true)),
           ],
         ),
@@ -187,7 +217,7 @@ Widget settingsSkillTile(
           Text(
             path,
             style: const TextStyle(
-              color: Colors.white30,
+              color: SettingsPalette.textVeryFaint,
               fontSize: 11,
               fontFamily: 'monospace',
             ),
@@ -202,7 +232,7 @@ Widget settingsSkillTile(
               child: Text(
                 error,
                 style: const TextStyle(
-                  color: Colors.redAccent,
+                  color: SettingsPalette.danger,
                   fontSize: 12,
                   height: 1.3,
                 ),

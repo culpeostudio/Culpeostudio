@@ -47,6 +47,7 @@ func main() {
 
 	deleteJSONUser(filepath.Join(root, "bots.json"), jsonUserID, "Bots")
 	deleteJSONUser(filepath.Join(root, "engine_user_preferences.json"), jsonUserID, "Engine-Einstellungen")
+	deleteJSONUser(filepath.Join(root, "user_preferences.json"), jsonUserID, "Oberflaechen-Einstellungen")
 	deleteMemory(filepath.Join(root, "memory", "memory.db"), memoryUserID)
 	deletePhiloxSessions(filepath.Join(root, "philox", "sessions"), memoryUserID, *purgeLegacyPhilox)
 

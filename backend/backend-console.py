@@ -215,7 +215,7 @@ class BackendConsoleApp(App):
         # spaetere Klick auf "Start all" kein versteckter Installationsschritt.
         await asyncio.gather(
             self._ensure_go_dependencies(),
-            self._ensure_whichllm_hardware_dependency(),
+            self._ensure_philoengine_hardware_dependency(),
             self._ensure_flutter_dependencies(),
         )
         self._update_status_widgets()
@@ -655,8 +655,8 @@ class BackendConsoleApp(App):
         self.dependencies_ready = True
         return True
 
-    async def _ensure_whichllm_hardware_dependency(self) -> bool:
-        """Install the Python hardware detector once for the Go backend.
+    async def _ensure_philoengine_hardware_dependency(self) -> bool:
+        """Install the optional upstream detector for PhiloEngine.
 
         The probe itself has a Go fallback, so a failed optional installation
         never prevents the application from starting.  The console reports the
@@ -672,11 +672,17 @@ class BackendConsoleApp(App):
             stderr=asyncio.subprocess.DEVNULL,
         )
         if await check.wait() == 0:
-            self._log("whichllm hardware detector is ready.", source="hardware.dependencies")
+            self._log(
+                "PhiloEngine hardware detection is ready.",
+                source="hardware.dependencies",
+            )
             return True
 
         requirements = BACKEND_DIR / "requirements-hardware.txt"
-        self._log("Installing whichllm hardware detector.", source="hardware.dependencies")
+        self._log(
+            "Installing PhiloEngine hardware detection dependency.",
+            source="hardware.dependencies",
+        )
         install = await asyncio.create_subprocess_exec(
             sys.executable,
             "-m",
@@ -692,7 +698,8 @@ class BackendConsoleApp(App):
         stdout, stderr = await install.communicate()
         if install.returncode != 0:
             self._log(
-                "whichllm hardware detector could not be installed; Go fallback remains active.",
+                "PhiloEngine hardware detection dependency could not be installed; "
+                "the Go fallback remains active.",
                 source="hardware.dependencies",
                 level="WARN",
             )
@@ -700,7 +707,10 @@ class BackendConsoleApp(App):
                 if line.strip():
                     self._log(line, source="hardware.dependencies.stderr", level="WARN")
             return False
-        self._log("whichllm hardware detector is ready.", source="hardware.dependencies")
+        self._log(
+            "PhiloEngine hardware detection is ready.",
+            source="hardware.dependencies",
+        )
         return True
 
     def _configured_backend_ports(self) -> list[int]:

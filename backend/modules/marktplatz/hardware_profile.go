@@ -93,11 +93,12 @@ func detectHardwareProfile() HardwareProfile {
 func CurrentHardwareProfile() HardwareProfile { return detectHardwareProfile() }
 
 func detectHardwareProfileFresh() HardwareProfile {
-	// whichllm liefert weiterhin CPU-Feature- und Bandbreiten-Metadaten. Die
-	// live Speicherwerte stammen jedoch immer aus dem gemeinsamen Dienst, damit
-	// Marketplace, Settings und Engine dieselben IDs und Bytewerte sehen.
-	profile, whichErr := detectHardwareProfileWithWhichLLM()
-	if whichErr != nil {
+	// Die PhiloEngine-Systemerkennung liefert CPU-Feature- und
+	// Bandbreiten-Metadaten. Die Live-Speicherwerte stammen immer aus dem
+	// gemeinsamen Dienst, damit Marketplace, Settings und Engine dieselben IDs
+	// und Bytewerte sehen.
+	profile, philoEngineErr := detectHardwareProfileWithPhiloEngine()
+	if philoEngineErr != nil {
 		profile = HardwareProfile{}
 	}
 	snapshot := enginehardware.Detect(context.Background(), ".")
@@ -116,8 +117,8 @@ func detectHardwareProfileFresh() HardwareProfile {
 		profile.CapturedAt = snapshot.CapturedAt
 		profile.EngineGPUs = snapshot.GPUs
 		profile.Detected = true
-		if whichErr == nil {
-			profile.DetectionSource = "whichllm+native_live"
+		if philoEngineErr == nil {
+			profile.DetectionSource = "philoengine_hardware+native_live"
 		} else {
 			profile.DetectionSource = "native_live"
 		}

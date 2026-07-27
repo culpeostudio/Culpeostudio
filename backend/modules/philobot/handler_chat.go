@@ -22,6 +22,7 @@ func (m *PhiloBotModule) handleMessage(c *fiber.Ctx) error {
 		AgenticMode  string   `json:"mode"`
 		AllowedRoots []string `json:"allowed_roots"`
 		ApprovePlan  bool     `json:"approve_plan"`
+		Planning     bool     `json:"planning"`
 	}
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Ungueltige Anfrage"})
@@ -42,7 +43,7 @@ func (m *PhiloBotModule) handleMessage(c *fiber.Ctx) error {
 	}
 	defer m.releaseSessionMutation(sessionID, userID)
 
-	options := normalizeChatOptions(body.Thinking, body.Style, body.EditIndex, body.AgenticMode, body.AllowedRoots, body.ApprovePlan)
+	options := normalizeChatOptions(body.Thinking, body.Style, body.EditIndex, body.AgenticMode, body.AllowedRoots, body.ApprovePlan, body.Planning)
 	var reply, botID, botName string
 	var createdBot *BotConfig
 	var err error
@@ -84,6 +85,7 @@ func (m *PhiloBotModule) handleStream(c *fiber.Ctx) error {
 		AgenticMode  string   `json:"mode"`
 		AllowedRoots []string `json:"allowed_roots"`
 		ApprovePlan  bool     `json:"approve_plan"`
+		Planning     bool     `json:"planning"`
 	}
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Ungueltige Anfrage"})
@@ -114,7 +116,7 @@ func (m *PhiloBotModule) handleStream(c *fiber.Ctx) error {
 
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		defer m.releaseSessionMutation(sessionID, userID)
-		options := normalizeChatOptions(body.Thinking, body.Style, body.EditIndex, body.AgenticMode, body.AllowedRoots, body.ApprovePlan)
+		options := normalizeChatOptions(body.Thinking, body.Style, body.EditIndex, body.AgenticMode, body.AllowedRoots, body.ApprovePlan, body.Planning)
 		if options.Thinking == "agentic" {
 			_, _, _, err := m.generateAgenticReply(requestContext, userID, sessionID, message, options, func(botID, botName string) {
 				_ = writeSSE(w, "bot_selected", fiber.Map{"id": botID, "name": botName})

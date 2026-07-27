@@ -23,6 +23,7 @@ targets=(
   "$DATA_DIR/bots.json"
   "$DATA_DIR/bots.json.v1.bak"
   "$DATA_DIR/engine_user_preferences.json"
+  "$DATA_DIR/user_preferences.json"
   "$DATA_DIR/active_api_models.json"
   "$DATA_DIR/settings.json"
   "$DATA_DIR/download_jobs.json"

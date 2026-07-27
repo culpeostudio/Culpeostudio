@@ -57,26 +57,6 @@ func TestCaptureBusEventGeneric(t *testing.T) {
 	}
 }
 
-func TestCaptureBusEventSkipsPhilox(t *testing.T) {
-	m := newTestModule(t)
-
-	for _, eventType := range []string{bus.EventPhiloxSessionCreated, bus.EventPhiloxMessageSent} {
-		err := m.captureBusEvent(bus.Event{
-			Source:    "philox",
-			Type:      eventType,
-			Data:      map[string]interface{}{"session_id": "philox-sess-1", "message": "hi", "reply": "ok"},
-			Timestamp: time.Now(),
-		})
-		if err != nil {
-			t.Fatalf("captureBusEvent(%s) failed: %v", eventType, err)
-		}
-	}
-
-	if _, err := m.service.GetSessionForUser("local", "philox-sess-1"); err == nil {
-		t.Fatalf("philox events must not be captured over the bus (direct integration)")
-	}
-}
-
 func TestCaptureBusEventPhiloBotChat(t *testing.T) {
 	m := newTestModule(t)
 
@@ -100,29 +80,5 @@ func TestCaptureBusEventPhiloBotChat(t *testing.T) {
 	}
 	if session.PromptCount < 2 {
 		t.Fatalf("expected user+assistant prompts captured, got %d", session.PromptCount)
-	}
-}
-
-func TestPhiloxDirectCapture(t *testing.T) {
-	m := newTestModule(t)
-
-	m.PhiloxSessionStarted("philox-direct-1", []string{"Memory integrieren"})
-	if _, err := m.service.GetSessionForUser("local", "philox-direct-1"); err != nil {
-		t.Fatalf("expected philox session, got error: %v", err)
-	}
-
-	if context := m.PhiloxPromptContext("philox-direct-1", "Baue den Viewer um"); context == "" {
-		t.Fatalf("expected non-empty injection prompt")
-	}
-
-	m.PhiloxToolObserved("philox-direct-1", "read_file", map[string]interface{}{"path": "/tmp/x"}, "inhalt", true)
-	m.PhiloxReplyFinished("philox-direct-1", "Der Viewer wurde umgebaut.")
-
-	session, err := m.service.GetSessionForUser("local", "philox-direct-1")
-	if err != nil {
-		t.Fatalf("session lookup failed: %v", err)
-	}
-	if session.ObservationCount == 0 {
-		t.Fatalf("expected tool/reply observations, got none")
 	}
 }

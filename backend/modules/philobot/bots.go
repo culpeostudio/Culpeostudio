@@ -198,7 +198,7 @@ func (s *BotStore) defaultBots() []BotConfig {
 			// sich aus dem Projekt, dem die Sitzung zugeordnet ist. Feste Pfade
 			// waeren auf einem fremden Rechner ohnehin ungueltig.
 			AllowedRoots: nil,
-			IsDefault: true,
+			IsDefault:    true,
 		},
 		{
 			ID:             "botbuilder",
@@ -211,7 +211,7 @@ func (s *BotStore) defaultBots() []BotConfig {
 			// sich aus dem Projekt, dem die Sitzung zugeordnet ist. Feste Pfade
 			// waeren auf einem fremden Rechner ohnehin ungueltig.
 			AllowedRoots: nil,
-			IsDefault: false,
+			IsDefault:    false,
 		},
 	}
 }

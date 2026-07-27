@@ -280,8 +280,8 @@ type dirTreeEntry struct {
 }
 
 const (
-	maxTreeDepth    = 4
-	maxTreeEntries  = 500
+	maxTreeDepth   = 4
+	maxTreeEntries = 500
 )
 
 // buildDirTree erzeugt einen tiefen- und eintragsbegrenzten Verzeichnisbaum.

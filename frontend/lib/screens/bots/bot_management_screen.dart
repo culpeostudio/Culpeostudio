@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../state/app_state.dart';
+
 import '../../engine/models.dart';
+import '../../l10n/bot_management_strings.dart';
+import '../../state/app_state.dart';
 import '../../widgets/top_notification.dart';
 import '../chat/chat_model_picker.dart';
 
@@ -160,7 +162,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
     if (_isLockedBot) {
       showTopNotification(
         context,
-        'Der Bot-Builder ist gesperrt und kann nicht bearbeitet werden.',
+        tr('botManagement.notification.lockedSave'),
         color: Colors.redAccent,
       );
       return;
@@ -203,7 +205,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
       if (success) {
         showTopNotification(
           context,
-          'Bot erfolgreich gespeichert!',
+          tr('bots.saved', {'name': name}),
           color: Colors.green,
         );
         // Reselect the saved bot
@@ -215,7 +217,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
       } else {
         showTopNotification(
           context,
-          _appState.lastChatError ?? 'Fehler beim Speichern',
+          _appState.lastChatError ?? tr('botManagement.notification.saveError'),
           color: Colors.redAccent,
         );
       }
@@ -233,6 +235,24 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
         return value!.trim();
       default:
         return 'balanced';
+    }
+  }
+
+  String _responseStyleLabel(String value) {
+    switch (value) {
+      case 'short':
+        return tr('botManagement.style.short');
+      case 'explain':
+        return tr('botManagement.style.explain');
+      case 'steps':
+        return tr('botManagement.style.steps');
+      case 'critical':
+        return tr('botManagement.style.critical');
+      case 'brainstorm':
+        return tr('botManagement.style.brainstorm');
+      case 'balanced':
+      default:
+        return tr('botManagement.style.balanced');
     }
   }
 
@@ -265,19 +285,21 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        title: const Text(
-          'Bot löschen?',
+        title: Text(
+          tr('botManagement.delete.title'),
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Möchtest du "${_selectedBot!['name']}" wirklich löschen?',
+          tr('bots.deleteConfirm', {
+            'name': _selectedBot!['name']?.toString() ?? '',
+          }),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Abbrechen',
+            child: Text(
+              tr('common.cancel'),
               style: TextStyle(color: Colors.white54),
             ),
           ),
@@ -289,7 +311,10 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
               ),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Löschen', style: TextStyle(color: Colors.white)),
+            child: Text(
+              tr('common.delete'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -301,12 +326,19 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         if (success) {
-          showTopNotification(context, 'Bot gelöscht.', color: Colors.green);
+          showTopNotification(
+            context,
+            tr('bots.deleted', {
+              'name': _selectedBot!['name']?.toString() ?? '',
+            }),
+            color: Colors.green,
+          );
           _loadBots();
         } else {
           showTopNotification(
             context,
-            _appState.lastChatError ?? 'Fehler beim Löschen',
+            _appState.lastChatError ??
+                tr('botManagement.notification.deleteError'),
             color: Colors.redAccent,
           );
         }
@@ -391,28 +423,33 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.smart_toy_outlined,
-                      color: Colors.white70,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Bots',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.smart_toy_outlined,
+                        color: Colors.white70,
+                        size: 20,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          tr('bots.title'),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.add, color: Colors.white70, size: 20),
                   onPressed: _prepareNewBot,
-                  tooltip: 'Neuen Bot erstellen',
+                  tooltip: tr('bots.createTitle'),
                 ),
               ],
             ),
@@ -472,7 +509,10 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            bot['name'] ?? 'Unbenannt',
+                                            bot['name']?.toString() ??
+                                                tr(
+                                                  'botManagement.list.unnamed',
+                                                ),
                                             style: TextStyle(
                                               color: isSelected
                                                   ? Colors.white
@@ -501,7 +541,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              'Standard',
+                                              tr('botManagement.list.default'),
                                               style: TextStyle(
                                                 color: widget.themeColor,
                                                 fontSize: 12,
@@ -524,9 +564,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),
-                                            child: const Text(
-                                              'Gesperrt',
-                                              style: TextStyle(
+                                            child: Text(
+                                              tr('botManagement.list.locked'),
+                                              style: const TextStyle(
                                                 color: Colors.redAccent,
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -540,10 +580,18 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                                       bot['keywords'] != null &&
                                               (bot['keywords'] as List)
                                                   .isNotEmpty
-                                          ? 'Triggers: ${(bot['keywords'] as List).join(", ")}'
+                                          ? tr('botManagement.list.triggers', {
+                                              'keywords':
+                                                  (bot['keywords'] as List)
+                                                      .join(', '),
+                                            })
                                           : (isDefault
-                                                ? 'Triggert standardmäßig ohne Keywords'
-                                                : 'Keine Triggers'),
+                                                ? tr(
+                                                    'botManagement.list.defaultWithoutKeywords',
+                                                  )
+                                                : tr(
+                                                    'botManagement.list.noTriggers',
+                                                  )),
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white38
@@ -574,17 +622,23 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
     for (final choice in _modelChoices) {
       if (choice.stableKey == _selectedModelBindingKey) selected = choice;
     }
-    final title = selected?.label ?? 'Normale Chat-Modellauswahl';
+    final title =
+        selected?.label ?? tr('botManagement.binding.normalSelection');
     final subtitle = selected == null
-        ? 'Der Bot verwendet das im Chat ausgewählte Modell.'
-        : '${selected.isLocal ? 'Lokal' : selected.provider} • ${selected.modelId}';
+        ? tr('botManagement.binding.usesChatModel')
+        : tr('botManagement.binding.modelSubtitle', {
+            'provider': selected.isLocal
+                ? tr('botManagement.binding.local')
+                : selected.provider,
+            'model': selected.modelId,
+          });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'FESTE MODELLBINDUNG',
-          style: TextStyle(
+        Text(
+          tr('botManagement.binding.title'),
+          style: const TextStyle(
             color: Colors.white38,
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -598,7 +652,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
               return Semantics(
                 button: true,
                 enabled: !locked,
-                label: 'Feste Modellbindung auswählen: $title',
+                label: tr('botManagement.binding.selectionLabel', {
+                  'title': title,
+                }),
                 child: InkWell(
                   key: const Key('bot-model-binding-sheet-trigger'),
                   onTap: locked ? null : () => _showBindingSheet(automatic),
@@ -675,15 +731,20 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                 ),
               ),
               items: [
-                const DropdownMenuItem(
+                DropdownMenuItem(
                   value: automatic,
-                  child: Text('Normale Chat-Modellauswahl'),
+                  child: Text(tr('botManagement.binding.normalSelection')),
                 ),
                 ..._modelChoices.map(
                   (choice) => DropdownMenuItem(
                     value: choice.stableKey,
                     child: Text(
-                      '${choice.isLocal ? 'Lokal' : choice.provider}: ${choice.label}',
+                      tr('botManagement.binding.choiceLabel', {
+                        'provider': choice.isLocal
+                            ? tr('botManagement.binding.local')
+                            : choice.provider,
+                        'model': choice.label,
+                      }),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -700,9 +761,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
           },
         ),
         const SizedBox(height: 5),
-        const Text(
-          'Eine feste Bindung überschreibt im Chat immer die normale Modellauswahl.',
-          style: TextStyle(color: Colors.white38, fontSize: 12),
+        Text(
+          tr('botManagement.binding.overridesSelection'),
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
         ),
       ],
     );
@@ -726,11 +787,11 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
               child: Text(
-                'Modell fest mit Bot verbinden',
-                style: TextStyle(
+                tr('botManagement.binding.sheetTitle'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -745,8 +806,8 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     key: const Key('bot-binding-choice-automatic'),
                     minTileHeight: 52,
                     leading: const Icon(Icons.chat_bubble_outline),
-                    title: const Text('Normale Chat-Modellauswahl'),
-                    subtitle: const Text('Keine feste Bindung'),
+                    title: Text(tr('botManagement.binding.normalSelection')),
+                    subtitle: Text(tr('botManagement.binding.none')),
                     onTap: () => Navigator.pop(context, automatic),
                   ),
                   ..._modelChoices.map(
@@ -795,7 +856,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Wähle einen Bot aus oder erstelle einen neuen',
+              tr('botManagement.editor.empty'),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.3),
                 fontSize: 14,
@@ -808,6 +869,14 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
 
     final isDefault = !_isNewBot && _selectedBot?['is_default'] == true;
     final isLockedBot = _isLockedBot;
+    const responseStyles = <String>[
+      'balanced',
+      'short',
+      'explain',
+      'steps',
+      'critical',
+      'brainstorm',
+    ];
 
     return Padding(
       padding: EdgeInsets.all(compact ? 16 : 32),
@@ -823,8 +892,10 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                 Expanded(
                   child: Text(
                     _isNewBot
-                        ? 'Neuen Bot erstellen'
-                        : 'Bot konfigurieren: ${_selectedBot!['name']}',
+                        ? tr('bots.createTitle')
+                        : tr('botManagement.editor.configureTitle', {
+                            'name': _selectedBot!['name']?.toString() ?? '',
+                          }),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -848,9 +919,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         color: Colors.redAccent.withValues(alpha: 0.35),
                       ),
                     ),
-                    child: const Text(
-                      'Bot-Builder gesperrt',
-                      style: TextStyle(
+                    child: Text(
+                      tr('botManagement.editor.lockedTitle'),
+                      style: const TextStyle(
                         color: Colors.redAccent,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -875,9 +946,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       ),
                     ),
                     icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text(
-                      'Löschen',
-                      style: TextStyle(fontSize: 12),
+                    label: Text(
+                      tr('common.delete'),
+                      style: const TextStyle(fontSize: 12),
                     ),
                     onPressed: _deleteBot,
                   ),
@@ -898,9 +969,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     color: Colors.redAccent.withValues(alpha: 0.2),
                   ),
                 ),
-                child: const Text(
-                  'Der Bot-Builder ist ein gesperrter System-Bot. Du kannst ihn ansehen, aber nicht bearbeiten oder speichern.',
-                  style: TextStyle(
+                child: Text(
+                  tr('botManagement.editor.lockedBody'),
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     height: 1.35,
@@ -919,9 +990,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     // Bot Name
                     Row(
                       children: [
-                        const Text(
-                          'BOT-NAME',
-                          style: TextStyle(
+                        Text(
+                          tr('botManagement.name.label'),
+                          style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -930,8 +1001,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Der Name dieses Bots. Er wird im Chat über den Antworten des Assistenten eingeblendet.',
+                          message: tr('botManagement.name.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -959,7 +1029,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       readOnly: isLockedBot,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: 'Z. B. MatheBot...',
+                        hintText: tr('botManagement.name.hint'),
                         hintStyle: const TextStyle(
                           color: Colors.white24,
                           fontSize: 14,
@@ -987,7 +1057,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return 'Name ist erforderlich';
+                          return tr('botManagement.name.required');
                         }
                         return null;
                       },
@@ -997,9 +1067,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     // Default Bot Toggle
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'ALS STANDARD-BOT FESTLEGEN',
+                            tr('botManagement.default.label'),
                             maxLines: 2,
                             style: TextStyle(
                               color: Colors.white30,
@@ -1011,8 +1081,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Dieser Bot antwortet auf alle Nachrichten, die keine Schlüsselwörter von anderen Bots triggern. Es kann immer nur ein Bot als Standard festgelegt sein.',
+                          message: tr('botManagement.default.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -1051,10 +1120,10 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         Expanded(
                           child: Text(
                             isDefault
-                                ? 'Dieser Bot ist der aktive Standard-Bot (kann nicht direkt deaktiviert werden)'
+                                ? tr('botManagement.default.active')
                                 : (_isDefault
-                                      ? 'Als Standard-Bot aktivieren (ersetzt vorherigen)'
-                                      : 'Diesen Bot standardmäßig verwenden, wenn kein Keyword matcht'),
+                                      ? tr('botManagement.default.enable')
+                                      : tr('botManagement.default.inactive')),
                             style: TextStyle(
                               color: _isDefault
                                   ? Colors.white70
@@ -1075,9 +1144,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
 
                     Row(
                       children: [
-                        const Text(
-                          'ANTWORTSTIL',
-                          style: TextStyle(
+                        Text(
+                          tr('botManagement.style.label'),
+                          style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1086,8 +1155,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Legt fest, wie dieser Bot standardmäßig antwortet. Der Stil gehört zum Bot und wird im Chat automatisch verwendet.',
+                          message: tr('botManagement.style.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -1135,48 +1203,25 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                           ),
                         ),
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'balanced',
-                          child: Text('Ausgewogen'),
-                        ),
-                        DropdownMenuItem(value: 'short', child: Text('Kurz')),
-                        DropdownMenuItem(
-                          value: 'explain',
-                          child: Text('Erklärend'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'steps',
-                          child: Text('Schritte'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'critical',
-                          child: Text('Kritisch'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'brainstorm',
-                          child: Text('Brainstorm'),
-                        ),
-                      ],
-                      selectedItemBuilder: (context) =>
-                          const [
-                                Text('Ausgewogen'),
-                                Text('Kurz'),
-                                Text('Erklärend'),
-                                Text('Schritte'),
-                                Text('Kritisch'),
-                                Text('Brainstorm'),
-                              ]
-                              .map(
-                                (child) => DefaultTextStyle(
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                  ),
-                                  child: child,
-                                ),
-                              )
-                              .toList(),
+                      items: responseStyles
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(_responseStyleLabel(value)),
+                            ),
+                          )
+                          .toList(),
+                      selectedItemBuilder: (context) => responseStyles
+                          .map(
+                            (value) => DefaultTextStyle(
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                              child: Text(_responseStyleLabel(value)),
+                            ),
+                          )
+                          .toList(),
                       onChanged: isLockedBot
                           ? null
                           : (value) {
@@ -1188,9 +1233,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
 
                     Row(
                       children: [
-                        const Text(
-                          'AGENTIC AKTIVIEREN',
-                          style: TextStyle(
+                        Text(
+                          tr('botManagement.agentic.label'),
+                          style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -1199,8 +1244,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Erlaubt diesem Bot, den Philox Agentic gRPC-Pfad mit Tools und Planning zu verwenden.',
+                          message: tr('botManagement.agentic.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -1237,8 +1281,8 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         Expanded(
                           child: Text(
                             _agenticEnabled
-                                ? 'Agentic ist fuer diesen Bot freigegeben'
-                                : 'Normaler Chat bleibt Standard',
+                                ? tr('botManagement.agentic.enabled')
+                                : tr('botManagement.agentic.disabled'),
                             style: TextStyle(
                               color: _agenticEnabled
                                   ? Colors.white70
@@ -1256,7 +1300,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       readOnly: isLockedBot,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'Allowed Roots, kommagetrennt',
+                        hintText: tr('botManagement.agentic.rootsHint'),
                         hintStyle: const TextStyle(
                           color: Colors.white24,
                           fontSize: 13,
@@ -1288,10 +1332,10 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     // Trigger Keywords (Skip if default and isDefault toggle is on, but let's always show it)
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'TRIGGER-KEYWORDS (Komma-separiert)',
-                            style: TextStyle(
+                            tr('botManagement.keywords.label'),
+                            style: const TextStyle(
                               color: Colors.white30,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -1301,8 +1345,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Schlüsselwörter, nach denen im Text gesucht wird. Beispiel: "mathe, rechnen". Falls der Benutzer eines dieser Wörter tippt, antwortet dieser Bot. Standard-Bots benötigen dies nicht zwingend, können aber Keywords haben.',
+                          message: tr('botManagement.keywords.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -1331,8 +1374,8 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: _isDefault
-                            ? 'Optional für Standard-Bot, z. B. mathe, rechnen...'
-                            : 'Z. B. mathe, rechnen, formel...',
+                            ? tr('botManagement.keywords.defaultHint')
+                            : tr('botManagement.keywords.hint'),
                         hintStyle: const TextStyle(
                           color: Colors.white24,
                           fontSize: 14,
@@ -1362,7 +1405,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         // If it's default bot, keywords are optional. If not, they are required.
                         if (!_isDefault &&
                             (val == null || val.trim().isEmpty)) {
-                          return 'Mindestens ein Trigger-Keyword ist erforderlich';
+                          return tr('botManagement.keywords.required');
                         }
                         return null;
                       },
@@ -1372,11 +1415,11 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     // System Prompt
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'SYSTEM-INSTRUCTIONS (Prompts)',
+                            tr('botManagement.prompt.label'),
                             maxLines: 2,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white30,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -1386,8 +1429,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Tooltip(
-                          message:
-                              'Definiert das Verhalten und die Identität des Modells für diesen Bot. Anweisungen wie Rolle, Sprachstil, Fachgebiet oder Formatierungsregeln.',
+                          message: tr('botManagement.prompt.tooltip'),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F0F14),
                             borderRadius: BorderRadius.circular(8),
@@ -1421,8 +1463,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         height: 1.4,
                       ),
                       decoration: InputDecoration(
-                        hintText:
-                            'Gib dem Bot Anweisungen, wer er ist und wie er sich verhalten soll...',
+                        hintText: tr('botManagement.prompt.hint'),
                         hintStyle: const TextStyle(
                           color: Colors.white24,
                           fontSize: 14,
@@ -1450,7 +1491,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                       ),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
-                          return 'Anweisungen sind erforderlich';
+                          return tr('botManagement.prompt.required');
                         }
                         return null;
                       },
@@ -1478,8 +1519,8 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         setState(() => _isNewBot = false);
                       }
                     },
-                    child: const Text(
-                      'Abbrechen',
+                    child: Text(
+                      tr('common.cancel'),
                       style: TextStyle(color: Colors.white54),
                     ),
                   ),
@@ -1508,7 +1549,9 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                           ),
                         )
                       : Text(
-                          isLockedBot ? 'Gesperrt' : 'Speichern',
+                          isLockedBot
+                              ? tr('botManagement.list.locked')
+                              : tr('common.save'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

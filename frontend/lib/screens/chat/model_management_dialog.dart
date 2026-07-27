@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
+import '../../l10n/chat_aux_strings.dart';
 import '../../state/app_state.dart';
 
 class ModelManagementDialog extends StatefulWidget {
@@ -72,7 +74,11 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                 ),
               ),
               title: Text(
-                isEdit ? 'Ordner bearbeiten' : 'Neuer Ordner',
+                tr(
+                  isEdit
+                      ? 'chatHistory.projectDialog.titleEdit'
+                      : 'chatHistory.projectDialog.titleNew',
+                ),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -87,7 +93,7 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                     controller: nameController,
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Ordnername...',
+                      hintText: tr('chatAux.modelManagement.folderNameHint'),
                       hintStyle: TextStyle(
                         color: Colors.white.withValues(alpha: 0.3),
                         fontSize: 14,
@@ -103,9 +109,9 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Farbe auswählen:',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    tr('chatAux.modelManagement.chooseColor'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -148,8 +154,8 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Abbrechen',
+                  child: Text(
+                    tr('common.cancel'),
                     style: TextStyle(color: Colors.white54),
                   ),
                 ),
@@ -177,7 +183,11 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                     }
                   },
                   child: Text(
-                    isEdit ? 'Speichern' : 'Erstellen',
+                    tr(
+                      isEdit
+                          ? 'chatHistory.projectDialog.save'
+                          : 'chatHistory.projectDialog.create',
+                    ),
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
@@ -250,13 +260,13 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       alignment: Alignment.centerLeft,
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.folder, color: Colors.white70, size: 18),
                           SizedBox(width: 8),
                           Text(
-                            'Modell-Katalog',
-                            style: TextStyle(
+                            tr('chatAux.modelManagement.catalogTitle'),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
@@ -272,18 +282,18 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                         children: [
                           _buildSidebarTab(
                             id: null,
-                            name: 'Alle Modelle',
+                            name: tr('chatAux.modelManagement.allModels'),
                             color: Colors.white70,
                             modelCount: allModels.length,
                           ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 8,
                             ),
                             child: Text(
-                              'KATEGORIEN',
-                              style: TextStyle(
+                              tr('chatAux.modelManagement.categories'),
+                              style: const TextStyle(
                                 color: Colors.white30,
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -358,7 +368,7 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Neuer Ordner',
+                                tr('chatHistory.newFolder'),
                                 style: TextStyle(
                                   color: widget.themeColor,
                                   fontSize: 12,
@@ -378,9 +388,9 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'EINGABE-BLENDE (AB X MODELLE)',
-                            style: TextStyle(
+                          Text(
+                            tr('chatAux.modelManagement.inputFade'),
+                            style: const TextStyle(
                               color: Colors.white30,
                               fontSize: 8,
                               fontWeight: FontWeight.bold,
@@ -415,18 +425,30 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                                 ),
                                 isExpanded: true,
                                 isDense: true,
-                                items: const [
+                                items: [
                                   DropdownMenuItem(
                                     value: 'small',
-                                    child: Text('Small'),
+                                    child: Text(
+                                      tr(
+                                        'chatAux.modelManagement.thresholdSmall',
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'medium',
-                                    child: Text('Mid'),
+                                    child: Text(
+                                      tr(
+                                        'chatAux.modelManagement.thresholdMedium',
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'large',
-                                    child: Text('High'),
+                                    child: Text(
+                                      tr(
+                                        'chatAux.modelManagement.thresholdLarge',
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (val) {
@@ -479,7 +501,9 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                                     size: 16,
                                     color: Colors.white38,
                                   ),
-                                  hintText: 'Modell suchen...',
+                                  hintText: tr(
+                                    'chatAux.modelManagement.searchHint',
+                                  ),
                                   hintStyle: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.3),
                                     fontSize: 13,
@@ -515,7 +539,7 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                       child: displayedModels.isEmpty
                           ? Center(
                               child: Text(
-                                'Keine Modelle gefunden.',
+                                tr('chatAux.modelManagement.noModels'),
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.3),
                                   fontSize: 13,
@@ -643,7 +667,7 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               PopupMenuButton<String>(
-                tooltip: 'In Ordner verschieben',
+                tooltip: tr('chatAux.modelManagement.moveToFolder'),
                 icon: const Icon(
                   Icons.folder_open,
                   size: 16,

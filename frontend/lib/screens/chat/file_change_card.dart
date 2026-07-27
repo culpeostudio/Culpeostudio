@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
+
 /// Aufklappbare Karte fuer eine Datei-Aenderung (file_changed): Kopf mit Pfad
 /// und Aktions-Badge, aufgeklappt der Unified-Diff mit Zeilen-Einfaerbung.
 class FileChangeCard extends StatefulWidget {
@@ -127,9 +129,12 @@ class _FileChangeCardState extends State<FileChangeCard> {
                     ),
                   ] else if (widget.diffSkipped) ...[
                     const SizedBox(height: 8),
-                    const Text(
-                      'Diff übersprungen (Datei zu groß)',
-                      style: TextStyle(color: Colors.white38, fontSize: 11),
+                    Text(
+                      tr('chatAux.fileChange.diffSkipped'),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ],

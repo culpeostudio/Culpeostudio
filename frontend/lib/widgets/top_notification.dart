@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 
 /// Shows a compact, automatically dismissing notification at the top of the
@@ -167,7 +168,7 @@ class _TopNotificationCardState extends State<_TopNotificationCard>
                           child: Text(widget.actionLabel!),
                         ),
                       IconButton(
-                        tooltip: 'Schließen',
+                        tooltip: tr('common.close'),
                         onPressed: _dismiss,
                         icon: Icon(Icons.close_rounded, color: foreground),
                         iconSize: 19,

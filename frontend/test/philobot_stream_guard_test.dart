@@ -366,6 +366,7 @@ class _FakeChatApi extends ApiService {
     String? mode,
     List<String>? allowedRoots,
     bool? approvePlan,
+    bool? planning,
   }) async* {
     streamCalls++;
     if (streamCalls == 1 && firstStreamEvents.isNotEmpty) {

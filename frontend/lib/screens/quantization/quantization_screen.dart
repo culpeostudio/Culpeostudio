@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/phase_lock.dart';
 
 // Die Quantisierung ist fuer Phase 3 geplant und daher hinter PhaseLockOverlay
@@ -35,7 +36,7 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
       backgroundColor: Colors.transparent,
       body: PhaseLockOverlay(
         phase: 3,
-        feature: 'Die Quantisierung',
+        feature: tr('sidebar.quantization'),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -77,18 +78,18 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Modell quantisieren (llama.cpp)',
-            style: TextStyle(
+          Text(
+            tr('quantization.title'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'QUELL MODELL PFAD',
-            style: TextStyle(
+          Text(
+            tr('quantization.sourcePath'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -108,9 +109,9 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'QUANTISIERUNGS-TYP',
-            style: TextStyle(
+          Text(
+            tr('quantization.targetType'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -143,9 +144,9 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'ZIEL DATEIPFAD (GGUF)',
-            style: TextStyle(
+          Text(
+            tr('quantization.outputPath'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -174,9 +175,9 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
-              'Quantisierung ausführen',
-              style: TextStyle(
+            child: Text(
+              tr('quantization.start'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -199,9 +200,9 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Laufende Jobs',
-            style: TextStyle(
+          Text(
+            tr('quantization.queueTitle'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -211,7 +212,7 @@ class _QuantizationScreenState extends State<QuantizationScreen> {
           Expanded(
             child: Center(
               child: Text(
-                'Keine aktiven Komprimierungs-Jobs.',
+                tr('quantization.emptyJobs'),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.25),
                   fontSize: 12,

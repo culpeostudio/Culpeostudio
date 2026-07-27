@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
+
 /// A small, native chart surface rendered from a `visual` Markdown fence.
 ///
 /// Example:
@@ -25,7 +27,8 @@ class ChatVisualBlock extends StatelessWidget {
     if (data == null) return _invalidBlock();
 
     final type = (data['type']?.toString() ?? 'bar').toLowerCase();
-    final title = data['title']?.toString() ?? 'Visualisierung';
+    final title =
+        data['title']?.toString() ?? tr('chatAux.visual.defaultTitle');
     final subtitle = data['subtitle']?.toString();
     final labels = _strings(data['labels']);
     final values = _numbers(data['values']);
@@ -158,9 +161,9 @@ class ChatVisualBlock extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
     ),
-    child: const Text(
-      'Die KI-Grafik enthält kein gültiges JSON.',
-      style: TextStyle(color: Colors.white70, fontSize: 12),
+    child: Text(
+      tr('chatAux.visual.invalidJson'),
+      style: const TextStyle(color: Colors.white70, fontSize: 12),
     ),
   );
 }
@@ -278,7 +281,11 @@ class _HorizontalBarChartPainter extends _ChartPainter {
       final barHeight = math.min(42.0, rowHeight * 0.62);
       final y = rowHeight * index + (rowHeight - barHeight) / 2;
       final barWidth = plotWidth * (values[index] / maxValue).clamp(0, 1);
-      final label = index < labels.length ? labels[index] : 'Wert ${index + 1}';
+      final label = index < labels.length
+          ? labels[index]
+          : tr('chatAux.visual.valueFallback', {
+              'number': (index + 1).toString(),
+            });
       final labelPainter = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,

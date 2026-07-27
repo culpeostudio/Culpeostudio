@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
+import 'settings_widgets.dart';
+
 // Karte eines API-Providers in den Einstellungen (Hover-Zustand inklusive).
 
 class ProviderCardWidget extends StatefulWidget {
@@ -74,8 +77,8 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: _isHovered
-                ? const Color(0x2B0D0D12) // brighter glass on hover
-                : const Color(0x1A09090D),
+                ? SettingsPalette.glassHover
+                : SettingsPalette.glassIdle,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: widget.accentColor.withValues(
@@ -186,10 +189,10 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
                       const SizedBox(width: 6),
                       Text(
                         widget.id == 'backend'
-                            ? 'Aktiviert'
+                            ? tr('settings.provider.enabled')
                             : (widget.isKeySet
-                                  ? 'Key eingerichtet'
-                                  : 'Key fehlt'),
+                                  ? tr('settings.provider.keySet')
+                                  : tr('settings.provider.keyMissing')),
                         style: TextStyle(
                           color: widget.id == 'backend'
                               ? Colors.greenAccent
@@ -249,7 +252,7 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
                     Flexible(
                       child: Text(
                         widget.health == 'checking'
-                            ? 'Prüfe...'
+                            ? tr('settings.provider.checking')
                             : widget.healthMsg,
                         style: TextStyle(
                           color: healthColor,

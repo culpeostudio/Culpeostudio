@@ -12,21 +12,23 @@ import (
 )
 
 type LoginModule struct {
-	JWTSecret       string
-	accountStore    *AccountStore
-	authStore       *AuthenticatorStore
-	pendingMu       sync.Mutex
-	pendingSecret   string
-	accountCreateMu sync.Mutex
-	userCreatedMu   sync.RWMutex
-	userCreatedHook func(string) error
+	JWTSecret        string
+	accountStore     *AccountStore
+	authStore        *AuthenticatorStore
+	preferencesStore *UserPreferencesStore
+	pendingMu        sync.Mutex
+	pendingSecret    string
+	accountCreateMu  sync.Mutex
+	userCreatedMu    sync.RWMutex
+	userCreatedHook  func(string) error
 }
 
-func New(jwtSecret string, accountsFile string, authConfigFile string) *LoginModule {
+func New(jwtSecret string, accountsFile string, authConfigFile string, preferencesFile string) *LoginModule {
 	return &LoginModule{
-		JWTSecret:    jwtSecret,
-		accountStore: NewAccountStore(accountsFile),
-		authStore:    NewAuthenticatorStore(authConfigFile),
+		JWTSecret:        jwtSecret,
+		accountStore:     NewAccountStore(accountsFile),
+		authStore:        NewAuthenticatorStore(authConfigFile),
+		preferencesStore: NewUserPreferencesStore(preferencesFile),
 	}
 }
 
@@ -39,13 +41,18 @@ func (m *LoginModule) RegisterRoutes(r fiber.Router) {
 	r.Post("/auth/setup/confirm", m.handleSetupConfirm)
 	r.Post("/accounts", m.handleCreateAccount)
 	r.Post("/password/reset", m.handlePasswordReset)
+	r.Get("/user/preferences", m.handleGetUserPreferences)
+	r.Put("/user/preferences", m.handlePutUserPreferences)
 }
 
 func (m *LoginModule) Initialize() error {
 	if err := m.accountStore.Load(); err != nil {
 		return err
 	}
-	return m.authStore.Load()
+	if err := m.authStore.Load(); err != nil {
+		return err
+	}
+	return m.preferencesStore.Load()
 }
 
 func (m *LoginModule) Shutdown() error { return nil }
@@ -285,6 +292,59 @@ func (m *LoginModule) handlePasswordReset(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"username": strings.TrimSpace(body.Username), "password_reset": true})
+}
+
+// handleGetUserPreferences returns UI preferences for the authenticated login.
+// A missing entry deliberately reports configured=false so the client can show
+// its first-login flow without creating a profile before the user confirms it.
+func (m *LoginModule) handleGetUserPreferences(c *fiber.Ctx) error {
+	userID, ok := authenticatedUserID(c)
+	if !ok {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Nicht autorisiert"})
+	}
+
+	preferences, configured := m.preferencesStore.Get(userID)
+	return c.JSON(userPreferencesResponse(preferences, configured))
+}
+
+func (m *LoginModule) handlePutUserPreferences(c *fiber.Ctx) error {
+	userID, ok := authenticatedUserID(c)
+	if !ok {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Nicht autorisiert"})
+	}
+
+	var body struct {
+		Language        *string `json:"language"`
+		FrontendVersion *string `json:"frontend_version"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Ungueltige Anfrage"})
+	}
+	if body.Language == nil || body.FrontendVersion == nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "language und frontend_version sind erforderlich",
+		})
+	}
+
+	preferences, err := m.preferencesStore.Set(userID, *body.Language, *body.FrontendVersion)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(userPreferencesResponse(preferences, true))
+}
+
+func authenticatedUserID(c *fiber.Ctx) (string, bool) {
+	userID, ok := c.Locals("user_id").(string)
+	userID = strings.TrimSpace(userID)
+	return userID, ok && userID != ""
+}
+
+func userPreferencesResponse(preferences UserPreferences, configured bool) fiber.Map {
+	return fiber.Map{
+		"configured":       configured,
+		"language":         preferences.Language,
+		"frontend_version": preferences.FrontendVersion,
+	}
 }
 
 var (

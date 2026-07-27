@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_strings.dart';
 import '../../widgets/phase_lock.dart';
 
 // Das Training ist fuer Phase 3 geplant und daher hinter PhaseLockOverlay
@@ -36,7 +37,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       backgroundColor: Colors.transparent,
       body: PhaseLockOverlay(
         phase: 3,
-        feature: 'Das Training',
+        feature: tr('sidebar.training'),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -78,18 +79,18 @@ class _TrainingScreenState extends State<TrainingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Feintuning starten (Axolotl / Unsloth)',
-            style: TextStyle(
+          Text(
+            tr('training.title'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'BASIS MODELL ID',
-            style: TextStyle(
+          Text(
+            tr('training.baseModelId'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -109,9 +110,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'DATENSATZ PFAD (JSONL/CSV)',
-            style: TextStyle(
+          Text(
+            tr('training.datasetPath'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -131,9 +132,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'HYPERPARAMETER (JSON MAP)',
-            style: TextStyle(
+          Text(
+            tr('training.hyperparams'),
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 10,
               letterSpacing: 0.8,
@@ -167,9 +168,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
-              'Training-Job übermitteln',
-              style: TextStyle(
+            child: Text(
+              tr('training.start'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -192,9 +193,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Laufende Trainings',
-            style: TextStyle(
+          Text(
+            tr('training.queueTitle'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -204,7 +205,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           Expanded(
             child: Center(
               child: Text(
-                'Keine aktiven Trainingsläufe.',
+                tr('training.emptyJobs'),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.25),
                   fontSize: 12,
