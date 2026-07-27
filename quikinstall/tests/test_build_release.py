@@ -183,6 +183,22 @@ class ContractTests(unittest.TestCase):
             source.write_text("", encoding="utf-8")
         return root
 
+    def test_run_resolves_the_tool_through_path_lookup(self) -> None:
+        # Windows ships flutter as flutter.bat and CreateProcess does not search
+        # PATHEXT, so passing the bare name never finds it. The resolved name
+        # has to reach subprocess.
+        resolved = "C:\\hostedtoolcache\\flutter\\bin\\flutter.bat"
+        with mock.patch.object(build_release.shutil, "which", return_value=resolved):
+            with mock.patch.object(build_release.subprocess, "run") as run:
+                build_release._run(["flutter", "build", "windows"], Path("."))
+        self.assertEqual(run.call_args.args[0][0], resolved)
+
+    def test_run_reports_a_tool_that_is_not_on_path(self) -> None:
+        with mock.patch.object(build_release.shutil, "which", return_value=None):
+            with self.assertRaises(build_release.ReleaseBuildError) as caught:
+                build_release._run(["flutter", "build", "windows"], Path("."))
+        self.assertIn("flutter", str(caught.exception))
+
     def test_backend_payload_includes_only_required_worker_source(self) -> None:
         paths = build_release.backend_payload_paths(
             build_release.TARGETS["linux-x64"],
