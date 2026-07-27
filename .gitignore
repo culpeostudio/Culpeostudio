@@ -8,6 +8,10 @@
 .env
 .env.*
 backend/data/
+# Der Server legt sein data/ relativ zum Arbeitsverzeichnis an. Wird er einmal
+# aus dem Projektwurzel gestartet, entstehen hier jwt_secret, memory_api_token
+# und die Memory-Datenbank -- die niemals versioniert werden duerfen.
+/data/
 
 # Generated build and dependency output
 frontend/.dart_tool/
