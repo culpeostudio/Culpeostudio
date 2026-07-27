@@ -16,6 +16,25 @@ müssen alle Rechte am Code in einer Hand zusammenlaufen. Ohne diese Zustimmung
 wäre dafür später die Einzelfreigabe jeder beitragenden Person nötig — was
 praktisch nicht mehr einzuholen ist.
 
+## Was der Projektinhaber im Gegenzug zusagt
+
+Die Kombination aus AGPL und CLA wird oft als Vorbote einer Schließung gelesen.
+Deshalb ausdrücklich:
+
+Der Code in diesem Repository bleibt unter der AGPL-3.0 und für die
+Eigennutzung kostenlos. Das Recht aus Ziffer 2 dient dazu, Dritten eine
+kommerzielle Lizenz anbieten und eigene gehostete Dienste betreiben zu können —
+nicht dazu, dieses Repository zu schließen oder die selbst betriebene Software
+kostenpflichtig zu machen.
+
+Verdient werden soll später mit gehosteten Modellen nach Verbrauch und mit
+bereitgestellter Hardware. Wer PhiloEngine auf eigener Hardware betreibt, zahlt
+dafür nichts.
+
+Unabhängig von dieser Zusage gilt ohnehin: Jede bereits veröffentlichte Version
+bleibt dauerhaft unter der AGPL-3.0. Diese Rechte kann niemand nachträglich
+entziehen — auch der Projektinhaber nicht.
+
 ---
 
 ## Vereinbarung

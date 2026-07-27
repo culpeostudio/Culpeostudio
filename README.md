@@ -282,9 +282,16 @@ frontend/
 Contributions are welcome — bug reports, fixes, hardware feedback from setups
 we cannot test, and translations once the UI is localised.
 
-Please read [CLA.md](CLA.md) first. It keeps the rights to the code in one
-place so the project can offer a commercial service later without a
+Please read [CLA.md](CLA.md) first. It keeps the rights to the code in one place
+so a hosted service and third-party licensing stay possible without a
 relicensing mess. Sign commits with `git commit -s`.
+
+AGPL plus a CLA usually reads as a rug-pull, so to be explicit: **this
+repository stays AGPL-3.0 and free to run yourself.** The plan is to charge for
+hosted models by usage and for hardware provided with them — not for the
+software on your own machine. Independently of that promise, every version
+already released stays under the AGPL for good; nobody can withdraw those
+rights afterwards.
 
 ## Security
 
