@@ -23,6 +23,14 @@ type Manifest struct {
 	Version       string           `json:"version"`
 	PublishedAt   string           `json:"published_at,omitempty"`
 	Assets        map[string]Asset `json:"assets"`
+
+	// Signature is reserved for a future signed manifest and is deliberately
+	// not interpreted yet. Unknown fields are rejected, so a client that did
+	// not know this name would refuse a signed manifest outright, fall back to
+	// starting offline, and never receive another update. Accepting the key as
+	// raw JSON keeps every released client able to read a manifest once
+	// signing is introduced, whatever shape the signature ends up having.
+	Signature json.RawMessage `json:"signature,omitempty"`
 }
 
 type Asset struct {

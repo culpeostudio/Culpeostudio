@@ -37,6 +37,38 @@ func TestPublishedManifestIsDecodable(t *testing.T) {
 	}
 }
 
+// TestDecodeManifestAcceptsAReservedSignature protects the upgrade path to a
+// signed manifest. Unknown fields are rejected, so a client that cannot read
+// this key would refuse the manifest, keep starting offline, and never update
+// again — which would also make it unable to receive the very client that
+// understands signatures.
+func TestDecodeManifestAcceptsAReservedSignature(t *testing.T) {
+	t.Parallel()
+	base, err := url.Parse("https://raw.githubusercontent.com/example/project/main/quikinstall/manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, signature := range map[string]string{
+		"string": `"ed25519:3045022100"`,
+		"object": `{"algorithm": "ed25519", "key_id": "2026-07", "value": "abc"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			manifest, err := DecodeManifest(strings.NewReader(`{
+				"schema_version": 1,
+				"version": "1.2.3",
+				"signature": `+signature+`,
+				"assets": {}
+			}`), base)
+			if err != nil {
+				t.Fatalf("DecodeManifest() rejected a signed manifest: %v", err)
+			}
+			if len(manifest.Signature) == 0 {
+				t.Fatal("signature was not preserved for a future verifier")
+			}
+		})
+	}
+}
+
 func TestDecodeManifestResolvesRelativeAssetURL(t *testing.T) {
 	t.Parallel()
 	base, err := url.Parse("https://raw.githubusercontent.com/example/project/main/quikinstall/manifest.json")
