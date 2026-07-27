@@ -179,8 +179,10 @@ jobs:
         env:
           BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Committing under the project identity keeps the bot out of the
+          # contributor list for what is really a release artefact.
+          git config user.name "MyPhiloEngine"
+          git config user.email "kontakt@fillystudio.com"
           git fetch origin "$BRANCH"
           git checkout -B "$BRANCH" "origin/$BRANCH"
           python quikinstall/merge_manifests.py \
