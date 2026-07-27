@@ -232,6 +232,14 @@ liegen bei den Release Assets. Die Origin-Policy des Updaters vertraut sowohl
 `objects.githubusercontent.com` und `release-assets.githubusercontent.com`, auf
 die GitHub-Release-Downloads umleiten.
 
+Das Feld `signature` ist reserviert und wird noch **nicht** ausgewertet. Der
+Decoder lehnt unbekannte Felder ab: Ein Client, der diesen Namen nicht kennt,
+würde ein signiertes Manifest verweigern, dauerhaft offline starten und nie
+wieder ein Update erhalten — also auch nicht denjenigen Client, der Signaturen
+versteht. Seit 1.1.0-alpha akzeptiert jeder Client das Feld in beliebiger Form
+und ignoriert es. Damit bleibt der Weg zu signierten Manifesten offen, ohne
+bereits ausgelieferte Installationen abzuhängen.
+
 Das Manifest veröffentlicht immer nur die aktuelle Version und folgt Schema 1:
 
 ```json
