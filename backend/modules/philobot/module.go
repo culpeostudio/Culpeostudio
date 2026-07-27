@@ -13,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/fillyengine/backend/internal/agentplan"
 	"github.com/fillyengine/backend/internal/apimodels"
 	"github.com/fillyengine/backend/internal/appsettings"
 	"github.com/fillyengine/backend/internal/localinference"
@@ -80,8 +81,13 @@ type philoBotSession struct {
 	AgenticMode          string
 	AllowedRoots         []string
 	ContextLimit         int
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// PendingPlan haelt den zur Freigabe vorgelegten Plan zwischen der
+	// Planungs-Anfrage und der Bestaetigung des Nutzers. Er wird
+	// mitpersistiert, damit ein Neuladen der Oberflaeche die offene
+	// Freigabe nicht verwirft.
+	PendingPlan *agentplan.Plan `json:"pending_plan,omitempty"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	// MutationInFlight ist transienter Laufzeitzustand und wird nie persistiert.
 	MutationInFlight bool `json:"-"`
 }
@@ -93,7 +99,9 @@ type chatOptions struct {
 	AgenticMode      string
 	AllowedRoots     []string
 	ApprovePlan      bool
-	PreselectedBot   *BotConfig
+	// Planning schaltet die Zerlegung in Schritte mit Freigabe ein.
+	Planning       bool
+	PreselectedBot *BotConfig
 }
 
 type providerChatHTTPError struct {
@@ -126,7 +134,6 @@ type PhiloBotModule struct {
 	httpClient        *http.Client
 	orAPIBase         string
 	flAPIBase         string
-	philoxClient      *PhiloxGRPCClient
 	localModels       localinference.Provider
 	memory            MemoryContextProvider
 	storage           *sessionStorage
@@ -163,10 +170,6 @@ func New(settingsFile ...string) *PhiloBotModule {
 }
 
 func (m *PhiloBotModule) Name() string { return "philobot" }
-
-func (m *PhiloBotModule) SetPhiloxClient(client *PhiloxGRPCClient) {
-	m.philoxClient = client
-}
 
 func (m *PhiloBotModule) SetLocalModels(provider localinference.Provider) {
 	m.localModels = provider
@@ -222,9 +225,6 @@ func (m *PhiloBotModule) Initialize() error {
 	}
 	m.loadPersistedSessions()
 	m.loadPersistedProjects()
-	if m.philoxClient != nil {
-		return m.philoxClient.Connect()
-	}
 	return nil
 }
 
@@ -250,9 +250,4 @@ func (m *PhiloBotModule) loadPersistedSessions() {
 	m.mu.Unlock()
 	log.Printf("[philobot] %d gespeicherte Chatverlaeufe geladen", len(sessions))
 }
-func (m *PhiloBotModule) Shutdown() error {
-	if m.philoxClient != nil {
-		return m.philoxClient.Close()
-	}
-	return nil
-}
+func (m *PhiloBotModule) Shutdown() error { return nil }

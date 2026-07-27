@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+
+import '../../l10n/chat_aux_strings.dart';
 import '../../theme/app_theme.dart';
 
 class HoverIconButton extends StatefulWidget {
@@ -639,20 +641,26 @@ class _SlimThinkingSliderState extends State<_SlimThinkingSlider>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: <Widget>[
-                  const Positioned(
+                  Positioned(
                     left: 0,
                     top: 0,
                     child: Text(
-                      'Schneller',
-                      style: TextStyle(color: Colors.white54, fontSize: 10),
+                      tr('chat.thinkingSlider.faster'),
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     right: 0,
                     top: 0,
                     child: Text(
-                      'Intelligenter',
-                      style: TextStyle(color: Colors.white54, fontSize: 10),
+                      tr('chat.thinkingSlider.smarter'),
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
                   if (_currentDisabled)
@@ -673,9 +681,9 @@ class _SlimThinkingSliderState extends State<_SlimThinkingSlider>
                               color: Colors.white.withValues(alpha: 0.18),
                             ),
                           ),
-                          child: const Text(
-                            'In Entwicklung',
-                            style: TextStyle(
+                          child: Text(
+                            tr('chat.thinkingSlider.inDevelopment'),
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 8,
                               fontWeight: FontWeight.w700,

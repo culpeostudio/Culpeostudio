@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
+
 /// Nachfrage-Panel, wenn ein Projekt-Tool auf etwas ausserhalb des
 /// Projekt-Ordners zugreifen will. Der Chat haelt die Anfrage-Daten und
 /// beantwortet die Entscheidung ueber [onRespond] ('deny'/'once'/'session').
@@ -32,7 +34,7 @@ class PermissionPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons.privacy_tip_outlined,
@@ -41,8 +43,8 @@ class PermissionPanel extends StatelessWidget {
               ),
               SizedBox(width: 8),
               Text(
-                'Zugriffsanfrage',
-                style: TextStyle(
+                tr('chatAux.permission.title'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -52,8 +54,7 @@ class PermissionPanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'PhiloBot möchte außerhalb des Projektpfads arbeiten '
-            '(${_permissionToolLabel(tool)}):',
+            tr('chatAux.permission.body', {'tool': _permissionToolLabel(tool)}),
             style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
           const SizedBox(height: 4),
@@ -71,7 +72,7 @@ class PermissionPanel extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => onRespond('deny'),
-                child: const Text('Ablehnen'),
+                child: Text(tr('chat.planApproval.reject')),
               ),
               const SizedBox(width: 8),
               OutlinedButton(
@@ -82,7 +83,7 @@ class PermissionPanel extends StatelessWidget {
                     color: const Color(0xFFC9A24A).withValues(alpha: 0.5),
                   ),
                 ),
-                child: const Text('Einmal erlauben'),
+                child: Text(tr('chatAux.permission.allowOnce')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -90,7 +91,7 @@ class PermissionPanel extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFC9A24A),
                 ),
-                child: const Text('Für Sitzung erlauben'),
+                child: Text(tr('chatAux.permission.allowSession')),
               ),
             ],
           ),
@@ -103,27 +104,27 @@ class PermissionPanel extends StatelessWidget {
 String _permissionToolLabel(String tool) {
   switch (tool) {
     case 'read_file':
-      return 'Datei lesen';
+      return tr('chatAux.permission.tool.readFile');
     case 'write_file':
-      return 'Datei schreiben';
+      return tr('chatAux.permission.tool.writeFile');
     case 'patch_file':
-      return 'Datei ändern';
+      return tr('chatAux.permission.tool.patchFile');
     case 'delete_path':
-      return 'Löschen (rekursiv)';
+      return tr('chatAux.permission.tool.deletePath');
     case 'list_dir':
-      return 'Ordner auflisten';
+      return tr('chatAux.permission.tool.listDir');
     case 'make_dir':
-      return 'Ordner erstellen';
+      return tr('chatAux.permission.tool.makeDir');
     case 'move_path':
-      return 'Verschieben/Umbenennen';
+      return tr('chatAux.permission.tool.movePath');
     case 'stat_path':
-      return 'Datei-Info lesen';
+      return tr('chatAux.permission.tool.statPath');
     case 'grep_search':
-      return 'Projekt durchsuchen';
+      return tr('chatAux.permission.tool.grepSearch');
     case 'find_files':
-      return 'Dateien suchen';
+      return tr('chatAux.permission.tool.findFiles');
     case 'run_command':
-      return 'Befehl ausführen';
+      return tr('chatAux.permission.tool.runCommand');
     default:
       return tool;
   }

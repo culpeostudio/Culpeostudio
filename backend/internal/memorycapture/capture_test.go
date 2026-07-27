@@ -16,7 +16,7 @@ func newCaptureService(t *testing.T) (*Service, *memory.Service) {
 	store := memorystore.NewSQLiteStore(baseDir + "/memory.db")
 	hashBackend := memoryembed.NewHashBackend(64)
 	vector := memoryvector.New(store, hashBackend, hashBackend, baseDir+"/vector.json")
-	
+
 	options := memory.Options{
 		ProjectTag:          "myphiloengine",
 		DefaultUserID:       "local",
@@ -242,7 +242,7 @@ func TestCompressorClearSession(t *testing.T) {
 		"Hallo 2",
 		"Hallo 2 zurück",
 	)
-	
+
 	if !captureService.chatCompressor.HasSession(sessionID2) {
 		t.Fatalf("expected compressor to have session data for session 2")
 	}
@@ -256,4 +256,3 @@ func TestCompressorClearSession(t *testing.T) {
 		t.Errorf("expected session keys to be deleted from maps after DeleteSessionForUser")
 	}
 }
-

@@ -23,6 +23,7 @@ func newTestLoginApp(t *testing.T) (*fiber.App, *LoginModule) {
 		"test-secret",
 		filepath.Join(dir, "login_accounts.json"),
 		filepath.Join(dir, "login_authenticator.json"),
+		filepath.Join(dir, "user_preferences.json"),
 	)
 	if err := module.Initialize(); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
@@ -203,6 +204,7 @@ func TestFirstCreatedAccountReceivesPendingLegacyBotsBeforeAnotherUserVisitsBotA
 		"test-secret",
 		filepath.Join(dir, "login_accounts.json"),
 		filepath.Join(dir, "login_authenticator.json"),
+		filepath.Join(dir, "user_preferences.json"),
 	)
 	if err := module.Initialize(); err != nil {
 		t.Fatal(err)

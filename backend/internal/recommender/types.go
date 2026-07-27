@@ -1,3 +1,7 @@
+// Portions adapted from whichllm v0.5.15.
+// Copyright (c) 2026 Andyyyy64; original portions are MIT-licensed.
+// PhiloEngine modifications are AGPL-3.0-only. See NOTICE.
+//
 // Package recommender contains pure, dependency-free local-LLM fit logic.
 // It deliberately has no HTTP, filesystem, or hardware probing concerns.
 package recommender

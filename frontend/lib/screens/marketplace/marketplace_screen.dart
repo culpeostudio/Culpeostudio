@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 
+import '../../l10n/marketplace_screen_strings.dart';
 import '../../state/app_state.dart';
 import '../../services/api_service.dart';
 import '../../widgets/top_notification.dart';
@@ -70,20 +71,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   List<dynamic> _downloadJobs = [];
   Timer? _refreshTimer;
 
-  static const _providers = <FilterOption>[
-    FilterOption('Alle', 'all'),
-    FilterOption('OpenRouter', 'openrouter'),
-    FilterOption('Featherless', 'featherless'),
-    FilterOption('HuggingFace', 'huggingface'),
+  List<FilterOption> get _providers => <FilterOption>[
+    FilterOption(tr('marketplaceScreen.filter.all'), 'all'),
+    const FilterOption('OpenRouter', 'openrouter'),
+    const FilterOption('Featherless', 'featherless'),
+    const FilterOption('HuggingFace', 'huggingface'),
   ];
 
-  static const _categories = <FilterOption>[
-    FilterOption('Alle', ''),
-    FilterOption('Chat', 'chat'),
-    FilterOption('Code', 'code'),
-    FilterOption('Reasoning', 'reasoning'),
-    FilterOption('Vision', 'vision'),
-    FilterOption('Embedding', 'embedding'),
+  List<FilterOption> get _categories => <FilterOption>[
+    FilterOption(tr('marketplaceScreen.filter.all'), ''),
+    FilterOption(tr('marketplaceScreen.filter.chat'), 'chat'),
+    FilterOption(tr('marketplaceScreen.filter.code'), 'code'),
+    FilterOption(tr('marketplaceScreen.filter.reasoning'), 'reasoning'),
+    FilterOption(tr('marketplaceScreen.filter.vision'), 'vision'),
+    FilterOption(tr('marketplaceScreen.filter.embedding'), 'embedding'),
   ];
 
   // C5: Preissortierung filtert im Backend alle Modelle ohne bekannten
@@ -92,21 +93,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   // Cloud-Provider (OpenRouter/Featherless) an, damit User nicht in eine
   // scheinbar leere Marketplace-Liste starren, wenn sie von HuggingFace auf
   // "Alle" wechseln.
-  static const _baseSortOptions = <FilterOption>[
-    FilterOption('Beliebtheit', 'popularity'),
-    FilterOption('Intelligence-Score', 'intelligence_score'),
-    FilterOption('Kontext', 'context'),
-    FilterOption('Neu zuerst', 'newest'),
+  List<FilterOption> get _baseSortOptions => <FilterOption>[
+    FilterOption(tr('marketplaceScreen.sort.popularity'), 'popularity'),
+    FilterOption(
+      tr('marketplaceScreen.sort.intelligence'),
+      'intelligence_score',
+    ),
+    FilterOption(tr('marketplaceScreen.sort.context'), 'context'),
+    FilterOption(tr('marketplaceScreen.sort.newest'), 'newest'),
   ];
 
-  static const _priceLowHighSort = FilterOption(
-    'Preis: Niedrig -> Hoch',
-    'price_low_high',
-  );
-  static const _priceHighLowSort = FilterOption(
-    'Preis: Hoch -> Niedrig',
-    'price_high_low',
-  );
+  FilterOption get _priceLowHighSort =>
+      FilterOption(tr('marketplaceScreen.sort.priceLowHigh'), 'price_low_high');
+  FilterOption get _priceHighLowSort =>
+      FilterOption(tr('marketplaceScreen.sort.priceHighLow'), 'price_high_low');
 
   List<FilterOption> _sortOptionsForProvider() {
     // sort=price ist nur fuer reine Cloud-Provider sinnvoll.
@@ -126,12 +126,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return base;
   }
 
-  static const _quantizations = <FilterOption>[
-    FilterOption('Alle', ''),
-    FilterOption('Q4_K_M', 'Q4_K_M'),
-    FilterOption('Q8_0', 'Q8_0'),
-    FilterOption('FP16', 'FP16'),
-    FilterOption('Safetensors', 'safetensors'),
+  List<FilterOption> get _quantizations => <FilterOption>[
+    FilterOption(tr('marketplaceScreen.filter.all'), ''),
+    const FilterOption('Q4_K_M', 'Q4_K_M'),
+    const FilterOption('Q8_0', 'Q8_0'),
+    const FilterOption('FP16', 'FP16'),
+    const FilterOption('Safetensors', 'safetensors'),
   ];
 
   @override
@@ -402,7 +402,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       _showSnack(res['error'].toString(), Colors.redAccent);
       return;
     }
-    _showSnack('Eintrag geloescht', Colors.green);
+    _showSnack(tr('marketplaceScreen.notification.jobDeleted'), Colors.green);
     _fetchDownloadJobs();
   }
 
@@ -415,26 +415,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         lower.contains('clientexception') ||
         lower.contains('failed host lookup') ||
         lower.contains('network')) {
-      return 'Netzwerkfehler – ist das Backend erreichbar?';
+      return tr('marketplaceScreen.error.network');
     }
     if (lower.contains('timeout') || lower.contains('timed out')) {
-      return 'Zeitueberschreitung – bitte erneut versuchen.';
+      return tr('marketplaceScreen.error.timeout');
     }
     if (lower.contains('nicht autorisiert') ||
         lower.contains('(401)') ||
         lower.contains('(403)') ||
         lower.contains('gated repository') ||
         lower.contains('gated')) {
-      return 'Dieser HuggingFace-Download braucht einen gültigen API-Token. '
-          'Bitte den Token unter Einstellungen → HuggingFace API-Token hinterlegen '
-          'und den Zugriff auf das Modell bei HuggingFace bestätigen.';
+      return tr('marketplaceScreen.error.huggingFaceToken');
     }
     // Bekannte Backend-Strings etwas lesbarer machen.
-    if (lower.contains('ungueltiger')) return 'Ungueltige Eingabe.';
-    if (lower.contains('muss gesetzt sein')) {
-      return 'Bitte Provider auswaehlen.';
+    if (lower.contains('ungueltiger')) {
+      return tr('marketplaceScreen.error.invalidInput');
     }
-    return msg.isEmpty ? 'Unbekannter Fehler' : msg;
+    if (lower.contains('muss gesetzt sein')) {
+      return tr('marketplaceScreen.error.chooseProvider');
+    }
+    return msg.isEmpty ? tr('marketplaceScreen.error.unknown') : msg;
   }
 
   Future<void> _downloadModel(
@@ -446,7 +446,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final modelId =
         (model['model_id'] ?? model['id'] ?? model['name'])?.toString() ?? '';
     if (modelId.isEmpty) {
-      _showSnack('Modell-ID fehlt', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.modelIdMissing'),
+        Colors.redAccent,
+      );
       return;
     }
     final provider = (model['provider'] ?? _provider).toString();
@@ -454,7 +457,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     // abgewiesen ("provider muss gesetzt sein"); bevor wir den Request
     // abschicken, pruefen.
     if (provider.isEmpty || provider == 'all') {
-      _showSnack('Bitte einen konkreten Provider auswaehlen', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.concreteProvider'),
+        Colors.redAccent,
+      );
       return;
     }
     final options = model['download_options'];
@@ -515,13 +521,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     } else if (res['existing'] == true) {
       // M10+M11: Backend-Dedup hat reagiert – derselbe Job laeuft schon.
       _showSnack(
-        'Modell wird bereits heruntergeladen (Job ${res['job_id']})',
+        tr('marketplaceScreen.notification.alreadyDownloading', {
+          'jobId': res['job_id']?.toString() ?? '',
+        }),
         Colors.orangeAccent,
       );
     } else {
       // M5: cloud-Branch ist tot (Karte ruft fuer cloud _startApiModel),
       // deshalb reicht die "Download gestartet"-Meldung.
-      _showSnack('$modelId Download gestartet', Colors.green);
+      _showSnack(
+        tr('marketplaceScreen.notification.downloadStarted', {
+          'modelId': modelId,
+        }),
+        Colors.green,
+      );
     }
   }
 
@@ -555,7 +568,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Variante fuer "$modelId" waehlen',
+                    tr('marketplaceScreen.download.pickVariant', {
+                      'modelId': modelId,
+                    }),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
@@ -567,11 +582,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Modelle gibt es in verschiedenen "Quantisierungen" – '
-                    'das ist wie die Kompression bei Bildern (JPG vs PNG). '
-                    'Kleinere Dateien = weniger Speicher, aber leichte '
-                    'Qualitaetsverluste. Grossere Dateien = bessere Qualitaet, '
-                    'brauchen mehr RAM.',
+                    tr('marketplaceScreen.download.variantExplanation'),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.55),
                       fontSize: 11,
@@ -606,19 +617,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                           labelLower.contains('q5_k_s');
                       final sizeText = size > 0
                           ? formatBytes(size)
-                          : 'Unbekannte Groesse';
+                          : tr('marketplaceScreen.download.unknownSize');
                       final formatText = format.isEmpty ? '' : ' · $format';
                       Color badgeColor;
                       String badgeText;
                       if (isRecommended) {
                         badgeColor = const Color(0xFF4CAF50);
-                        badgeText = 'AUSGEWOGEN';
+                        badgeText = tr('marketplaceScreen.download.balanced');
                       } else if (isMaxQuality) {
                         badgeColor = const Color(0xFF8E7CFF);
-                        badgeText = 'MAX QUALITAET';
+                        badgeText = tr('marketplaceScreen.download.maxQuality');
                       } else if (isCompact) {
                         badgeColor = const Color(0xFFFFC107);
-                        badgeText = 'KOMPAKT';
+                        badgeText = tr('marketplaceScreen.download.compact');
                       } else {
                         badgeColor = Colors.white.withValues(alpha: 0.3);
                         badgeText = '';
@@ -664,7 +675,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                           child: Text(
                                             label.isEmpty
                                                 ? (format.isEmpty
-                                                      ? 'Variante ${i + 1}'
+                                                      ? tr(
+                                                          'marketplaceScreen.download.variant',
+                                                          {
+                                                            'number': (i + 1)
+                                                                .toString(),
+                                                          },
+                                                        )
                                                       : format)
                                                 : label,
                                             style: const TextStyle(
@@ -755,12 +772,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final modelId =
         (model['model_id'] ?? model['id'] ?? model['name'])?.toString() ?? '';
     if (modelId.isEmpty) {
-      _showSnack('Modell-ID fehlt', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.modelIdMissing'),
+        Colors.redAccent,
+      );
       return;
     }
     final provider = (model['provider'] ?? _provider).toString();
     if (provider.isEmpty || provider == 'all') {
-      _showSnack('Bitte einen konkreten Provider auswaehlen', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.concreteProvider'),
+        Colors.redAccent,
+      );
       return;
     }
     final displayName = _firstText(model, [
@@ -783,7 +806,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     await AppState().refreshActiveApiModels();
     if (!mounted) return;
     _endPendingAction(key);
-    _showSnack('$displayName im Chat gestartet', Colors.green);
+    _showSnack(
+      tr('marketplaceScreen.notification.chatStarted', {'name': displayName}),
+      Colors.green,
+    );
   }
 
   void _showSnack(String message, Color color) {
@@ -809,7 +835,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         _actionTimeouts.remove(actionKey);
       });
       _showSnack(
-        'Aktion abgebrochen: Zeitueberschreitung',
+        tr('marketplaceScreen.notification.actionTimedOut'),
         Colors.orangeAccent,
       );
     });
@@ -824,36 +850,39 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 1100;
-          final drawerWidth = wide ? 380.0 : constraints.maxWidth * 0.94;
-          return Stack(
-            children: [
-              Positioned.fill(child: _buildCatalog()),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IgnorePointer(
-                  ignoring: !_showDownloadsPanel,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    offset: _showDownloadsPanel
-                        ? Offset.zero
-                        : const Offset(1.06, 0),
-                    child: SizedBox(
-                      width: drawerWidth,
-                      height: constraints.maxHeight,
-                      child: _buildDownloadDrawer(),
+    return AnimatedBuilder(
+      animation: AppState(),
+      builder: (context, _) => Scaffold(
+        backgroundColor: Colors.transparent,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 1100;
+            final drawerWidth = wide ? 380.0 : constraints.maxWidth * 0.94;
+            return Stack(
+              children: [
+                Positioned.fill(child: _buildCatalog()),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: IgnorePointer(
+                    ignoring: !_showDownloadsPanel,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.easeOutCubic,
+                      offset: _showDownloadsPanel
+                          ? Offset.zero
+                          : const Offset(1.06, 0),
+                      child: SizedBox(
+                        width: drawerWidth,
+                        height: constraints.maxHeight,
+                        child: _buildDownloadDrawer(),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -909,9 +938,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                   ),
                                   onChanged: _onSearchChanged,
                                   textInputAction: TextInputAction.search,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Modell-ID oder Name suchen',
-                                    hintStyle: TextStyle(color: Colors.white30),
+                                  decoration: InputDecoration(
+                                    hintText: tr(
+                                      'marketplaceScreen.searchHint',
+                                    ),
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white30,
+                                    ),
                                     border: InputBorder.none,
                                   ),
                                   onSubmitted: (_) =>
@@ -919,7 +952,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                 ),
                               ),
                               Tooltip(
-                                message: 'Suche ausführen',
+                                message: tr('marketplaceScreen.search.submit'),
                                 child: IconButton(
                                   onPressed: () =>
                                       _triggerSearch(collapseSearch: true),
@@ -940,7 +973,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                           height: 48,
                           decoration: _panelDecoration(),
                           child: Tooltip(
-                            message: 'Modelle suchen',
+                            message: tr('marketplaceScreen.search.open'),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
                               onTap: _openSearch,
@@ -972,7 +1005,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Marketplace-Wiki',
+            tooltip: tr('marketplaceScreen.wiki.title'),
             style: IconButton.styleFrom(
               hoverColor: const Color(0xFF8E7CFF).withValues(alpha: 0.24),
             ),
@@ -981,8 +1014,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           ),
           IconButton(
             tooltip: _showDownloadsPanel
-                ? 'Downloads schließen'
-                : 'Downloads & Verlauf',
+                ? tr('marketplaceScreen.downloads.close')
+                : tr('marketplaceScreen.downloads.title'),
             onPressed: () =>
                 setState(() => _showDownloadsPanel = !_showDownloadsPanel),
             style: IconButton.styleFrom(
@@ -1011,16 +1044,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     : null,
               ),
             ),
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: true,
-                icon: Icon(Icons.grid_view_rounded, size: 18),
-                tooltip: 'Grid',
+                icon: const Icon(Icons.grid_view_rounded, size: 18),
+                tooltip: tr('marketplaceScreen.view.grid'),
               ),
               ButtonSegment(
                 value: false,
-                icon: Icon(Icons.view_list_rounded, size: 20),
-                tooltip: 'Liste',
+                icon: const Icon(Icons.view_list_rounded, size: 20),
+                tooltip: tr('marketplaceScreen.view.list'),
               ),
             ],
             selected: {_gridView},
@@ -1061,10 +1094,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       color: Color(0xFF8E7CFF),
                     ),
                     const SizedBox(width: 9),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Marketplace-Wiki',
-                        style: TextStyle(
+                        tr('marketplaceScreen.wiki.title'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -1072,7 +1105,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Schließen',
+                      tooltip: tr('marketplaceScreen.wiki.close'),
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close_rounded, size: 19),
                     ),
@@ -1080,8 +1113,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Die wichtigsten Begriffe kurz erklärt – damit du ein Modell '
-                  'auch ohne Vorkenntnisse auswählen kannst.',
+                  tr('marketplaceScreen.wiki.intro'),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.62),
                     fontSize: 12,
@@ -1098,7 +1130,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       color: const Color(0xFFC9A24A).withValues(alpha: 0.28),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
@@ -1109,10 +1141,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Schnellstart: Für ein lokales erstes Modell wähle '
-                          'HuggingFace → Chat → Q4_K_M. Öffne danach die '
-                          'Details und prüfe Speicher, Zielordner und Downloadgröße.',
-                          style: TextStyle(
+                          tr('marketplaceScreen.wiki.quickStart'),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
                             height: 1.35,
@@ -1125,38 +1155,38 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 const SizedBox(height: 15),
                 _wikiItem(
                   Icons.category_outlined,
-                  'Kategorie & Tags',
-                  'Chat ist für Gespräche, Code für Programmierung, Reasoning für komplexes Denken, Vision für Bilder und Embedding für Suche.',
+                  tr('marketplaceScreen.wiki.categoryTitle'),
+                  tr('marketplaceScreen.wiki.categoryText'),
                   const Color(0xFFDFC077),
                 ),
                 _wikiItem(
                   Icons.cloud_outlined,
-                  'Provider wählen',
-                  'HuggingFace liefert Dateien zum lokalen Download. OpenRouter und Featherless sind Cloud-Anbieter: Das Modell läuft dort und braucht einen hinterlegten API-Token.',
+                  tr('marketplaceScreen.wiki.providerTitle'),
+                  tr('marketplaceScreen.wiki.providerText'),
                   const Color(0xFFBAA6FF),
                 ),
                 _wikiItem(
                   Icons.tune_rounded,
-                  'Quantisierung',
-                  'Q4 ist meist der beste Kompromiss. Q8/FP16 brauchen mehr Speicher, liefern aber etwas mehr Qualität. Kleinere Q2/Q3 sparen Platz.',
+                  tr('marketplaceScreen.wiki.quantizationTitle'),
+                  tr('marketplaceScreen.wiki.quantizationText'),
                   const Color(0xFF4DD0E1),
                 ),
                 _wikiItem(
                   Icons.inventory_2_outlined,
-                  'Dateiformate',
-                  'GGUF ist meist die passende Datei für lokale LLM-Programme. Safetensors kann aus mehreren Fragmenten bestehen – sie werden im Marketplace als eine Variante zusammengefasst und gemeinsam geladen.',
+                  tr('marketplaceScreen.wiki.formatsTitle'),
+                  tr('marketplaceScreen.wiki.formatsText'),
                   const Color(0xFFEBD9A8),
                 ),
                 _wikiItem(
                   Icons.memory_rounded,
-                  'VRAM & Kontext',
-                  'VRAM ist der Grafikspeicher. Ein leerer VRAM-Wert bedeutet: Die Dateigröße ist unbekannt, deshalb wird nichts geschätzt. CTX beschreibt die maximale Gesprächslänge.',
+                  tr('marketplaceScreen.wiki.vramTitle'),
+                  tr('marketplaceScreen.wiki.vramText'),
                   const Color(0xFF81C784),
                 ),
                 _wikiItem(
                   Icons.download_for_offline_rounded,
-                  'Lokale Downloads',
-                  'Im Download-Slider siehst du Fortschritt, Geschwindigkeit, Zielordner und ob ein Provider-Token im Backend hinterlegt ist.',
+                  tr('marketplaceScreen.wiki.downloadsTitle'),
+                  tr('marketplaceScreen.wiki.downloadsText'),
                   const Color(0xFFFFC107),
                 ),
               ],
@@ -1230,7 +1260,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 children: [
                   Expanded(
                     child: Text(
-                      _showAdvancedFilters ? 'Filter' : 'Schnellauswahl',
+                      _showAdvancedFilters
+                          ? tr('marketplaceScreen.filters.title')
+                          : tr('marketplaceScreen.filters.quickSelection'),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,
@@ -1250,16 +1282,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     ),
                     label: Text(
                       _showAdvancedFilters
-                          ? 'Filter reduzieren'
-                          : 'Alle Filter',
+                          ? tr('marketplaceScreen.filters.collapse')
+                          : tr('marketplaceScreen.filters.showAll'),
                     ),
                   ),
                 ],
               ),
               if (!_showAdvancedFilters) ...[
                 Text(
-                  'Suche nach einem Modell oder wähle eine einfache Empfehlung. '
-                  'Die Variante „Ausgewogen“ ist später für die meisten Geräte passend.',
+                  tr('marketplaceScreen.filters.compactHelp'),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.52),
                     fontSize: 11,
@@ -1272,7 +1303,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   runSpacing: 8,
                   children: [
                     FilterChip(
-                      label: const Text('Lokale Modelle'),
+                      label: Text(tr('marketplaceScreen.filters.localModels')),
                       selected: _localOnly && !_gpuFit,
                       onSelected: (enabled) {
                         setState(() {
@@ -1284,7 +1315,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       },
                     ),
                     FilterChip(
-                      label: const Text('Passt auf meinen PC'),
+                      label: Text(tr('marketplaceScreen.filters.fitsMyPc')),
                       avatar: const Icon(Icons.verified_rounded, size: 16),
                       selected: _gpuFit,
                       onSelected: (enabled) {
@@ -1301,33 +1332,43 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               ] else ...[
                 const SizedBox(height: 5),
                 _buildFilterRow(
-                  'Provider',
+                  'provider',
+                  tr('marketplaceScreen.filters.provider'),
                   _providers,
                   _provider,
                   _setProvider,
                 ),
                 const SizedBox(height: 6),
-                _buildFilterRow('Kategorie', _categories, _category, (value) {
-                  setState(() => _category = value);
-                  _triggerSearch();
-                }),
+                _buildFilterRow(
+                  'category',
+                  tr('marketplaceScreen.filters.category'),
+                  _categories,
+                  _category,
+                  (value) {
+                    setState(() => _category = value);
+                    _triggerSearch();
+                  },
+                ),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 10,
                   runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 76,
                       child: Text(
-                        'Sortierung',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        tr('marketplaceScreen.filters.sort'),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     _buildSortDropdown(),
                     if (_localControlsVisible)
                       _buildToggleBubble(
-                        label: 'Nur lokal',
+                        label: tr('marketplaceScreen.filters.localOnly'),
                         icon: Icons.download_for_offline_outlined,
                         selected: _localOnly,
                         color: const Color(0xFFFFC107),
@@ -1344,7 +1385,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       ),
                     if (_gpuFitControlVisible)
                       _buildToggleBubble(
-                        label: 'Auf deiner GPU',
+                        label: tr('marketplaceScreen.filters.gpuOnly'),
                         icon: Icons.memory_rounded,
                         selected: _gpuFit,
                         color: const Color(0xFF66BB6A),
@@ -1371,6 +1412,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   }
 
   Widget _buildFilterRow(
+    String group,
     String label,
     List<FilterOption> options,
     String value,
@@ -1385,7 +1427,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           child: Align(
             alignment: Alignment.centerLeft,
             child: Tooltip(
-              message: _filterHelp(label),
+              message: _filterHelp(group),
               child: Text(
                 label,
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
@@ -1404,7 +1446,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     option.value,
                     value,
                     onSelected,
-                    _filterOptionColor(label, option.value),
+                    _filterOptionColor(group, option.value),
                   ),
                 )
                 .toList(),
@@ -1450,8 +1492,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Color _filterOptionColor(String group, String value) {
     if (value.isEmpty || value == 'all') return Colors.white54;
-    if (group == 'Kategorie') return marketplaceTagColor(value);
-    if (group == 'Provider') return _getProviderColor(value);
+    if (group == 'category') return marketplaceTagColor(value);
+    if (group == 'provider') return _getProviderColor(value);
     return const Color(0xFFDFC077);
   }
 
@@ -1532,10 +1574,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         SizedBox(
           width: 76,
           child: Tooltip(
-            message: _filterHelp('Quant'),
-            child: const Text(
-              'Quant',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+            message: _filterHelp('quantization'),
+            child: Text(
+              tr('marketplaceScreen.filters.quantization'),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ),
         ),
@@ -1604,7 +1646,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             FilledButton.icon(
               onPressed: _triggerSearch,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Erneut suchen'),
+              label: Text(tr('marketplaceScreen.action.retrySearch')),
             ),
           ],
         ),
@@ -1613,7 +1655,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     if (_searchResults.isEmpty) {
       return Center(
         child: Text(
-          'Keine Modelle gefunden.',
+          tr('marketplaceScreen.results.empty'),
           style: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
         ),
       );
@@ -1685,15 +1727,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               size: 18,
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Nachladen fehlgeschlagen',
-              style: TextStyle(color: Colors.redAccent, fontSize: 12),
+            Text(
+              tr('marketplaceScreen.results.loadFailed'),
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(
               onPressed: _loadNextPage,
               icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Erneut versuchen'),
+              label: Text(tr('marketplaceScreen.action.retry')),
             ),
           ],
         ),
@@ -1710,9 +1752,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   //      ohnehin nie gezeichnet), aber defensiv kein Spinner.
   Widget _buildLoadMoreTile() {
     if (_isSearching) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
+          padding: const EdgeInsets.symmetric(vertical: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1723,8 +1765,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               ),
               SizedBox(height: 8),
               Text(
-                'Weitere Modelle werden geladen …',
-                style: TextStyle(color: Colors.white54, fontSize: 11),
+                tr('marketplaceScreen.results.loadingMore'),
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
               ),
             ],
           ),
@@ -1737,7 +1779,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         child: OutlinedButton.icon(
           onPressed: _hasMore ? _loadNextPage : null,
           icon: const Icon(Icons.expand_more_rounded, size: 20),
-          label: const Text('Weitere Modelle laden'),
+          label: Text(tr('marketplaceScreen.results.loadMore')),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFFC9A24A),
             side: BorderSide(
@@ -1763,11 +1805,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       'display_name',
       'name',
       'model_id',
-    ], 'Modell');
+    ], tr('marketplaceScreen.model.fallbackName'));
     final id = _firstText(map, ['model_id', 'id'], '');
     final desc = _firstText(map, [
       'description',
-    ], 'Keine Beschreibung verfuegbar.');
+    ], tr('marketplaceScreen.model.noDescription'));
     final parameterBadge = _firstText(map, ['parameter_badge'], '');
     final providerBadge = _firstText(map, ['provider_badge'], provider);
     final price = _firstText(map, ['price_per_1m'], '-');
@@ -1873,14 +1915,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               _metric(Icons.payments_outlined, priceLabel),
               if (contextLength > 0)
                 _metric(Icons.memory_rounded, _formatContext(contextLength)),
-              _metric(Icons.psychology_alt_outlined, '$score IQ'),
+              _metric(
+                Icons.psychology_alt_outlined,
+                tr('marketplaceScreen.model.score', {
+                  'score': score.toString(),
+                }),
+              ),
               if (local && estimatedVram > 0)
                 _metric(
                   fitsGpu
                       ? Icons.check_circle_outline
                       : runtimeFitIcon(runtimeFit),
-                  '${vramEstimated ? "~" : ""}'
-                  '${estimatedVram.toStringAsFixed(1)} GB VRAM',
+                  tr('marketplaceScreen.model.vram', {
+                    'prefix': vramEstimated ? '~' : '',
+                    'value': estimatedVram.toStringAsFixed(1),
+                  }),
                   color: fitsGpu
                       ? Colors.greenAccent
                       : runtimeFitColor(runtimeFit),
@@ -1906,11 +1955,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               if (local && recommendationScore > 0 && !compact)
                 _metric(
                   Icons.auto_awesome_rounded,
-                  '${recommendationScore.toStringAsFixed(0)} Empfehlung',
+                  tr('marketplaceScreen.model.recommendation', {
+                    'score': recommendationScore.toStringAsFixed(0),
+                  }),
                   color: Colors.lightBlueAccent,
                 ),
               if (!compact)
-                _metric(Icons.trending_up_rounded, '$downloads Hits'),
+                _metric(
+                  Icons.trending_up_rounded,
+                  tr('marketplaceScreen.model.hits', {
+                    'count': downloads.toString(),
+                  }),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1940,7 +1996,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                                 : Icons.download_rounded,
                             size: 17,
                           ),
-                    label: Text(cloud ? 'Im Chat starten' : 'Download'),
+                    label: Text(
+                      cloud
+                          ? tr('marketplaceScreen.model.startInChat')
+                          : tr('marketplaceScreen.model.download'),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: cloud
                           ? providerColor
@@ -1959,7 +2019,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               // Download-Optionen, Preise). Frueher ruhte
               // getMarketplaceModelDetail ungenutzt im ApiService.
               IconButton(
-                tooltip: 'Details',
+                tooltip: tr('marketplaceScreen.model.details'),
                 icon: Icon(
                   Icons.info_outline_rounded,
                   size: 18,
@@ -1984,11 +2044,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   ) async {
     final modelId = _firstText(summary, ['model_id', 'id'], '');
     if (modelId.isEmpty) {
-      _showSnack('Modell-ID fehlt', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.modelIdMissing'),
+        Colors.redAccent,
+      );
       return;
     }
     if (provider.isEmpty || provider == 'all') {
-      _showSnack('Provider fehlt', Colors.redAccent);
+      _showSnack(
+        tr('marketplaceScreen.error.providerMissing'),
+        Colors.redAccent,
+      );
       return;
     }
 
@@ -2124,7 +2190,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             top: 4,
             right: 4,
             child: IconButton(
-              tooltip: 'Downloads schließen',
+              tooltip: tr('marketplaceScreen.downloads.close'),
               icon: const Icon(Icons.close_rounded, size: 18),
               onPressed: () => setState(() => _showDownloadsPanel = false),
             ),
@@ -2148,16 +2214,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   Icons.developer_board_rounded,
                   color: Color(0xFFC9A24A),
                   size: 20,
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
-                  'Hardware-Profil',
-                  style: TextStyle(
+                  tr('marketplaceScreen.hardware.title'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -2167,7 +2233,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Profil konnte nicht geladen werden',
+              tr('marketplaceScreen.hardware.loadFailed'),
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
             const SizedBox(height: 8),
@@ -2182,7 +2248,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             FilledButton.tonalIcon(
               onPressed: _fetchHardwareProfile,
               icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Erneut versuchen'),
+              label: Text(tr('marketplaceScreen.action.retry')),
             ),
           ],
         ),
@@ -2194,7 +2260,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final gpu =
         _hardwareProfile['gpu_name'] ??
         _hardwareProfile['gpu'] ??
-        (hasGpu ? 'GPU erkannt' : 'Keine GPU erkannt');
+        (hasGpu
+            ? tr('marketplaceScreen.hardware.gpuDetected')
+            : tr('marketplaceScreen.hardware.noGpuDetected'));
     final ramGB = _numberAsGB('ram_gb', 'ram_mb');
     final vramGB = _numberAsGB('vram_gb', 'vram_mb');
     final disk = _hardwareProfile['disk_free'] ?? 'N/A';
@@ -2206,16 +2274,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(
+            children: [
+              const Icon(
                 Icons.developer_board_rounded,
                 color: Color(0xFFC9A24A),
                 size: 20,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text(
-                'Hardware-Profil',
-                style: TextStyle(
+                tr('marketplaceScreen.hardware.title'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -2295,16 +2363,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(
+            children: [
+              const Icon(
                 Icons.download_done_rounded,
                 color: Color(0xFFC9A24A),
                 size: 20,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text(
-                'Downloads & Verlauf',
-                style: TextStyle(
+                tr('marketplaceScreen.downloads.title'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -2318,7 +2386,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           // H2: Backend-Fehler beim Laden der Job-Liste sichtbar machen.
           if (_jobsError.isNotEmpty) ...[
             Text(
-              'Jobs konnten nicht geladen werden',
+              tr('marketplaceScreen.downloads.jobsLoadFailed'),
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
             const SizedBox(height: 6),
@@ -2333,7 +2401,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             FilledButton.tonalIcon(
               onPressed: _fetchDownloadJobs,
               icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Erneut versuchen'),
+              label: Text(tr('marketplaceScreen.action.retry')),
             ),
             const SizedBox(height: 12),
           ] else if (activeJobs.isEmpty && pastJobs.isEmpty)
@@ -2341,7 +2409,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Text(
-                  'Keine Downloads vorhanden.',
+                  tr('marketplaceScreen.downloads.empty'),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.35),
                     fontSize: 12,
@@ -2362,7 +2430,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Backend-Zugang',
+          tr('marketplaceScreen.backendAccess'),
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.42),
             fontSize: 10,
@@ -2418,7 +2486,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             const SizedBox(height: 5),
             Text(
               (_backendSettings['model_dir_error'] ??
-                      'Modellordner ist ungültig')
+                      tr('marketplaceScreen.modelDirectoryInvalid'))
                   .toString(),
               style: const TextStyle(color: Colors.orangeAccent, fontSize: 9.5),
             ),
@@ -2431,7 +2499,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _buildActiveJobItem(dynamic job) {
     if (job is! Map) return const SizedBox.shrink();
     final j = Map<String, dynamic>.from(job);
-    final modelId = (j['model_id'] ?? 'Unbekanntes Modell').toString();
+    final modelId =
+        (j['model_id'] ?? tr('marketplaceScreen.downloads.unknownModel'))
+            .toString();
     final provider = (j['provider'] ?? 'all').toString();
     final status = (j['status'] ?? 'queued').toString();
     final progress = _asInt(j['progress']);
@@ -2460,7 +2530,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       }
       statusLine = parts.join(' · ');
     } else {
-      statusLine = 'Warteschlange...';
+      statusLine = tr('marketplaceScreen.downloads.queued');
     }
 
     return Container(
@@ -2484,7 +2554,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 ),
               ),
               IconButton(
-                tooltip: 'Abbrechen',
+                tooltip: tr('marketplaceScreen.action.cancel'),
                 visualDensity: VisualDensity.compact,
                 icon: Icon(
                   Icons.cancel_outlined,
@@ -2507,7 +2577,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             Tooltip(
               message: targetDir,
               child: Text(
-                'Ziel: $targetDir',
+                tr('marketplaceScreen.downloads.target', {'target': targetDir}),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white30, fontSize: 9.5),
@@ -2549,7 +2619,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _buildPastJobItem(dynamic job) {
     if (job is! Map) return const SizedBox.shrink();
     final j = Map<String, dynamic>.from(job);
-    final modelId = (j['model_id'] ?? 'Unbekanntes Modell').toString();
+    final modelId =
+        (j['model_id'] ?? tr('marketplaceScreen.downloads.unknownModel'))
+            .toString();
     final provider = (j['provider'] ?? 'all').toString();
     final status = (j['status'] ?? 'done').toString();
     final error = (j['error'] ?? '').toString();
@@ -2599,7 +2671,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 if (targetDir.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Ziel: $targetDir',
+                    tr('marketplaceScreen.downloads.target', {
+                      'target': targetDir,
+                    }),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white30, fontSize: 9),
@@ -2609,7 +2683,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             ),
           ),
           IconButton(
-            tooltip: 'Loeschen',
+            tooltip: tr('marketplaceScreen.action.delete'),
             visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.delete_outline_rounded,
@@ -2627,8 +2701,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final statusColor = configured ? color : Colors.white30;
     return Tooltip(
       message: configured
-          ? '$label-Token ist im Backend gesetzt'
-          : '$label-Token fehlt im Backend',
+          ? tr('marketplaceScreen.token.configured', {'provider': label})
+          : tr('marketplaceScreen.token.missing', {'provider': label}),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
@@ -2648,7 +2722,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             ),
             const SizedBox(width: 4),
             Text(
-              '$label ${configured ? "gesetzt" : "fehlt"}',
+              configured
+                  ? tr('marketplaceScreen.token.badgeConfigured', {
+                      'provider': label,
+                    })
+                  : tr('marketplaceScreen.token.badgeMissing', {
+                      'provider': label,
+                    }),
               style: TextStyle(color: statusColor, fontSize: 9.5),
             ),
           ],
@@ -2711,16 +2791,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final input = _asDouble(inputPrice);
     final output = _asDouble(outputPrice);
     if (input > 0 || output > 0) {
-      return 'In ${_formatDollar(input)} / Out ${_formatDollar(output)} pro 1M Tokens';
+      return tr('marketplaceScreen.price.inputOutput', {
+        'input': _formatDollar(input),
+        'output': _formatDollar(output),
+      });
     }
     final value = rawPrice.trim();
     if (value.isEmpty || value == '-') return '-';
     final lowered = value.toLowerCase();
-    if (lowered == 'lokal') return 'Lokal';
+    if (lowered == 'lokal') return tr('marketplaceScreen.price.local');
     if (lowered == 'gratis' || lowered == 'free' || lowered == r'$0') {
-      return 'Gratis';
+      return tr('marketplaceScreen.price.free');
     }
-    return '$value / 1M Tokens';
+    return tr('marketplaceScreen.price.perMillion', {'price': value});
   }
 
   String _formatDollar(double value) {
@@ -2769,17 +2852,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return '$value ctx';
   }
 
-  String _filterHelp(String label) {
-    switch (label) {
-      case 'Provider':
-        return 'Quelle des Modells: lokale Dateien oder Cloud-Anbieter.';
-      case 'Kategorie':
-        return 'Grenzt Modelle nach ihrem hauptsächlichen Einsatzgebiet ein. '
-            'Die Tags auf den Karten verwenden dieselben Kategorien.';
-      case 'Quant':
-        return 'Kleinere Quantisierungen sparen Speicher, größere erhalten mehr Qualität.';
+  String _filterHelp(String group) {
+    switch (group) {
+      case 'provider':
+        return tr('marketplaceScreen.filterHelp.provider');
+      case 'category':
+        return tr('marketplaceScreen.filterHelp.category');
+      case 'quantization':
+        return tr('marketplaceScreen.filterHelp.quantization');
       default:
-        return 'Filter für die Modellliste.';
+        return tr('marketplaceScreen.filterHelp.default');
     }
   }
 } // Ende _MarketplaceScreenState

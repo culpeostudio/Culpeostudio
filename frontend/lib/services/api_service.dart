@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../generated/fillyengine.pbgrpc.dart' as pb;
 import '../engine/engine_api.dart';
 import '../engine/models.dart';
+import '../l10n/remaining_ui_strings.dart';
 
 export '../engine/engine_api.dart' show EngineStreamEvent;
 
@@ -260,6 +261,42 @@ class ApiService implements EngineApi {
     username = null;
   }
 
+  // --- Per-user UI preferences ---
+  //
+  // These settings deliberately live behind an authenticated endpoint instead
+  // of in SharedPreferences: language and frontend variant belong to the
+  // account, not to one browser or device.
+  Future<Map<String, dynamic>> getUserPreferences() async {
+    try {
+      final response = await _http.get(
+        Uri.parse('$baseUrl/user/preferences'),
+        headers: _headers,
+      );
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserPreferences({
+    required String language,
+    required String frontendVersion,
+  }) async {
+    try {
+      final response = await _http.put(
+        Uri.parse('$baseUrl/user/preferences'),
+        headers: _headers,
+        body: jsonEncode({
+          'language': language,
+          'frontend_version': frontendVersion,
+        }),
+      );
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
   // --- Engine ---
   Future<Map<String, dynamic>> getEngineStatus() async {
     try {
@@ -349,7 +386,9 @@ class ApiService implements EngineApi {
         case 'DELETE':
           response = await _http.delete(uri, headers: _headers);
         default:
-          throw ApiException('Nicht unterstützte HTTP-Methode: $method');
+          throw ApiException(
+            remainingUiText('api.unsupportedHttpMethod', {'method': method}),
+          );
       }
 
       dynamic decoded = const <String, dynamic>{};
@@ -372,7 +411,9 @@ class ApiService implements EngineApi {
         throw ApiException(
           message?.toString().trim().isNotEmpty == true
               ? message.toString()
-              : 'Engine-Anfrage fehlgeschlagen (${response.statusCode})',
+              : remainingUiText('api.engineRequestFailed', {
+                  'statusCode': '${response.statusCode}',
+                }),
           statusCode: response.statusCode,
           code: errorDetails['code']?.toString(),
           details: errorDetails,
@@ -382,7 +423,9 @@ class ApiService implements EngineApi {
     } on ApiException {
       rethrow;
     } catch (error) {
-      throw ApiException('Engine ist nicht erreichbar: $error');
+      throw ApiException(
+        remainingUiText('api.engineUnavailable', {'error': '$error'}),
+      );
     }
   }
 
@@ -532,7 +575,7 @@ class ApiService implements EngineApi {
     final json = await _engineJsonRequest('POST', '/events/ticket');
     final ticket = json['ticket']?.toString().trim() ?? '';
     if (ticket.isEmpty) {
-      throw const ApiException('Engine-Event-Ticket fehlt in der Antwort.');
+      throw ApiException(remainingUiText('api.eventTicketMissing'));
     }
     return ticket;
   }
@@ -553,7 +596,7 @@ class ApiService implements EngineApi {
         final message = await response.stream.bytesToString();
         throw ApiException(
           message.trim().isEmpty
-              ? 'Engine-Eventstream konnte nicht geöffnet werden.'
+              ? remainingUiText('api.eventStreamOpenFailed')
               : message.trim(),
           statusCode: response.statusCode,
         );
@@ -744,6 +787,7 @@ class ApiService implements EngineApi {
     String? mode,
     List<String>? allowedRoots,
     bool? approvePlan,
+    bool? planning,
   }) async* {
     final client = http.Client();
     final request = http.Request('POST', Uri.parse('$baseUrl/philobot/stream'));
@@ -767,6 +811,9 @@ class ApiService implements EngineApi {
     if (approvePlan != null) {
       body['approve_plan'] = approvePlan;
     }
+    if (planning != null) {
+      body['planning'] = planning;
+    }
     request.body = jsonEncode(body);
 
     try {
@@ -775,7 +822,7 @@ class ApiService implements EngineApi {
         final responseBody = await response.stream.bytesToString();
         final data = <String, dynamic>{
           'message': responseBody.trim().isEmpty
-              ? 'Stream fehlgeschlagen'
+              ? remainingUiText('api.streamFailed')
               : responseBody,
           'status': response.statusCode,
         };
@@ -820,7 +867,7 @@ class ApiService implements EngineApi {
         } catch (_) {
           yield PhiloBotStreamEvent(
             type: 'error',
-            data: {'message': 'Stream-Daten konnten nicht gelesen werden'},
+            data: {'message': remainingUiText('api.streamDataUnreadable')},
           );
         }
       }
@@ -1050,104 +1097,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- Philox Agent ---
-  Future<Map<String, dynamic>> createPhiloxSession(
-    String modelId,
-    String thinkingLevel,
-    String mode,
-    List<String> allowedRoots,
-  ) async {
-    try {
-      final response = await _http.post(
-        Uri.parse('$baseUrl/philox/session'),
-        headers: _headers,
-        body: jsonEncode({
-          'model_id': modelId,
-          'thinking_level': thinkingLevel,
-          'mode': mode,
-          'allowed_roots': allowedRoots,
-        }),
-      );
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      return {'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> sendPhiloxMessage(
-    String sessionId,
-    String message, {
-    String? thinkingLevel,
-    String? mode,
-    List<Map<String, dynamic>>? planningAnswers,
-    bool? approvePlan,
-  }) async {
-    try {
-      final Map<String, dynamic> body = {
-        'session_id': sessionId,
-        'message': message,
-      };
-      if (thinkingLevel != null) {
-        body['thinking_level'] = thinkingLevel;
-      }
-      if (mode != null) {
-        body['mode'] = mode;
-      }
-      if (planningAnswers != null) {
-        body['planning_answers'] = planningAnswers;
-      }
-      if (approvePlan != null) {
-        body['approve_plan'] = approvePlan;
-      }
-
-      final response = await _http.post(
-        Uri.parse('$baseUrl/philox/message'),
-        headers: _headers,
-        body: jsonEncode(body),
-      );
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      return {'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> getPhiloxHistory(String sessionId) async {
-    try {
-      final response = await _http.get(
-        Uri.parse('$baseUrl/philox/history/$sessionId'),
-        headers: _headers,
-      );
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      return {'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> getPhiloxSessions() async {
-    try {
-      final response = await _http.get(
-        Uri.parse('$baseUrl/philox/sessions'),
-        headers: _headers,
-      );
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      return {'error': e.toString()};
-    }
-  }
-
-  Future<Map<String, dynamic>> deletePhiloxSession(String sessionId) async {
-    try {
-      final response = await _http.delete(
-        Uri.parse('$baseUrl/philox/session/$sessionId'),
-        headers: _headers,
-      );
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      return {'error': e.toString()};
-    }
-  }
-
-  // --- Marketplace ---
   Future<Map<String, dynamic>> searchMarketplace({
     String? provider,
     String? query,
@@ -1535,18 +1484,20 @@ class ApiService implements EngineApi {
         if (decoded is List<dynamic>) {
           return decoded;
         }
-        throw const ApiException(
-          'Unerwartetes Antwortformat vom News-Backend.',
-        );
+        throw ApiException(remainingUiText('api.newsUnexpectedResponse'));
       }
       throw ApiException(
-        'News konnten nicht geladen werden (HTTP ${response.statusCode}).',
+        remainingUiText('api.newsLoadHttpFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
       );
     } catch (e) {
       if (e is ApiException) {
         rethrow;
       }
-      throw ApiException('News konnten nicht geladen werden: $e');
+      throw ApiException(
+        remainingUiText('api.newsLoadFailed', {'error': '$e'}),
+      );
     }
   }
 }

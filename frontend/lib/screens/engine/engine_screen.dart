@@ -7,6 +7,7 @@ import '../../engine/controller.dart';
 import '../../engine/engine_api.dart';
 import '../../engine/models.dart';
 import '../../engine/widgets.dart';
+import '../../l10n/engine_screen_strings.dart';
 import '../../widgets/top_notification.dart';
 import 'header_widgets.dart';
 import 'instance_card.dart';
@@ -94,7 +95,9 @@ class _EngineScreenState extends State<EngineScreen> {
         if (!mounted) return;
         showTopNotification(
           context,
-          '${ready.length} Modelle wurden gestartet und sind bereit.',
+          tr('engineScreen.notification.modelsStarted', {
+            'count': ready.length.toString(),
+          }),
           color: const Color(0xFF53D18A),
         );
       });
@@ -113,12 +116,12 @@ class _EngineScreenState extends State<EngineScreen> {
         ? servedName
         : modelName.isNotEmpty
         ? modelName
-        : 'Das Modell';
+        : tr('engineScreen.default.model');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showTopNotification(
         context,
-        '„$name“ wurde gestartet und ist bereit.',
+        tr('engineScreen.notification.modelStarted', {'name': name}),
         color: const Color(0xFF53D18A),
       );
     });
@@ -213,8 +216,7 @@ class _EngineScreenState extends State<EngineScreen> {
     if (firstFailure?.code != 'resource_conflict' &&
         firstFailure?.code != 'gpu_runtime_unavailable') {
       setState(() {
-        _planningIssue =
-            'Die automatische Berechnung konnte für dieses Modell nicht abgeschlossen werden.';
+        _planningIssue = tr('engineScreen.error.calculationFailed');
       });
       return;
     }
@@ -233,8 +235,7 @@ class _EngineScreenState extends State<EngineScreen> {
     if (!ok || hybridPlan == null) {
       _controller.chooseModel(model.id);
       setState(() {
-        _planningIssue =
-            'Das Modell passt aktuell weder vollständig in den Grafikspeicher noch gemeinsam in GPU und freien System-RAM.';
+        _planningIssue = tr('engineScreen.error.modelDoesNotFit');
       });
       return;
     }
@@ -302,28 +303,36 @@ class _EngineScreenState extends State<EngineScreen> {
             icon: const Icon(Icons.memory_outlined, color: engineAccent),
             title: Text(
               runtimeUnavailable
-                  ? 'GPU-Unterstützung noch nicht bereit'
-                  : 'System-RAM dazunehmen?',
+                  ? tr('engineScreen.memory.gpuNotReady')
+                  : tr('engineScreen.memory.addSystemRam'),
               style: const TextStyle(color: Colors.white),
             ),
             content: Text(
               runtimeUnavailable
-                  ? '„${model.name}“ wurde nicht wegen seiner Größe abgelehnt. '
-                        'Die Grafikkarte wurde erkannt, aber die passende GPU-Runtime ist noch nicht einsatzbereit.\n\n'
-                        '$gpuRuntimeIssue\n\n'
-                        'Ein Start über CPU + System-RAM '
-                        '${ram > 0 ? '(${formatBytes(ram)} RAM im Plan) ' : ''}ist möglich. Möchtest du diesen Fallback verwenden?'
-                  : '„${model.name}“ passt nicht allein in den freien Grafikspeicher. '
-                        'Die Berechnung zeigt, dass ein Start mit GPU + System-RAM '
-                        '${ram > 0 ? '(${formatBytes(ram)} RAM im Plan) ' : ''}möglich ist.\n\n'
-                        'Möchtest du diesen Hybridbetrieb verwenden?',
+                  ? tr('engineScreen.memory.gpuNotReadyContent', {
+                      'model': model.name,
+                      'issue': gpuRuntimeIssue,
+                      'ramPlan': ram > 0
+                          ? tr('engineScreen.memory.ramPlan', {
+                              'ram': formatBytes(ram),
+                            })
+                          : '',
+                    })
+                  : tr('engineScreen.memory.addSystemRamContent', {
+                      'model': model.name,
+                      'ramPlan': ram > 0
+                          ? tr('engineScreen.memory.ramPlan', {
+                              'ram': formatBytes(ram),
+                            })
+                          : '',
+                    }),
               style: const TextStyle(color: Colors.white70, height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () =>
                     Navigator.of(dialogContext).pop(_MemoryPlanChoice.cancel),
-                child: const Text('Nein, anderes Modell wählen'),
+                child: Text(tr('engineScreen.memory.chooseOtherModel')),
               ),
               if (runtimeUnavailable)
                 OutlinedButton.icon(
@@ -336,8 +345,8 @@ class _EngineScreenState extends State<EngineScreen> {
                   icon: const Icon(Icons.build_circle_outlined),
                   label: Text(
                     gpuRuntimeRemediation == 'rebuild_gpu_runtime'
-                        ? 'GPU-Runtime neu bauen'
-                        : 'GPU automatisch einrichten',
+                        ? tr('engineScreen.memory.rebuildGpuRuntime')
+                        : tr('engineScreen.memory.setupGpu'),
                   ),
                 ),
               FilledButton.icon(
@@ -345,7 +354,9 @@ class _EngineScreenState extends State<EngineScreen> {
                     Navigator.of(dialogContext).pop(_MemoryPlanChoice.useRam),
                 icon: const Icon(Icons.check),
                 label: Text(
-                  runtimeUnavailable ? 'CPU/RAM verwenden' : 'RAM verwenden',
+                  runtimeUnavailable
+                      ? tr('engineScreen.memory.useCpuRam')
+                      : tr('engineScreen.memory.useRam'),
                 ),
               ),
             ],
@@ -365,7 +376,7 @@ class _EngineScreenState extends State<EngineScreen> {
       }
       final message =
           _controller.error ??
-          'Die automatische GPU-Einrichtung konnte nicht vorbereitet werden.';
+          tr('engineScreen.error.gpuSetupPreparationFailed');
       _controller.clearError();
       setState(() => _planningIssue = message);
       return;
@@ -375,8 +386,7 @@ class _EngineScreenState extends State<EngineScreen> {
     if (!mounted) return;
     if (!confirmed) {
       setState(() {
-        _planningIssue =
-            'Die GPU-Einrichtung wurde nicht gestartet. Es wurden keine Systemänderungen vorgenommen.';
+        _planningIssue = tr('engineScreen.error.gpuSetupCancelled');
       });
       return;
     }
@@ -394,8 +404,7 @@ class _EngineScreenState extends State<EngineScreen> {
         ? operation!.errorSummary
         : operation?.error?.isNotEmpty == true
         ? operation!.error!
-        : _controller.error ??
-              'Die GPU-Unterstützung konnte nicht automatisch eingerichtet werden.';
+        : _controller.error ?? tr('engineScreen.error.gpuSupportSetupFailed');
     _controller.clearError();
     setState(() => _planningIssue = message);
   }
@@ -416,8 +425,7 @@ class _EngineScreenState extends State<EngineScreen> {
         ? operation!.errorSummary
         : operation?.error?.isNotEmpty == true
         ? operation!.error!
-        : _controller.error ??
-              'Die Vulkan-GPU-Runtime konnte nicht neu gebaut werden.';
+        : _controller.error ?? tr('engineScreen.error.gpuRuntimeRebuildFailed');
     _controller.clearError();
     setState(() => _planningIssue = message);
   }
@@ -437,9 +445,9 @@ class _EngineScreenState extends State<EngineScreen> {
                 Icons.admin_panel_settings_outlined,
                 color: engineAccent,
               ),
-              title: const Text(
-                'Administratorrechte erlauben?',
-                style: TextStyle(color: Colors.white),
+              title: Text(
+                tr('engineScreen.admin.title'),
+                style: const TextStyle(color: Colors.white),
               ),
               content: SizedBox(
                 width: 560,
@@ -447,33 +455,39 @@ class _EngineScreenState extends State<EngineScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'PhiloEngine möchte die fehlenden Vulkan-Build-Abhängigkeiten installieren und danach eine GPU-Runtime bauen.',
-                      style: TextStyle(color: Colors.white70, height: 1.4),
+                    Text(
+                      tr('engineScreen.admin.intro'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     _adminConsentDetail(
-                      'Systempakete',
+                      tr('engineScreen.admin.systemPackages'),
                       consent.packageName.isEmpty
-                          ? 'Vulkan-Build-Abhängigkeiten'
+                          ? tr('engineScreen.admin.defaultVulkanDependencies')
                           : consent.packageName,
                     ),
                     if (consent.commandSummary.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _adminConsentDetail(
-                        'Geplante Aktion',
+                        tr('engineScreen.admin.plannedAction'),
                         consent.commandSummary,
                       ),
                     ],
                     const SizedBox(height: 14),
-                    const Text(
-                      'Das Betriebssystem öffnet anschließend seinen eigenen Administrator-Dialog. PhiloEngine sieht oder speichert dein Passwort nicht.',
-                      style: TextStyle(color: Colors.white70, height: 1.4),
+                    Text(
+                      tr('engineScreen.admin.systemDialogInfo'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Diese Erlaubnis gilt nur für diesen einen Versuch. Bei jeder späteren Systemänderung wirst du erneut informiert und musst wieder zustimmen.',
-                      style: TextStyle(
+                    Text(
+                      tr('engineScreen.admin.oneTimePermission'),
+                      style: const TextStyle(
                         color: Color(0xFFEBD9A8),
                         fontWeight: FontWeight.w700,
                         height: 1.4,
@@ -496,9 +510,9 @@ class _EngineScreenState extends State<EngineScreen> {
                       value: acknowledged,
                       onChanged: (value) =>
                           setDialogState(() => acknowledged = value ?? false),
-                      title: const Text(
-                        'Ich habe die geplante Systemänderung verstanden.',
-                        style: TextStyle(color: Colors.white),
+                      title: Text(
+                        tr('engineScreen.admin.acknowledgement'),
+                        style: const TextStyle(color: Colors.white),
                       ),
                       controlAffinity: ListTileControlAffinity.leading,
                     ),
@@ -508,7 +522,7 @@ class _EngineScreenState extends State<EngineScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Abbrechen'),
+                  child: Text(tr('engineScreen.action.cancel')),
                 ),
                 FilledButton.icon(
                   key: const Key('engine-open-admin-dialog'),
@@ -516,7 +530,7 @@ class _EngineScreenState extends State<EngineScreen> {
                       ? () => Navigator.of(dialogContext).pop(true)
                       : null,
                   icon: const Icon(Icons.security_outlined),
-                  label: const Text('Systemdialog öffnen'),
+                  label: Text(tr('engineScreen.admin.openSystemDialog')),
                 ),
               ],
             ),
@@ -551,22 +565,19 @@ class _EngineScreenState extends State<EngineScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: enginePanelColor,
-        title: const Text(
-          'Modell löschen?',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          tr('engineScreen.model.deleteTitle'),
+          style: const TextStyle(color: Colors.white),
         ),
         content: Text(
-          '„${model.name}“ wird aus der Liste und vom Speicher entfernt. '
-          'Bei einem eigenen Modellpaket wird der vollständige zugehörige '
-          'Ordner einschließlich Manifesten und Zusatzdateien gelöscht. '
-          'Andere Modelle bleiben erhalten.',
+          tr('engineScreen.model.deleteContent', {'model': model.name}),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             key: const Key('engine-cancel-delete-model'),
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Abbrechen'),
+            child: Text(tr('engineScreen.action.cancel')),
           ),
           FilledButton.icon(
             key: const Key('engine-confirm-delete-model'),
@@ -575,7 +586,7 @@ class _EngineScreenState extends State<EngineScreen> {
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             icon: const Icon(Icons.delete_outline),
-            label: const Text('Endgültig löschen'),
+            label: Text(tr('engineScreen.model.deleteConfirm')),
           ),
         ],
       ),
@@ -585,7 +596,7 @@ class _EngineScreenState extends State<EngineScreen> {
     final ok = await _controller.deleteModel(model.id);
     if (!mounted) return;
     if (ok) {
-      _showMessage('Modell und lokale Dateien wurden gelöscht.');
+      _showMessage(tr('engineScreen.notification.modelDeleted'));
     } else {
       _showError();
     }
@@ -600,7 +611,7 @@ class _EngineScreenState extends State<EngineScreen> {
   Future<void> _createInstance() async {
     final model = _controller.selectedModel;
     if (model == null) {
-      _showMessage('Bitte zuerst ein startbares Modell auswählen.');
+      _showMessage(tr('engineScreen.notification.chooseStartableModel'));
       return;
     }
     final config = _draftConfig();
@@ -620,9 +631,7 @@ class _EngineScreenState extends State<EngineScreen> {
       if (!mounted) return;
     }
     if (ok) {
-      _showMessage(
-        'Instanz wurde eingeplant. Fehlende Runtime-Komponenten werden automatisch installiert.',
-      );
+      _showMessage(tr('engineScreen.notification.instanceScheduled'));
     } else {
       _showError();
     }
@@ -640,7 +649,7 @@ class _EngineScreenState extends State<EngineScreen> {
       builder: (context) => AlertDialog(
         key: const Key('engine-remote-code-consent-dialog'),
         icon: const Icon(Icons.security_outlined, color: Color(0xFFDFC077)),
-        title: const Text('Modellcode ausführen?'),
+        title: Text(tr('engineScreen.remoteCode.title')),
         content: SizedBox(
           width: 520,
           child: Column(
@@ -648,23 +657,25 @@ class _EngineScreenState extends State<EngineScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '„${model.name}“ enthält eigenen Python-Code, den die Runtime zum Laden ausführen möchte.',
+                tr('engineScreen.remoteCode.content', {'model': model.name}),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Der Kindprozess ist keine Sandbox. Schädlicher Modellcode kann auf Dateien und andere Ressourcen deines Benutzerkontos zugreifen.',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              Text(
+                tr('engineScreen.remoteCode.warning'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Die Zustimmung gilt nur für den aktuellen Modellfingerprint und den Hash der Python-Dateien. Ändert sich eine Datei, fragt PhiloEngine erneut.',
-              ),
+              Text(tr('engineScreen.remoteCode.info')),
               if (fileCount != null || pythonHash.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SelectableText(
                   [
-                    if (fileCount != null) 'Python-Dateien: $fileCount',
-                    if (pythonHash.isNotEmpty) 'Hash: $pythonHash',
+                    if (fileCount != null)
+                      tr('engineScreen.remoteCode.pythonFiles', {
+                        'count': fileCount.toString(),
+                      }),
+                    if (pythonHash.isNotEmpty)
+                      tr('engineScreen.remoteCode.hash', {'hash': pythonHash}),
                   ].join('\n'),
                   style: const TextStyle(
                     fontFamily: 'monospace',
@@ -680,12 +691,12 @@ class _EngineScreenState extends State<EngineScreen> {
           TextButton(
             key: const Key('engine-remote-code-reject'),
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
+            child: Text(tr('engineScreen.action.cancel')),
           ),
           FilledButton(
             key: const Key('engine-remote-code-accept'),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Zustimmen & starten'),
+            child: Text(tr('engineScreen.remoteCode.accept')),
           ),
         ],
       ),
@@ -697,9 +708,7 @@ class _EngineScreenState extends State<EngineScreen> {
     final ok = await _controller.refreshAll();
     if (!mounted) return;
     _showMessage(
-      ok
-          ? 'Meine Modelle, Speicher und lokale Modelle sind aktuell.'
-          : _controller.error,
+      ok ? tr('engineScreen.notification.refreshed') : _controller.error,
     );
   }
 
@@ -711,7 +720,11 @@ class _EngineScreenState extends State<EngineScreen> {
     final ok = await _controller.updateInstance(instance.id, changes);
     if (!mounted) return;
     _showMessage(
-      ok ? 'Instanzaktion „$action” wurde eingeplant.' : _controller.error,
+      ok
+          ? tr('engineScreen.notification.instanceActionScheduled', {
+              'action': action,
+            })
+          : _controller.error,
     );
   }
 
@@ -730,7 +743,7 @@ class _EngineScreenState extends State<EngineScreen> {
         if (!mounted) return;
         _showMessage(
           ok
-              ? 'Die automatische Korrektur wurde gestartet.'
+              ? tr('engineScreen.notification.autoFixStarted')
               : _controller.error,
         );
       case 'retry_with_ram':
@@ -740,24 +753,24 @@ class _EngineScreenState extends State<EngineScreen> {
           builder: (dialogContext) => AlertDialog(
             backgroundColor: enginePanelColor,
             icon: const Icon(Icons.memory_outlined, color: engineAccent),
-            title: const Text(
-              'System-RAM dazunehmen?',
-              style: TextStyle(color: Colors.white),
+            title: Text(
+              tr('engineScreen.memory.addSystemRam'),
+              style: const TextStyle(color: Colors.white),
             ),
-            content: const Text(
-              'Der freie Grafikspeicher hat sich während der Vorbereitung geändert. Die Engine kann den Plan erneut mit dem aktuell freien System-RAM berechnen.',
-              style: TextStyle(color: Colors.white70, height: 1.4),
+            content: Text(
+              tr('engineScreen.memory.retryRamContent'),
+              style: const TextStyle(color: Colors.white70, height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Abbrechen'),
+                child: Text(tr('engineScreen.action.cancel')),
               ),
               FilledButton.icon(
                 key: const Key('engine-confirm-retry-with-ram'),
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 icon: const Icon(Icons.check),
-                label: const Text('Mit RAM neu berechnen'),
+                label: Text(tr('engineScreen.memory.recalculateWithRam')),
               ),
             ],
           ),
@@ -769,7 +782,9 @@ class _EngineScreenState extends State<EngineScreen> {
         });
         if (!mounted) return;
         _showMessage(
-          ok ? 'GPU und System-RAM werden neu berechnet.' : _controller.error,
+          ok
+              ? tr('engineScreen.notification.gpuRamRecalculated')
+              : _controller.error,
         );
       case 'rescan_models':
       case 'check_model_files':
@@ -795,7 +810,9 @@ class _EngineScreenState extends State<EngineScreen> {
           final ok = await _controller.retryRuntime(failedRuntime.id);
           if (!mounted) return;
           _showMessage(
-            ok ? 'Die Runtime wird neu vorbereitet.' : _controller.error,
+            ok
+                ? tr('engineScreen.notification.runtimePreparing')
+                : _controller.error,
           );
         } else {
           await _instanceAction(instance, 'start');
@@ -809,18 +826,22 @@ class _EngineScreenState extends State<EngineScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Instanz entfernen?'),
+        title: Text(tr('engineScreen.instance.removeTitle')),
         content: Text(
-          '„${instance.servedModelName.isEmpty ? instance.id : instance.servedModelName}“ wird gestoppt und aus der Engine entfernt.',
+          tr('engineScreen.instance.removeContent', {
+            'instance': instance.servedModelName.isEmpty
+                ? instance.id
+                : instance.servedModelName,
+          }),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
+            child: Text(tr('engineScreen.action.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Entfernen'),
+            child: Text(tr('engineScreen.action.remove')),
           ),
         ],
       ),
@@ -828,7 +849,9 @@ class _EngineScreenState extends State<EngineScreen> {
     if (confirmed != true || !mounted) return;
     final ok = await _controller.deleteInstance(instance.id);
     if (!mounted) return;
-    _showMessage(ok ? 'Instanz wurde entfernt.' : _controller.error);
+    _showMessage(
+      ok ? tr('engineScreen.notification.instanceRemoved') : _controller.error,
+    );
   }
 
   Future<void> _editContext(EngineInstance instance) async {
@@ -857,9 +880,9 @@ class _EngineScreenState extends State<EngineScreen> {
           key: const Key('engine-context-dialog'),
           backgroundColor: enginePanelColor,
           icon: const Icon(Icons.memory_outlined, color: engineAccent),
-          title: const Text(
-            'Kontext festlegen',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('engineScreen.context.title'),
+            style: const TextStyle(color: Colors.white),
           ),
           content: SizedBox(
             width: 500,
@@ -868,14 +891,16 @@ class _EngineScreenState extends State<EngineScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${formatTokenCount(current)} Token sind aktiv und durch einen echten Modellstart geprüft. '
-                  '${formatTokenCount(estimatedMaximum)} sind das rechnerische GPU+RAM-Maximum, aber noch keine Stabilitätsgarantie.',
+                  tr('engineScreen.context.summary', {
+                    'current': formatTokenCount(current),
+                    'maximum': formatTokenCount(estimatedMaximum),
+                  }),
                   style: const TextStyle(color: Colors.white70, height: 1.4),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  'Ein höherer Wert startet das Modell neu. Falls er nicht stabil ist, sucht die Engine automatisch zwischen dem letzten bestätigten Wert und der fehlgeschlagenen Obergrenze weiter. Das kann mehrere Modellstarts dauern.',
-                  style: TextStyle(color: Color(0xFFEBD9A8), height: 1.4),
+                Text(
+                  tr('engineScreen.context.help'),
+                  style: const TextStyle(color: Color(0xFFEBD9A8), height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -888,7 +913,11 @@ class _EngineScreenState extends State<EngineScreen> {
                         valueController.text = current.toString();
                         validationError = null;
                       }),
-                      child: Text('Geprüft ${formatTokenCount(current)}'),
+                      child: Text(
+                        tr('engineScreen.context.checked', {
+                          'tokens': formatTokenCount(current),
+                        }),
+                      ),
                     ),
                     OutlinedButton(
                       key: const Key('engine-context-use-estimated-max'),
@@ -897,7 +926,9 @@ class _EngineScreenState extends State<EngineScreen> {
                         validationError = null;
                       }),
                       child: Text(
-                        'Schätzung ${formatTokenCount(estimatedMaximum)} testen',
+                        tr('engineScreen.context.testEstimate', {
+                          'tokens': formatTokenCount(estimatedMaximum),
+                        }),
                       ),
                     ),
                   ],
@@ -913,8 +944,11 @@ class _EngineScreenState extends State<EngineScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Kontext-Token',
-                    helperText: 'Wählbar: $minimum bis $estimatedMaximum Token',
+                    labelText: tr('engineScreen.context.tokensLabel'),
+                    helperText: tr('engineScreen.context.rangeHelper', {
+                      'minimum': minimum.toString(),
+                      'maximum': estimatedMaximum.toString(),
+                    }),
                     errorText: validationError,
                   ),
                 ),
@@ -924,7 +958,7 @@ class _EngineScreenState extends State<EngineScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Abbrechen'),
+              child: Text(tr('engineScreen.action.cancel')),
             ),
             FilledButton.icon(
               key: const Key('engine-context-confirm'),
@@ -939,14 +973,17 @@ class _EngineScreenState extends State<EngineScreen> {
                     value > estimatedMaximum) {
                   setDialogState(
                     () => validationError =
-                        'Bitte einen Wert zwischen $minimum und $estimatedMaximum eingeben.',
+                        tr('engineScreen.context.invalidValue', {
+                          'minimum': minimum.toString(),
+                          'maximum': estimatedMaximum.toString(),
+                        }),
                   );
                   return;
                 }
                 Navigator.of(dialogContext).pop(value);
               },
               icon: const Icon(Icons.restart_alt),
-              label: const Text('Neu starten & prüfen'),
+              label: Text(tr('engineScreen.context.restartAndCheck')),
             ),
           ],
         ),
@@ -955,7 +992,7 @@ class _EngineScreenState extends State<EngineScreen> {
     valueController.dispose();
     if (selected == null || !mounted) return;
     if (selected == current) {
-      _showMessage('Der bereits geprüfte Kontext bleibt unverändert.');
+      _showMessage(tr('engineScreen.notification.contextUnchanged'));
       return;
     }
 
@@ -986,8 +1023,8 @@ class _EngineScreenState extends State<EngineScreen> {
     _showMessage(
       ok
           ? selected > current
-                ? 'Der höhere Kontext wird jetzt gestartet und auf Stabilität geprüft.'
-                : 'Der Kontext wird mit einem sicheren Neustart geändert.'
+                ? tr('engineScreen.notification.contextIncrease')
+                : tr('engineScreen.notification.contextRestart')
           : _controller.error,
     );
   }
@@ -1006,7 +1043,7 @@ class _EngineScreenState extends State<EngineScreen> {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sampling-Defaults'),
+        title: Text(tr('engineScreen.sampling.title')),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -1017,7 +1054,9 @@ class _EngineScreenState extends State<EngineScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(labelText: 'Temperature'),
+                decoration: InputDecoration(
+                  labelText: tr('engineScreen.sampling.temperature'),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -1025,14 +1064,16 @@ class _EngineScreenState extends State<EngineScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(labelText: 'Top P'),
+                decoration: InputDecoration(
+                  labelText: tr('engineScreen.sampling.topP'),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: maxTokens,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Maximale Ausgabe-Token',
+                decoration: InputDecoration(
+                  labelText: tr('engineScreen.sampling.maxOutputTokens'),
                 ),
               ),
             ],
@@ -1041,7 +1082,7 @@ class _EngineScreenState extends State<EngineScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen'),
+            child: Text(tr('engineScreen.action.cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, {
@@ -1049,7 +1090,7 @@ class _EngineScreenState extends State<EngineScreen> {
               'top_p': double.tryParse(topP.text) ?? 0.95,
               'max_tokens': int.tryParse(maxTokens.text) ?? 1024,
             }),
-            child: const Text('Live anwenden'),
+            child: Text(tr('engineScreen.sampling.applyLive')),
           ),
         ],
       ),
@@ -1062,15 +1103,15 @@ class _EngineScreenState extends State<EngineScreen> {
       'generation_defaults': result,
     });
     if (!mounted) return;
-    _showMessage(ok ? 'Sampling-Defaults aktualisiert.' : _controller.error);
+    _showMessage(
+      ok ? tr('engineScreen.notification.samplingUpdated') : _controller.error,
+    );
   }
 
   void _showError() {
     final failure = _controller.requestFailure;
     if (failure?.code == 'resource_conflict') {
-      _showMessage(
-        'Dieses Modell passt mit dem aktuell freien RAM- und Grafikspeicher nicht in den Speicher. Wähle ein kleineres oder quantisiertes Modell – oder stoppe zuerst andere lokale Modelle.',
-      );
+      _showMessage(tr('engineScreen.error.resourceConflict'));
       return;
     }
     _showMessage(_controller.error);
@@ -1161,13 +1202,13 @@ class _EngineScreenState extends State<EngineScreen> {
         key: const Key('engine-mobile-telemetry-handle'),
         onTap: _openTelemetry,
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
           child: RotatedBox(
             quarterTurns: 3,
             child: Text(
-              'SYSTEM',
-              style: TextStyle(
+              tr('engineScreen.system.tab'),
+              style: const TextStyle(
                 color: Color(0xFFEBD9A8),
                 fontWeight: FontWeight.w800,
                 fontSize: 10,
@@ -1217,7 +1258,7 @@ class _EngineScreenState extends State<EngineScreen> {
           }
           if (_showTelemetryPanel) return const SizedBox.expand();
           return Tooltip(
-            message: 'Systemmonitor öffnen',
+            message: tr('engineScreen.system.openMonitor'),
             child: Material(
               color: const Color(0xFF16161D),
               borderRadius: BorderRadius.circular(14),
@@ -1225,12 +1266,12 @@ class _EngineScreenState extends State<EngineScreen> {
                 key: const Key('engine-telemetry-open-rail'),
                 borderRadius: BorderRadius.circular(14),
                 onTap: _openTelemetry,
-                child: const Center(
+                child: Center(
                   child: RotatedBox(
                     quarterTurns: 3,
                     child: Text(
-                      'SYSTEMMONITOR',
-                      style: TextStyle(
+                      tr('engineScreen.system.monitor'),
+                      style: const TextStyle(
                         color: Color(0xFFEBD9A8),
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -1292,13 +1333,13 @@ class _EngineScreenState extends State<EngineScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Systemmonitor',
-                        style: TextStyle(
+                        tr('engineScreen.telemetry.title'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -1306,15 +1347,18 @@ class _EngineScreenState extends State<EngineScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Live-Daten der lokalen Engine',
-                        style: TextStyle(color: Colors.white38, fontSize: 11),
+                        tr('engineScreen.telemetry.subtitle'),
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   key: const Key('engine-telemetry-close'),
-                  tooltip: 'Systemmonitor schließen',
+                  tooltip: tr('engineScreen.telemetry.closeMonitor'),
                   onPressed: onClose,
                   icon: const Icon(Icons.chevron_right_rounded),
                   color: Colors.white60,
@@ -1327,26 +1371,30 @@ class _EngineScreenState extends State<EngineScreen> {
             child: ListView(
               padding: const EdgeInsets.all(14),
               children: [
-                const TelemetryLabel(
+                TelemetryLabel(
                   icon: Icons.speed_rounded,
-                  label: 'HARDWARE-AUSLASTUNG',
+                  label: tr('engineScreen.telemetry.hardwareUtilization'),
                 ),
                 const SizedBox(height: 10),
                 if (hardware == null)
-                  const TelemetryEmpty(
+                  TelemetryEmpty(
                     icon: Icons.memory_outlined,
-                    text: 'Hardwaredaten werden geladen …',
+                    text: tr('engineScreen.telemetry.hardwareLoading'),
                   )
                 else ...[
                   EngineUsageGauge(
                     icon: Icons.memory_rounded,
-                    label: 'Arbeitsspeicher',
+                    label: tr('engineScreen.telemetry.memory'),
                     value: _percentUsed(
                       hardware.ramTotalBytes,
                       hardware.ramAvailableBytes,
                     ),
-                    detail:
-                        '${formatBytes(hardware.ramTotalBytes - hardware.ramAvailableBytes)} von ${formatBytes(hardware.ramTotalBytes)} belegt',
+                    detail: tr('engineScreen.telemetry.memoryUsed', {
+                      'used': formatBytes(
+                        hardware.ramTotalBytes - hardware.ramAvailableBytes,
+                      ),
+                      'total': formatBytes(hardware.ramTotalBytes),
+                    }),
                     fraction: _usedFraction(
                       hardware.ramTotalBytes,
                       hardware.ramAvailableBytes,
@@ -1362,8 +1410,12 @@ class _EngineScreenState extends State<EngineScreen> {
                         gpu.vramTotalBytes,
                         gpu.vramFreeBytes,
                       ),
-                      detail:
-                          '${formatBytes(gpu.vramTotalBytes - gpu.vramFreeBytes)} von ${formatBytes(gpu.vramTotalBytes)} belegt',
+                      detail: tr('engineScreen.telemetry.memoryUsed', {
+                        'used': formatBytes(
+                          gpu.vramTotalBytes - gpu.vramFreeBytes,
+                        ),
+                        'total': formatBytes(gpu.vramTotalBytes),
+                      }),
                       fraction: _usedFraction(
                         gpu.vramTotalBytes,
                         gpu.vramFreeBytes,
@@ -1375,20 +1427,20 @@ class _EngineScreenState extends State<EngineScreen> {
                 const SizedBox(height: 22),
                 TelemetryLabel(
                   icon: Icons.bolt_rounded,
-                  label: 'LAUFENDER MODELLSTART',
+                  label: tr('engineScreen.telemetry.currentModelStart'),
                   trailing: operation == null && current == null
-                      ? const Text(
-                          'RUHIG',
-                          style: TextStyle(
+                      ? Text(
+                          tr('engineScreen.telemetry.quiet'),
+                          style: const TextStyle(
                             color: Color(0xFF81C784),
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.8,
                           ),
                         )
-                      : const Text(
-                          'AKTIV',
-                          style: TextStyle(
+                      : Text(
+                          tr('engineScreen.telemetry.active'),
+                          style: const TextStyle(
                             color: Color(0xFFEBD9A8),
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
@@ -1400,16 +1452,18 @@ class _EngineScreenState extends State<EngineScreen> {
                 if (operation != null || current != null)
                   _buildCurrentProgress(operation, current)
                 else
-                  const TelemetryEmpty(
+                  TelemetryEmpty(
                     icon: Icons.check_circle_outline,
-                    text: 'Kein Startvorgang aktiv. Die Engine ist bereit.',
+                    text: tr('engineScreen.telemetry.noStartActive'),
                   ),
                 const SizedBox(height: 22),
                 TelemetryLabel(
                   icon: Icons.hub_outlined,
-                  label: 'LIVE-MODELLE',
+                  label: tr('engineScreen.telemetry.liveModels'),
                   trailing: Text(
-                    '${running.length} ONLINE',
+                    tr('engineScreen.telemetry.online', {
+                      'count': running.length.toString(),
+                    }),
                     style: const TextStyle(
                       color: engineAccent,
                       fontSize: 10,
@@ -1420,21 +1474,21 @@ class _EngineScreenState extends State<EngineScreen> {
                 ),
                 const SizedBox(height: 10),
                 if (running.isEmpty)
-                  const TelemetryEmpty(
+                  TelemetryEmpty(
                     icon: Icons.power_settings_new_rounded,
-                    text: 'Zurzeit läuft kein Modell.',
+                    text: tr('engineScreen.telemetry.noModelRunning'),
                   )
                 else
                   ...running.map(_buildLiveModelTile),
                 const SizedBox(height: 22),
                 TelemetryLabel(
                   icon: Icons.settings_suggest_outlined,
-                  label: 'TECHNISCHE KOMPONENTEN',
+                  label: tr('engineScreen.telemetry.technicalComponents'),
                   trailing: IconButton(
                     key: const Key('engine-system-details-toggle'),
                     onPressed: () =>
                         setState(() => _showSetupDetails = !_showSetupDetails),
-                    tooltip: 'Technische Komponenten',
+                    tooltip: tr('engineScreen.telemetry.componentsTooltip'),
                     icon: Icon(
                       _showSetupDetails
                           ? Icons.keyboard_arrow_up_rounded
@@ -1466,7 +1520,7 @@ class _EngineScreenState extends State<EngineScreen> {
     final progress = operation?.progress ?? instance?.progress ?? 0.0;
     final name = instance?.servedModelName.isNotEmpty == true
         ? instance!.servedModelName
-        : instance?.id ?? 'Engine-Vorgang';
+        : instance?.id ?? tr('engineScreen.operation.defaultName');
     final detail = operation != null
         ? _friendlyOperationMessage(operation)
         : instanceStageDescription(instance!);
@@ -1511,8 +1565,10 @@ class _EngineScreenState extends State<EngineScreen> {
           const SizedBox(height: 7),
           Text(
             progress > 0
-                ? '${(progress * 100).round()} % abgeschlossen'
-                : 'Wartet auf Fortschrittsdaten …',
+                ? tr('engineScreen.progress.complete', {
+                    'percent': (progress * 100).round().toString(),
+                  })
+                : tr('engineScreen.progress.waiting'),
             style: const TextStyle(color: Color(0xFFEBD9A8), fontSize: 11),
           ),
         ],
@@ -1549,7 +1605,7 @@ class _EngineScreenState extends State<EngineScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Instanz ${instance.id}',
+                    tr('engineScreen.instance.label', {'id': instance.id}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1560,7 +1616,7 @@ class _EngineScreenState extends State<EngineScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${runtimeLabel(instance.effectiveConfig.runtime)} · ${contextTokens == null ? 'Auto-Kontext' : '${formatTokenCount(contextTokens)} Token'}',
+                    '${runtimeLabel(instance.effectiveConfig.runtime)} · ${contextTokens == null ? tr('engineScreen.context.auto') : tr('engineScreen.context.tokenCount', {'tokens': formatTokenCount(contextTokens)})}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white38, fontSize: 10),
@@ -1618,7 +1674,7 @@ class _EngineScreenState extends State<EngineScreen> {
                     child: Text(
                       installingRuntime.statusMessage.isNotEmpty
                           ? installingRuntime.statusMessage
-                          : 'Eine Laufzeitumgebung wird im Hintergrund vorbereitet.',
+                          : tr('engineScreen.runtime.backgroundPreparing'),
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                   ),
@@ -1635,8 +1691,12 @@ class _EngineScreenState extends State<EngineScreen> {
               const SizedBox(height: 6),
               Text(
                 installingRuntime.progress > 0
-                    ? '${(installingRuntime.progress * 100).round()} % abgeschlossen'
-                    : 'Vorbereitung läuft …',
+                    ? tr('engineScreen.progress.complete', {
+                        'percent': (installingRuntime.progress * 100)
+                            .round()
+                            .toString(),
+                      })
+                    : tr('engineScreen.progress.preparing'),
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
@@ -1697,7 +1757,7 @@ class _EngineScreenState extends State<EngineScreen> {
                     ? null
                     : () => _controller.retryRuntime(failedRuntime.id),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Einrichtung erneut versuchen'),
+                label: Text(tr('engineScreen.runtime.retrySetup')),
               ),
             ),
           ],
@@ -1717,14 +1777,16 @@ class _EngineScreenState extends State<EngineScreen> {
         WorkspaceTab(
           key: const Key('engine-workspace-start'),
           icon: Icons.play_circle_outline_rounded,
-          label: 'Modell starten',
+          label: tr('engineScreen.workspace.startModel'),
           selected: _workspace == 0,
           onTap: () => setState(() => _workspace = 0),
         ),
         WorkspaceTab(
           key: const Key('engine-workspace-instances'),
           icon: Icons.inventory_2_outlined,
-          label: 'Meine Modelle · $instanceCount',
+          label: tr('engineScreen.workspace.myModels', {
+            'count': instanceCount.toString(),
+          }),
           selected: _workspace == 1,
           onTap: () => setState(() => _workspace = 1),
         ),
@@ -1737,17 +1799,17 @@ class _EngineScreenState extends State<EngineScreen> {
     final hasModel = model != null;
     final hasPlan = _controller.recommendation != null;
     final title = switch (_wizardStep) {
-      0 => 'Modell auswählen',
-      1 => 'Start konfigurieren',
-      _ => 'Modell starten',
+      0 => tr('engineScreen.wizard.selectModel'),
+      1 => tr('engineScreen.wizard.configureStart'),
+      _ => tr('engineScreen.wizard.startModel'),
     };
     final subtitle = switch (_wizardStep) {
-      0 => 'Wähle ein lokales Modell für deine nächste Instanz.',
+      0 => tr('engineScreen.wizard.selectModelSubtitle'),
       1 =>
         _expertMode
-            ? 'Prüfe die Experteneinstellungen für dieses Modell.'
-            : 'Die Engine plant Speicher und Kontext automatisch.',
-      _ => 'Die Engine richtet benötigte Komponenten selbstständig ein.',
+            ? tr('engineScreen.wizard.expertSubtitle')
+            : tr('engineScreen.wizard.autoSubtitle'),
+      _ => tr('engineScreen.wizard.startSubtitle'),
     };
     final content = switch (_wizardStep) {
       0 => _wizardModelStep(),
@@ -1762,7 +1824,7 @@ class _EngineScreenState extends State<EngineScreen> {
           children: [
             wizardStepNav(
               0,
-              'Modell',
+              tr('engineScreen.wizard.model'),
               enabled: true,
               done: hasModel,
               currentStep: _wizardStep,
@@ -1771,7 +1833,7 @@ class _EngineScreenState extends State<EngineScreen> {
             wizardStepDivider(),
             wizardStepNav(
               1,
-              'Konfigurieren',
+              tr('engineScreen.wizard.configure'),
               enabled: hasModel,
               currentStep: _wizardStep,
               onSelect: (s) => setState(() => _wizardStep = s),
@@ -1779,7 +1841,7 @@ class _EngineScreenState extends State<EngineScreen> {
             wizardStepDivider(),
             wizardStepNav(
               2,
-              'Starten',
+              tr('engineScreen.wizard.start'),
               enabled: hasModel && hasPlan,
               currentStep: _wizardStep,
               onSelect: (s) => setState(() => _wizardStep = s),
@@ -1799,7 +1861,9 @@ class _EngineScreenState extends State<EngineScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'SCHRITT ${_wizardStep + 1} / 3',
+                tr('engineScreen.wizard.step', {
+                  'step': (_wizardStep + 1).toString(),
+                }),
                 style: const TextStyle(
                   color: Color(0xFFEBD9A8),
                   fontSize: 10,
@@ -1837,16 +1901,16 @@ class _EngineScreenState extends State<EngineScreen> {
   Widget _wizardModelStep() {
     final models = _controller.models;
     if (models.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 28),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28),
         child: Column(
           children: [
             Icon(Icons.folder_off_outlined, color: Colors.white30),
             SizedBox(height: 12),
             Text(
-              'Keine lokalen Modelle gefunden.\nLade ein Modell im Marktplatz herunter und aktualisiere oben rechts.',
+              tr('engineScreen.wizard.noLocalModels'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white38, fontSize: 12),
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
         ),
@@ -1879,14 +1943,14 @@ class _EngineScreenState extends State<EngineScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_controller.isLoadingRecommendation)
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               LinearProgressIndicator(minHeight: 3),
               SizedBox(height: 9),
               Text(
-                'Freien Grafikspeicher und Modellbedarf werden berechnet …',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                tr('engineScreen.wizard.calculating'),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           )
@@ -1916,8 +1980,8 @@ class _EngineScreenState extends State<EngineScreen> {
                   Expanded(
                     child: Text(
                       _forceCpuRuntime
-                          ? 'CPU-Modus aktiv: Die Engine verwendet den ausdrücklich bestätigten System-RAM.'
-                          : 'Hybridmodus aktiv: Die Engine verwendet GPU und den bestätigten System-RAM-Anteil.',
+                          ? tr('engineScreen.wizard.cpuMode')
+                          : tr('engineScreen.wizard.hybridMode'),
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -1944,13 +2008,13 @@ class _EngineScreenState extends State<EngineScreen> {
         const SizedBox(height: 18),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Expertenmodus',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('engineScreen.expert.title'),
+            style: const TextStyle(color: Colors.white),
           ),
-          subtitle: const Text(
-            'Kontext, Runtime, Geräte und Speicher manuell steuern',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          subtitle: Text(
+            tr('engineScreen.expert.subtitle'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: _expertMode,
           onChanged: (value) => setState(() => _expertMode = value),
@@ -1969,7 +2033,7 @@ class _EngineScreenState extends State<EngineScreen> {
                   ? null
                   : _refreshRecommendation,
               icon: const Icon(Icons.calculate_outlined),
-              label: const Text('Plan neu berechnen'),
+              label: Text(tr('engineScreen.expert.recalculatePlan')),
             ),
           ),
         ],
@@ -1990,7 +2054,7 @@ class _EngineScreenState extends State<EngineScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.calculate_outlined, size: 18),
-            label: const Text('Automatisch berechnen und weiter'),
+            label: Text(tr('engineScreen.wizard.calculateContinue')),
           ),
         ),
       ],
@@ -2008,8 +2072,8 @@ class _EngineScreenState extends State<EngineScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!_expertMode)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 14),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
             child: Row(
               children: [
                 Icon(
@@ -2020,8 +2084,8 @@ class _EngineScreenState extends State<EngineScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Auto-Modus aktiv: Die Engine berechnet den Kontext passend zum Speicher, bereitet alle Komponenten vor und behebt Startprobleme selbstständig.',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    tr('engineScreen.wizard.autoMode'),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                 ),
               ],
@@ -2063,8 +2127,10 @@ class _EngineScreenState extends State<EngineScreen> {
           const SizedBox(height: 6),
           Text(
             operation.progress > 0
-                ? '${(operation.progress * 100).round()} % abgeschlossen'
-                : 'Vorbereitung läuft …',
+                ? tr('engineScreen.progress.complete', {
+                    'percent': (operation.progress * 100).round().toString(),
+                  })
+                : tr('engineScreen.progress.preparing'),
             style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -2122,7 +2188,7 @@ class _EngineScreenState extends State<EngineScreen> {
                 key: const Key('engine-instance-retry'),
                 onPressed: () => _instanceAction(failedInstance, 'start'),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Erneut versuchen'),
+                label: Text(tr('engineScreen.action.retry')),
               ),
             ),
           ],
@@ -2142,7 +2208,7 @@ class _EngineScreenState extends State<EngineScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.play_arrow_rounded),
-              label: const Text('Modell starten'),
+              label: Text(tr('engineScreen.wizard.startModel')),
             ),
           ),
         ),
@@ -2190,7 +2256,7 @@ class _EngineScreenState extends State<EngineScreen> {
       key: const Key('engine-header'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Row(
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             HeaderMark(),
@@ -2200,8 +2266,8 @@ class _EngineScreenState extends State<EngineScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Modell-Studio',
-                    style: TextStyle(
+                    tr('engineScreen.header.title'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -2210,8 +2276,8 @@ class _EngineScreenState extends State<EngineScreen> {
                   ),
                   SizedBox(height: 5),
                   Text(
-                    'Lokale Modelle einrichten, starten und verwalten.',
-                    style: TextStyle(
+                    tr('engineScreen.header.subtitle'),
+                    style: const TextStyle(
                       color: Colors.white60,
                       fontSize: 13,
                       height: 1.35,
@@ -2264,7 +2330,7 @@ class _EngineScreenState extends State<EngineScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'Meldung schließen',
+            tooltip: tr('engineScreen.error.dismiss'),
             onPressed: _controller.clearError,
             icon: const Icon(Icons.close, color: Colors.white60),
           ),
@@ -2328,8 +2394,20 @@ class _EngineScreenState extends State<EngineScreen> {
                       const SizedBox(height: 5),
                       Text(
                         _expertMode
-                            ? '${model.format.toUpperCase()} · ${model.quantization} · ${formatBytes(model.sizeBytes)} · ${formatTokenCount(model.modelContextLimitTokens)} Token'
-                            : '${formatBytes(model.sizeBytes)} · bis zu ${formatTokenCount(model.modelContextLimitTokens)} Token Kontext',
+                            ? tr('engineScreen.model.expertSummary', {
+                                'format': model.format.toUpperCase(),
+                                'quantization': model.quantization,
+                                'size': formatBytes(model.sizeBytes),
+                                'tokens': formatTokenCount(
+                                  model.modelContextLimitTokens,
+                                ),
+                              })
+                            : tr('engineScreen.model.summary', {
+                                'size': formatBytes(model.sizeBytes),
+                                'tokens': formatTokenCount(
+                                  model.modelContextLimitTokens,
+                                ),
+                              }),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -2355,7 +2433,7 @@ class _EngineScreenState extends State<EngineScreen> {
                 const SizedBox(width: 7),
                 IconButton(
                   key: Key('engine-delete-model-${model.id}'),
-                  tooltip: 'Modell und lokale Dateien löschen',
+                  tooltip: tr('engineScreen.model.deleteTooltip'),
                   onPressed: deleting ? null : () => _deleteModel(model),
                   icon: deleting
                       ? const SizedBox(
@@ -2388,15 +2466,18 @@ class _EngineScreenState extends State<EngineScreen> {
           initialValue: _contextMode,
           dropdownColor: enginePanelColor,
           decoration: _inputDecoration(
-            'Kontextplanung',
-            'Neustart erforderlich',
+            tr('engineScreen.field.contextPlanning'),
+            tr('engineScreen.field.restartRequired'),
           ),
-          items: const [
+          items: [
             DropdownMenuItem(
               value: 'auto_max',
-              child: Text('Automatisch maximal'),
+              child: Text(tr('engineScreen.field.autoMaximum')),
             ),
-            DropdownMenuItem(value: 'fixed', child: Text('Fester Kontext')),
+            DropdownMenuItem(
+              value: 'fixed',
+              child: Text(tr('engineScreen.field.fixedContext')),
+            ),
           ],
           onChanged: (value) {
             if (value == null) return;
@@ -2409,8 +2490,10 @@ class _EngineScreenState extends State<EngineScreen> {
           keyboardType: TextInputType.number,
           style: const TextStyle(color: Colors.white),
           decoration: _inputDecoration(
-            'Maximaler Kontext',
-            _contextMode == 'fixed' ? 'Token' : 'Wird automatisch berechnet',
+            tr('engineScreen.field.maximumContext'),
+            _contextMode == 'fixed'
+                ? tr('engineScreen.field.token')
+                : tr('engineScreen.field.autoCalculated'),
           ),
         );
         if (constraints.maxWidth < 520) {
@@ -2446,14 +2529,16 @@ class _EngineScreenState extends State<EngineScreen> {
             initialValue: _runtime,
             dropdownColor: enginePanelColor,
             decoration: _inputDecoration(
-              'Runtime',
-              'Auto wählt den besten Adapter',
+              tr('engineScreen.field.runtime'),
+              tr('engineScreen.field.autoSelectsAdapter'),
             ),
             items: runtimeIds
                 .map(
                   (id) => DropdownMenuItem(
                     value: id,
-                    child: Text(id == 'auto' ? 'Automatisch' : id),
+                    child: Text(
+                      id == 'auto' ? tr('engineScreen.field.automatic') : id,
+                    ),
                   ),
                 )
                 .toList(),
@@ -2464,34 +2549,54 @@ class _EngineScreenState extends State<EngineScreen> {
             initialValue: _priority,
             dropdownColor: enginePanelColor,
             decoration: _inputDecoration(
-              'Priorität',
-              'Pinned wird nie automatisch verkleinert',
+              tr('engineScreen.field.priority'),
+              tr('engineScreen.field.pinnedHelp'),
             ),
-            items: const [
-              DropdownMenuItem(value: 'low', child: Text('Niedrig')),
-              DropdownMenuItem(value: 'normal', child: Text('Normal')),
-              DropdownMenuItem(value: 'high', child: Text('Hoch')),
-              DropdownMenuItem(value: 'pinned', child: Text('Pinned')),
+            items: [
+              DropdownMenuItem(
+                value: 'low',
+                child: Text(tr('engineScreen.field.low')),
+              ),
+              DropdownMenuItem(
+                value: 'normal',
+                child: Text(tr('engineScreen.field.normal')),
+              ),
+              DropdownMenuItem(
+                value: 'high',
+                child: Text(tr('engineScreen.field.high')),
+              ),
+              DropdownMenuItem(
+                value: 'pinned',
+                child: Text(tr('engineScreen.field.pinned')),
+              ),
             ],
             onChanged: (value) => setState(() => _priority = value ?? 'normal'),
           ),
         ),
         const SizedBox(height: 12),
         _responsiveFieldPair(
-          _numberField(_gpuLayersController, 'GPU-Layer', 'Leer = Auto'),
-          _numberField(_threadsController, 'CPU-Threads', 'Leer = Auto'),
+          _numberField(
+            _gpuLayersController,
+            tr('engineScreen.field.gpuLayers'),
+            tr('engineScreen.field.emptyAuto'),
+          ),
+          _numberField(
+            _threadsController,
+            tr('engineScreen.field.cpuThreads'),
+            tr('engineScreen.field.emptyAuto'),
+          ),
         ),
         const SizedBox(height: 12),
         _responsiveFieldPair(
           _numberField(
             _tensorParallelController,
-            'Tensor Parallelism',
-            'Anzahl GPUs',
+            tr('engineScreen.field.tensorParallelism'),
+            tr('engineScreen.field.gpuCount'),
           ),
           _numberField(
             _maxSequencesController,
-            'Parallele Sequenzen',
-            'Mindestens 1',
+            tr('engineScreen.field.parallelSequences'),
+            tr('engineScreen.field.minimumOne'),
           ),
         ),
         const SizedBox(height: 12),
@@ -2499,8 +2604,8 @@ class _EngineScreenState extends State<EngineScreen> {
           controller: _gpuIdsController,
           style: const TextStyle(color: Colors.white),
           decoration: _inputDecoration(
-            'GPU-IDs',
-            'Kommagetrennt; leer = Scheduler entscheidet',
+            tr('engineScreen.field.gpuIds'),
+            tr('engineScreen.field.gpuIdsHelp'),
           ),
         ),
         const SizedBox(height: 12),
@@ -2509,11 +2614,23 @@ class _EngineScreenState extends State<EngineScreen> {
             isExpanded: true,
             initialValue: _offload,
             dropdownColor: enginePanelColor,
-            decoration: _inputDecoration('Offload', 'Neustart erforderlich'),
-            items: const [
-              DropdownMenuItem(value: 'auto', child: Text('Automatisch')),
-              DropdownMenuItem(value: 'gpu', child: Text('GPU bevorzugen')),
-              DropdownMenuItem(value: 'cpu', child: Text('RAM/CPU bevorzugen')),
+            decoration: _inputDecoration(
+              tr('engineScreen.field.offload'),
+              tr('engineScreen.field.restartRequired'),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'auto',
+                child: Text(tr('engineScreen.field.automatic')),
+              ),
+              DropdownMenuItem(
+                value: 'gpu',
+                child: Text(tr('engineScreen.field.preferGpu')),
+              ),
+              DropdownMenuItem(
+                value: 'cpu',
+                child: Text(tr('engineScreen.field.preferRamCpu')),
+              ),
             ],
             onChanged: (value) => setState(() => _offload = value ?? 'auto'),
           ),
@@ -2522,13 +2639,13 @@ class _EngineScreenState extends State<EngineScreen> {
             initialValue: _kvCacheDtype,
             dropdownColor: enginePanelColor,
             decoration: _inputDecoration(
-              'KV-Cache-Dtype',
-              'Gewichte bleiben unverändert',
+              tr('engineScreen.field.kvCacheDtype'),
+              tr('engineScreen.field.weightsUnchanged'),
             ),
-            items: const [
+            items: [
               DropdownMenuItem(
                 value: 'auto',
-                child: Text('Policy entscheidet'),
+                child: Text(tr('engineScreen.field.policyDecides')),
               ),
               DropdownMenuItem(value: 'q4_0', child: Text('Q4_0 (llama.cpp)')),
               DropdownMenuItem(
@@ -2536,7 +2653,10 @@ class _EngineScreenState extends State<EngineScreen> {
                 child: Text('TurboQuant 4-Bit'),
               ),
               DropdownMenuItem(value: 'fp8', child: Text('FP8')),
-              DropdownMenuItem(value: 'native', child: Text('Nativ')),
+              DropdownMenuItem(
+                value: 'native',
+                child: Text(tr('engineScreen.field.native')),
+              ),
             ],
             onChanged: (value) =>
                 setState(() => _kvCacheDtype = value ?? 'auto'),
@@ -2548,15 +2668,18 @@ class _EngineScreenState extends State<EngineScreen> {
           initialValue: _kvCachePolicy,
           dropdownColor: enginePanelColor,
           decoration: _inputDecoration(
-            'KV-Cache-Policy',
-            '4-Bit kann Qualität und Durchsatz beeinflussen',
+            tr('engineScreen.field.kvCachePolicy'),
+            tr('engineScreen.field.kvCachePolicyHelp'),
           ),
-          items: const [
+          items: [
             DropdownMenuItem(
               value: 'prefer_4bit',
-              child: Text('4-Bit bevorzugen, sicher zurückfallen'),
+              child: Text(tr('engineScreen.field.prefer4Bit')),
             ),
-            DropdownMenuItem(value: 'native', child: Text('Nur nativer Cache')),
+            DropdownMenuItem(
+              value: 'native',
+              child: Text(tr('engineScreen.field.nativeCacheOnly')),
+            ),
           ],
           onChanged: (value) =>
               setState(() => _kvCachePolicy = value ?? 'prefer_4bit'),
@@ -2564,26 +2687,26 @@ class _EngineScreenState extends State<EngineScreen> {
         const SizedBox(height: 4),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Auto-Modus (empfohlen)',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('engineScreen.field.autoModeRecommended'),
+            style: const TextStyle(color: Colors.white),
           ),
-          subtitle: const Text(
-            'Die Engine berechnet den Kontext passend zum Speicher und passt Cache, Kontext und Gerät automatisch an, bis das Modell läuft.',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          subtitle: Text(
+            tr('engineScreen.field.autoModeHelp'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: _allowFallback,
           onChanged: (value) => setState(() => _allowFallback = value),
         ),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'System-RAM beim Offload zulassen',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('engineScreen.field.allowRamOffload'),
+            style: const TextStyle(color: Colors.white),
           ),
-          subtitle: const Text(
-            'Nur aktivieren, wenn das Modell nicht vollständig in den Grafikspeicher passt.',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          subtitle: Text(
+            tr('engineScreen.field.allowRamOffloadHelp'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: _useRamOffload,
           onChanged: (value) => setState(() => _useRamOffload = value),
@@ -2591,14 +2714,14 @@ class _EngineScreenState extends State<EngineScreen> {
         SwitchListTile.adaptive(
           key: const Key('engine-trust-remote-code'),
           contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Modelleigenen Python-Code erlauben',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('engineScreen.field.allowModelPython'),
+            style: const TextStyle(color: Colors.white),
           ),
           subtitle: Text(
             model.format == 'safetensors'
-                ? 'Standardmäßig aus. Vor der ersten Ausführung ist eine hashgebundene Zustimmung nötig.'
-                : 'Nur für SafeTensors-Modelle mit eigenem Python-Code relevant.',
+                ? tr('engineScreen.field.remoteCodeSafeTensorsHelp')
+                : tr('engineScreen.field.remoteCodeOtherHelp'),
             style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: _trustRemoteCode,
@@ -2608,10 +2731,13 @@ class _EngineScreenState extends State<EngineScreen> {
         ),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Autostart', style: TextStyle(color: Colors.white)),
-          subtitle: const Text(
-            'Diese Instanz beim nächsten Backend-Start wiederherstellen',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          title: Text(
+            tr('engineScreen.field.autostart'),
+            style: const TextStyle(color: Colors.white),
+          ),
+          subtitle: Text(
+            tr('engineScreen.field.autostartHelp'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           value: _autostart,
           onChanged: (value) => setState(() => _autostart = value),
@@ -2672,21 +2798,32 @@ class _EngineScreenState extends State<EngineScreen> {
       runSpacing: 6,
       children: [
         Text(
-          'Gewichte ${formatBytes(plan.memory.weightsBytes)}',
+          tr('engineScreen.memory.weights', {
+            'size': formatBytes(plan.memory.weightsBytes),
+          }),
           style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
         Text(
-          'KV ${formatBytes(plan.memory.kvCacheBytes)}',
+          tr('engineScreen.memory.kvCache', {
+            'size': formatBytes(plan.memory.kvCacheBytes),
+          }),
           style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
         Text(
-          'Runtime ${formatBytes(plan.memory.runtimeBytes)}',
+          tr('engineScreen.memory.runtime', {
+            'size': formatBytes(plan.memory.runtimeBytes),
+          }),
           style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
         Text(
           plan.ramRequiredAfterTokens == null
-              ? '${plan.confidence} · kein RAM-Offload geplant'
-              : '${plan.confidence} · RAM ab ${formatTokenCount(plan.ramRequiredAfterTokens!)} Token',
+              ? tr('engineScreen.memory.noRamOffload', {
+                  'confidence': plan.confidence,
+                })
+              : tr('engineScreen.memory.ramAfter', {
+                  'confidence': plan.confidence,
+                  'tokens': formatTokenCount(plan.ramRequiredAfterTokens!),
+                }),
           style: const TextStyle(color: Colors.white54, fontSize: 12),
         ),
       ],
@@ -2702,22 +2839,28 @@ class _EngineScreenState extends State<EngineScreen> {
         children: [
           EngineSectionTitle(
             icon: Icons.dns_outlined,
-            title: 'Bereits eingerichtete Modelle',
-            subtitle:
-                '${instances.length} Modell${instances.length == 1 ? '' : 'e'} eingerichtet · Start, Stopp und Verhalten direkt hier steuern',
+            title: tr('engineScreen.instances.title'),
+            subtitle: tr('engineScreen.instances.subtitle', {
+              'count': instances.length.toString(),
+              'modelLabel': tr(
+                instances.length == 1
+                    ? 'engineScreen.instances.modelSingular'
+                    : 'engineScreen.instances.modelPlural',
+              ),
+            }),
           ),
           const SizedBox(height: 15),
           if (instances.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
               child: Column(
                 children: [
                   Icon(Icons.power_off, color: Colors.white30, size: 30),
                   SizedBox(height: 10),
                   Text(
-                    'Noch keine Engine-Instanz.\nWähle ein Modell und starte es mit der empfohlenen Konfiguration.',
+                    tr('engineScreen.instances.empty'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
                   ),
                 ],
               ),
@@ -2764,9 +2907,9 @@ class _EngineScreenState extends State<EngineScreen> {
       key: const Key('engine-runtime-details'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Technische Komponenten',
-          style: TextStyle(
+        Text(
+          tr('engineScreen.diagnostics.technicalComponents'),
+          style: const TextStyle(
             color: Colors.white70,
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -2774,9 +2917,9 @@ class _EngineScreenState extends State<EngineScreen> {
         ),
         const SizedBox(height: 9),
         if (runtimes.isEmpty)
-          const Text(
-            'Noch keine Komponenteninformationen verfügbar.',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          Text(
+            tr('engineScreen.diagnostics.noComponents'),
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           )
         else
           ...runtimes.map(
@@ -2828,9 +2971,9 @@ class _EngineScreenState extends State<EngineScreen> {
                     ],
                     if (runtime.error != null) ...[
                       const SizedBox(height: 7),
-                      const Text(
-                        'Technische Diagnose',
-                        style: TextStyle(
+                      Text(
+                        tr('engineScreen.diagnostics.technicalDiagnosis'),
+                        style: const TextStyle(
                           color: Colors.white38,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -2860,9 +3003,9 @@ class _EngineScreenState extends State<EngineScreen> {
       key: const Key('engine-operation-details'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Aktuelle Vorgänge',
-          style: TextStyle(
+        Text(
+          tr('engineScreen.operations.current'),
+          style: const TextStyle(
             color: Colors.white70,
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -2894,9 +3037,9 @@ class _EngineScreenState extends State<EngineScreen> {
                       ),
                       if (operation.error != null) ...[
                         const SizedBox(height: 4),
-                        const Text(
-                          'Technische Diagnose',
-                          style: TextStyle(
+                        Text(
+                          tr('engineScreen.diagnostics.technicalDiagnosis'),
+                          style: const TextStyle(
                             color: Colors.white38,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -2917,7 +3060,7 @@ class _EngineScreenState extends State<EngineScreen> {
                 EngineStatusBadge(status: operation.state),
                 if (!operation.isTerminal)
                   IconButton(
-                    tooltip: 'Vorgang abbrechen',
+                    tooltip: tr('engineScreen.operations.cancel'),
                     onPressed: () => _controller.cancelOperation(operation.id),
                     icon: const Icon(
                       Icons.close,
@@ -2962,7 +3105,7 @@ class _EngineScreenState extends State<EngineScreen> {
     }
     if (operation != null) return _friendlyOperationMessage(operation);
     if (instance != null) return instanceStageDescription(instance);
-    return 'Die lokale Ausführung wird vorbereitet.';
+    return tr('engineScreen.operation.defaultPreparing');
   }
 
   String _friendlyOperationMessage(EngineOperation operation) {
@@ -2972,18 +3115,30 @@ class _EngineScreenState extends State<EngineScreen> {
     if (message.isEmpty) {
       switch (operation.type) {
         case 'runtime_install':
-          return 'Die benötigten Komponenten werden eingerichtet.';
+          return tr('engineScreen.operation.installingComponents');
         case 'start':
-          return 'Das Modell wird geladen und geprüft.';
+          return tr('engineScreen.operation.loadingModel');
         default:
-          return 'Die lokale Ausführung wird vorbereitet.';
+          return tr('engineScreen.operation.defaultPreparing');
       }
     }
     message = message
-        .replaceAll('Runtime llama_cpp', 'GGUF-Ausführung')
-        .replaceAll('Runtime transformers', 'SafeTensors-Ausführung')
-        .replaceAll('Runtime vllm', 'beschleunigte SafeTensors-Ausführung')
-        .replaceAll('wird vorgewärmt', 'wird vorbereitet');
+        .replaceAll(
+          sourceText('engineScreen.operation.runtimeLlamaCppSource'),
+          tr('engineScreen.operation.runtimeLlamaCpp'),
+        )
+        .replaceAll(
+          sourceText('engineScreen.operation.runtimeTransformersSource'),
+          tr('engineScreen.operation.runtimeTransformers'),
+        )
+        .replaceAll(
+          sourceText('engineScreen.operation.runtimeVllmSource'),
+          tr('engineScreen.operation.runtimeVllm'),
+        )
+        .replaceAll(
+          sourceText('engineScreen.operation.warmingUpSource'),
+          tr('engineScreen.operation.isWarmingUp'),
+        );
     return message;
   }
 
@@ -2992,23 +3147,23 @@ class _EngineScreenState extends State<EngineScreen> {
       case 'compiler_missing':
         return runtime.error?.isNotEmpty == true
             ? runtime.error!
-            : 'Für den nativen Runtime-Build fehlen Compiler oder CMake. Bitte die Build-Werkzeuge installieren und erneut versuchen.';
+            : tr('engineScreen.runtimeError.compilerMissing');
       case 'disk_full':
-        return 'Auf dem Datenträger ist nicht genug freier Speicher. Bitte schaffe etwas Platz und versuche es erneut.';
+        return tr('engineScreen.runtimeError.diskFull');
       case 'network_unavailable':
-        return 'Die benötigten Komponenten konnten wegen einer Netzwerkstörung nicht geladen werden. Bitte prüfe die Verbindung und versuche es erneut.';
+        return tr('engineScreen.runtimeError.networkUnavailable');
       case 'package_unavailable':
-        return 'Für dieses System ist das benötigte Paket nicht verfügbar. PhiloEngine versucht, eine kompatible Alternative zu verwenden.';
+        return tr('engineScreen.runtimeError.packageUnavailable');
       case 'native_build_failed':
-        return 'Die GPU-Ausführung konnte nicht eingerichtet werden. Beim nächsten Versuch wird eine kompatible Alternative verwendet.';
+        return tr('engineScreen.runtimeError.nativeBuildFailed');
       case 'python_environment_failed':
-        return 'Die geschützte Laufzeitumgebung konnte nicht angelegt werden. Bitte versuche es erneut.';
+        return tr('engineScreen.runtimeError.pythonEnvironmentFailed');
       case 'runtime_probe_failed':
-        return 'Die Komponenten wurden installiert, konnten auf diesem Gerät aber nicht erfolgreich geprüft werden.';
+        return tr('engineScreen.runtimeError.probeFailed');
     }
     final raw = runtime.error;
     if (raw != null && raw.isNotEmpty) return friendlyEngineError(raw);
-    return 'Eine benötigte Komponente konnte nicht eingerichtet werden. Bitte versuche es erneut.';
+    return tr('engineScreen.runtimeError.generic');
   }
 }
 

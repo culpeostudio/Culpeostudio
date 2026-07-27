@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/remaining_ui_strings.dart';
+
 /// The rollout phase the platform is currently in. Modules that belong to a
 /// later phase are locked with a [PhaseLockOverlay] so users cannot use a
 /// feature that is not part of the current phase yet.
@@ -105,7 +107,7 @@ class PhaseLockOverlay extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'PHASE $phase',
+              remainingUiText('phaseLock.badge', {'phase': '$phase'}),
               style: const TextStyle(
                 color: _kGold,
                 fontSize: 10,
@@ -115,8 +117,8 @@ class PhaseLockOverlay extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Noch nicht verfügbar',
+          Text(
+            remainingUiText('phaseLock.title'),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -126,9 +128,11 @@ class PhaseLockOverlay extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '$feature wird in Phase $phase freigeschaltet. Die Plattform '
-            'befindet sich derzeit in Phase $kCurrentPhase – dieser Bereich ist '
-            'daher noch gesperrt und kann noch nicht verwendet werden.',
+            remainingUiText('phaseLock.description', {
+              'feature': feature,
+              'phase': '$phase',
+              'currentPhase': '$kCurrentPhase',
+            }),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.62),

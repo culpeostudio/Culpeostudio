@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../l10n/app_strings.dart';
+import '../../l10n/remaining_ui_strings.dart';
 import '../../services/api_service.dart';
 import '../../widgets/top_notification.dart';
 
@@ -23,15 +25,25 @@ class _NewsScreenState extends State<NewsScreen> {
   String? _errorMessage;
 
   String _searchQuery = '';
-  String _selectedCategory = 'Alle';
+  String _selectedCategory = 'news.categoryAll';
 
-  final List<String> _categories = [
-    'Alle',
-    'KI-Releases',
-    'Hardware',
-    'Open Source',
-    'Research',
+  final List<String> _categoryKeys = [
+    'news.categoryAll',
+    'news.categoryReleases',
+    'news.categoryHardware',
+    'news.categoryOpenSource',
+    'news.categoryResearch',
   ];
+
+  // The news backend deliberately exposes stable German category identifiers.
+  // The chip labels are localized separately, so filtering remains correct
+  // after switching the UI to English.
+  static const Map<String, String> _backendCategories = {
+    'news.categoryReleases': 'KI-Releases',
+    'news.categoryHardware': 'Hardware',
+    'news.categoryOpenSource': 'Open Source',
+    'news.categoryResearch': 'Research',
+  };
 
   @override
   void initState() {
@@ -71,11 +83,11 @@ class _NewsScreenState extends State<NewsScreen> {
     if (error is ApiException) {
       return error.message;
     }
-    return 'Fehler beim Laden der Neuigkeiten: $error';
+    return tr('news.loadError', {'error': error.toString()});
   }
 
   bool get _hasActiveFilters =>
-      _searchQuery.isNotEmpty || _selectedCategory != 'Alle';
+      _searchQuery.isNotEmpty || _selectedCategory != 'news.categoryAll';
 
   List<dynamic> get _filteredNewsList {
     return _newsList.where((item) {
@@ -87,7 +99,9 @@ class _NewsScreenState extends State<NewsScreen> {
       final category = (item['category'] ?? '').toString();
 
       // Category filtering
-      if (_selectedCategory != 'Alle' && category != _selectedCategory) {
+      final selectedBackendCategory = _backendCategories[_selectedCategory];
+      if (selectedBackendCategory != null &&
+          category != selectedBackendCategory) {
         return false;
       }
 
@@ -109,7 +123,7 @@ class _NewsScreenState extends State<NewsScreen> {
   void _clearFilters() {
     setState(() {
       _searchQuery = '';
-      _selectedCategory = 'Alle';
+      _selectedCategory = 'news.categoryAll';
       _searchController.clear();
     });
   }
@@ -125,7 +139,7 @@ class _NewsScreenState extends State<NewsScreen> {
       if (!success && mounted) {
         showTopNotification(
           context,
-          'Konnte Link nicht öffnen: $urlString',
+          remainingUiText('news.openLinkFailed', {'url': urlString}),
           color: Colors.redAccent,
         );
       }
@@ -133,7 +147,7 @@ class _NewsScreenState extends State<NewsScreen> {
       if (mounted) {
         showTopNotification(
           context,
-          'Fehler beim Öffnen des Artikels: $e',
+          remainingUiText('news.openArticleFailed', {'error': '$e'}),
           color: Colors.redAccent,
         );
       }
@@ -141,27 +155,37 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'Unbekannt';
+    if (dateStr == null || dateStr.isEmpty) {
+      return remainingUiText('news.unknown');
+    }
     if (dateStr == '0001-01-01T00:00:00Z') {
-      return 'Unbekannt';
+      return remainingUiText('news.unknown');
     }
     try {
       final parsed = DateTime.parse(dateStr).toLocal();
       if (parsed.year <= 1) {
-        return 'Unbekannt';
+        return remainingUiText('news.unknown');
       }
       final now = DateTime.now();
       final difference = now.difference(parsed);
 
       if (difference.inMinutes < 60) {
-        return 'vor ${difference.inMinutes} Min.';
+        return remainingUiText('news.minutesAgo', {
+          'count': '${difference.inMinutes}',
+        });
       } else if (difference.inHours < 24) {
-        return 'vor ${difference.inHours} Std.';
+        return remainingUiText('news.hoursAgo', {
+          'count': '${difference.inHours}',
+        });
       } else {
-        return '${parsed.day.toString().padLeft(2, '0')}.${parsed.month.toString().padLeft(2, '0')}.${parsed.year}';
+        return remainingUiText('news.date', {
+          'day': parsed.day.toString().padLeft(2, '0'),
+          'month': parsed.month.toString().padLeft(2, '0'),
+          'year': '${parsed.year}',
+        });
       }
     } catch (_) {
-      return 'Unbekannt';
+      return remainingUiText('news.unknown');
     }
   }
 
@@ -184,9 +208,9 @@ class _NewsScreenState extends State<NewsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'AI & Tech Feed',
-                      style: TextStyle(
+                    Text(
+                      tr('news.title'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -195,7 +219,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Live-Nachrichten aggregiert aus führenden Hardware- und KI-Quellen.',
+                      tr('news.subtitle'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -210,7 +234,7 @@ class _NewsScreenState extends State<NewsScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white70),
                 onPressed: _fetchNews,
-                tooltip: 'Aktualisieren',
+                tooltip: tr('news.refresh'),
               ),
             ],
           ),
@@ -231,7 +255,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   controller: _searchController,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Suche nach Schlagworten, Inhalten oder Tags...',
+                    hintText: tr('news.searchHint'),
                     hintStyle: TextStyle(
                       color: Colors.white.withValues(alpha: 0.3),
                     ),
@@ -274,7 +298,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      'KATEGORIE:',
+                      tr('news.categoryLabel'),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.3),
                         fontSize: 10,
@@ -287,13 +311,13 @@ class _NewsScreenState extends State<NewsScreen> {
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: _categories.map((category) {
-                            final isSelected = _selectedCategory == category;
+                          children: _categoryKeys.map((catKey) {
+                            final isSelected = _selectedCategory == catKey;
                             return Container(
                               margin: const EdgeInsets.only(right: 8),
                               child: ChoiceChip(
                                 label: Text(
-                                  category,
+                                  tr(catKey),
                                   style: TextStyle(
                                     color: isSelected
                                         ? Colors.white
@@ -322,7 +346,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                 onSelected: (selected) {
                                   if (selected) {
                                     setState(() {
-                                      _selectedCategory = category;
+                                      _selectedCategory = catKey;
                                     });
                                   }
                                 },
@@ -362,7 +386,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _fetchNews,
-                          child: const Text('Erneut versuchen'),
+                          child: Text(tr('common.retry')),
                         ),
                       ],
                     ),
@@ -380,8 +404,8 @@ class _NewsScreenState extends State<NewsScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _hasActiveFilters
-                              ? 'Keine passenden Artikel gefunden.'
-                              : 'Momentan sind keine Artikel verfügbar.',
+                              ? tr('news.noResults')
+                              : tr('news.empty'),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.4),
                             fontSize: 14,
@@ -391,9 +415,9 @@ class _NewsScreenState extends State<NewsScreen> {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: _clearFilters,
-                            child: const Text(
-                              'Filter zurücksetzen',
-                              style: TextStyle(color: Color(0xFFC9A24A)),
+                            child: Text(
+                              tr('news.resetFilters'),
+                              style: const TextStyle(color: Color(0xFFC9A24A)),
                             ),
                           ),
                         ],
@@ -411,13 +435,16 @@ class _NewsScreenState extends State<NewsScreen> {
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
                       final item = filteredItems[index];
-                      final title = item['title'] ?? 'Kein Titel';
+                      final title =
+                          item['title'] ?? remainingUiText('news.untitled');
                       final content = item['content'] ?? '';
-                      final author = item['author'] ?? 'Quelle';
+                      final author =
+                          item['author'] ?? remainingUiText('news.source');
                       final publishedAt = item['published_at'] as String?;
                       final imageUrl = item['image_url'] as String?;
                       final url = item['url'] as String?;
-                      final category = item['category'] ?? 'KI-Releases';
+                      final category =
+                          item['category'] ?? tr('news.categoryReleases');
 
                       return Container(
                         decoration: BoxDecoration(

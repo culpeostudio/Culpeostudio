@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/chat_aux_strings.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 
@@ -73,8 +74,8 @@ Future<void> promptRenameChatSession(
     builder: (dialogContext) {
       return AlertDialog(
         backgroundColor: const Color(0xFF1C1C22),
-        title: const Text(
-          'Chat umbenennen',
+        title: Text(
+          tr('chatHistory.rename.title'),
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         content: TextField(
@@ -82,10 +83,10 @@ Future<void> promptRenameChatSession(
           autofocus: true,
           style: const TextStyle(color: Colors.white),
           cursorColor: kChatAccent,
-          decoration: const InputDecoration(
-            hintText: 'Titel',
-            hintStyle: TextStyle(color: Colors.white38),
-            focusedBorder: UnderlineInputBorder(
+          decoration: InputDecoration(
+            hintText: tr('chatHistory.rename.hint'),
+            hintStyle: const TextStyle(color: Colors.white38),
+            focusedBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: kChatAccent),
             ),
           ),
@@ -94,15 +95,15 @@ Future<void> promptRenameChatSession(
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(
-              'Abbrechen',
+            child: Text(
+              tr('chatHistory.rename.cancel'),
               style: TextStyle(color: Colors.white54),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text(
-              'Speichern',
+            child: Text(
+              tr('chatHistory.rename.save'),
               style: TextStyle(color: kChatAccent),
             ),
           ),
@@ -131,26 +132,26 @@ Future<void> confirmDeleteChatSession(
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: const Color(0xFF1C1C22),
-      title: const Text(
-        'Chat löschen?',
+      title: Text(
+        tr('chatHistory.delete.title'),
         style: TextStyle(color: Colors.white, fontSize: 16),
       ),
       content: Text(
-        '„$title" wird dauerhaft gelöscht.',
+        tr('chatHistory.delete.body', {'title': title}),
         style: const TextStyle(color: Colors.white70, fontSize: 13),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text(
-            'Abbrechen',
+          child: Text(
+            tr('chatHistory.delete.cancel'),
             style: TextStyle(color: Colors.white54),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text(
-            'Löschen',
+          child: Text(
+            tr('chatHistory.delete.confirm'),
             style: TextStyle(color: Color(0xFFE06C75)),
           ),
         ),
@@ -272,27 +273,26 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C22),
-        title: const Text(
-          'Ordner löschen?',
+        title: Text(
+          tr('chatHistory.deleteProject.title'),
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         content: Text(
-          '„${project.name}" wird gelöscht. Die enthaltenen Chats bleiben '
-          'erhalten und wandern zurück in die allgemeine Liste.',
+          tr('chatHistory.deleteProject.body', {'name': project.name}),
           style: const TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(
-              'Abbrechen',
+            child: Text(
+              tr('chatHistory.deleteProject.cancel'),
               style: TextStyle(color: Colors.white54),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Löschen',
+            child: Text(
+              tr('chatHistory.deleteProject.confirm'),
               style: TextStyle(color: Color(0xFFE06C75)),
             ),
           ),
@@ -338,11 +338,11 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
               _PanelActionRow(
                 key: const Key('chat-history-panel-new-project'),
                 icon: Icons.create_new_folder_outlined,
-                label: 'Neuer Ordner',
+                label: tr('chatHistory.newFolder'),
                 onTap: () => _promptProjectDialog(),
               ),
               if (projects.isNotEmpty) ...[
-                const _PanelSectionHeader(label: 'Projekte'),
+                _PanelSectionHeader(label: tr('chatHistory.sectionProjects')),
                 for (final project in projects) ...[
                   _ProjectRow(
                     key: Key('chat-history-project-${project.id}'),
@@ -377,7 +377,11 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
               ],
               if (unassigned.isNotEmpty) ...[
                 _PanelSectionHeader(
-                  label: projects.isEmpty ? 'Verlauf' : 'Chats',
+                  label: tr(
+                    projects.isEmpty
+                        ? 'chatHistory.sectionHistory'
+                        : 'chatHistory.sectionChats',
+                  ),
                 ),
                 for (final sessionId in unassigned)
                   _ChatRow(
@@ -396,12 +400,11 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
                   ),
               ],
               if (projects.isEmpty && unassigned.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
                   child: Text(
-                    'Noch keine Chats — starte eine neue Unterhaltung '
-                    'oder lege einen Ordner an.',
-                    style: TextStyle(color: Colors.white30, fontSize: 12),
+                    tr('chatHistory.empty'),
+                    style: const TextStyle(color: Colors.white30, fontSize: 12),
                   ),
                 ),
             ],
@@ -474,7 +477,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
   Future<void> _browseProjectPath() async {
     try {
       final selected = await FilePicker.getDirectoryPath(
-        dialogTitle: 'Projektpfad wählen',
+        dialogTitle: tr('chatHistory.projectDialog.browseTitle'),
       );
       if (selected != null && selected.trim().isNotEmpty && mounted) {
         setState(() {
@@ -490,9 +493,11 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
   void _submit() {
     final name = _controller.text.trim();
     final path = _hasPath ? _pathController.text.trim() : '';
-    final nameError = name.isEmpty ? 'Bitte einen Namen eingeben' : null;
+    final nameError = name.isEmpty
+        ? tr('chatHistory.projectDialog.nameError')
+        : null;
     final pathError = _hasPath && path.isEmpty
-        ? 'Bitte Pfad angeben oder deaktivieren'
+        ? tr('chatHistory.projectDialog.pathError')
         : null;
     if (nameError != null || pathError != null) {
       setState(() {
@@ -516,7 +521,11 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
     return AlertDialog(
       backgroundColor: const Color(0xFF1C1C22),
       title: Text(
-        _isEdit ? 'Ordner bearbeiten' : 'Neuer Ordner',
+        tr(
+          _isEdit
+              ? 'chatHistory.projectDialog.titleEdit'
+              : 'chatHistory.projectDialog.titleNew',
+        ),
         style: const TextStyle(color: Colors.white, fontSize: 16),
       ),
       content: Column(
@@ -530,7 +539,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
             style: const TextStyle(color: Colors.white),
             cursorColor: kChatAccent,
             decoration: InputDecoration(
-              hintText: 'Projektname',
+              hintText: tr('chatHistory.projectDialog.nameHint'),
               hintStyle: const TextStyle(color: Colors.white38),
               errorText: _nameError,
               focusedBorder: const UnderlineInputBorder(
@@ -544,7 +553,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
           ),
           const SizedBox(height: 18),
           Text(
-            'FARBE',
+            tr('chatHistory.projectDialog.colorLabel'),
             style: AppFonts.mono(
               fontSize: 9,
               color: Colors.white38,
@@ -580,7 +589,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
           ),
           const SizedBox(height: 18),
           Text(
-            'ICON',
+            tr('chatHistory.projectDialog.iconLabel'),
             style: AppFonts.mono(
               fontSize: 9,
               color: Colors.white38,
@@ -639,10 +648,13 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
                         setState(() => _hasPath = value ?? false),
                     activeColor: kChatAccent,
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Projektpfad festlegen (Dateizugriff im Chat)',
-                      style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                      tr('chatHistory.projectDialog.pathToggle'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],
@@ -661,7 +673,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     cursorColor: kChatAccent,
                     decoration: InputDecoration(
-                      hintText: '/pfad/zum/projekt',
+                      hintText: tr('chatHistory.projectDialog.pathHint'),
                       hintStyle: const TextStyle(color: Colors.white38),
                       errorText: _pathError,
                       focusedBorder: const UnderlineInputBorder(
@@ -681,7 +693,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
                   key: const Key('project-path-browse'),
                   onPressed: _browseProjectPath,
                   icon: const Icon(Icons.folder_open_rounded, size: 18),
-                  label: const Text('Durchsuchen'),
+                  label: Text(tr('chatHistory.projectDialog.browse')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: kChatAccent,
                     side: BorderSide(
@@ -704,15 +716,19 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
-            'Abbrechen',
+          child: Text(
+            tr('chatHistory.projectDialog.cancel'),
             style: TextStyle(color: Colors.white54),
           ),
         ),
         TextButton(
           onPressed: _submit,
           child: Text(
-            _isEdit ? 'Speichern' : 'Erstellen',
+            tr(
+              _isEdit
+                  ? 'chatHistory.projectDialog.save'
+                  : 'chatHistory.projectDialog.create',
+            ),
             style: const TextStyle(color: kChatAccent),
           ),
         ),
@@ -911,17 +927,17 @@ class _ProjectRowState extends State<_ProjectRow> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _RowIconButton(
-                    tooltip: 'Neuer Chat im Ordner',
+                    tooltip: tr('chatHistory.projectRow.newChat'),
                     icon: Icons.add,
                     onPressed: widget.onNewChat,
                   ),
                   _RowIconButton(
-                    tooltip: 'Ordner bearbeiten',
+                    tooltip: tr('chatHistory.projectRow.edit'),
                     icon: Icons.edit_outlined,
                     onPressed: widget.onRename,
                   ),
                   _RowIconButton(
-                    tooltip: 'Ordner löschen',
+                    tooltip: tr('chatHistory.projectRow.delete'),
                     icon: Icons.delete_outline,
                     onPressed: widget.onDelete,
                   ),
@@ -1036,7 +1052,7 @@ class _ChatRowState extends State<_ChatRow> {
                 children: [
                   PopupMenuButton<String>(
                     key: Key('chat-history-move-${widget.sessionId}'),
-                    tooltip: 'In Ordner verschieben',
+                    tooltip: tr('chatHistory.chatRow.move'),
                     color: const Color(0xFF24242C),
                     iconSize: 15,
                     splashRadius: 16,
@@ -1053,12 +1069,12 @@ class _ChatRowState extends State<_ChatRow> {
                         widget.onMove(value == '__none__' ? null : value),
                     itemBuilder: (context) => [
                       if (widget.currentProjectId != null)
-                        const PopupMenuItem<String>(
+                        PopupMenuItem<String>(
                           value: '__none__',
                           height: 36,
                           child: _MoveMenuEntry(
                             icon: Icons.folder_off_outlined,
-                            label: 'Aus Ordner entfernen',
+                            label: tr('chatHistory.chatRow.removeFromFolder'),
                           ),
                         ),
                       for (final project in widget.projects)
@@ -1074,23 +1090,23 @@ class _ChatRowState extends State<_ChatRow> {
                           ),
                       if (widget.currentProjectId == null &&
                           widget.projects.isEmpty)
-                        const PopupMenuItem<String>(
+                        PopupMenuItem<String>(
                           enabled: false,
                           height: 36,
                           child: _MoveMenuEntry(
                             icon: Icons.folder_off_outlined,
-                            label: 'Keine Ordner vorhanden',
+                            label: tr('chatHistory.chatRow.noFolders'),
                           ),
                         ),
                     ],
                   ),
                   _RowIconButton(
-                    tooltip: 'Umbenennen',
+                    tooltip: tr('chatHistory.chatRow.rename'),
                     icon: Icons.edit_outlined,
                     onPressed: widget.onRename,
                   ),
                   _RowIconButton(
-                    tooltip: 'Löschen',
+                    tooltip: tr('chatHistory.chatRow.delete'),
                     icon: Icons.delete_outline,
                     onPressed: widget.onDelete,
                   ),

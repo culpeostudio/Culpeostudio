@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/top_notification.dart';
+import '../onboarding/onboarding_dialog.dart';
 import '../chat/chat_history_panel.dart';
 import '../chat/philobot_tab.dart';
 import '../engine/engine_screen.dart';
@@ -45,32 +47,43 @@ class _DashboardScreenState extends State<DashboardScreen>
   late Animation<double> _railAnimation;
 
   final List<Map<String, dynamic>> _sidebarModules = [
-    {'icon': Icons.forum_outlined, 'label': 'Chat', 'key': 'chat'},
-    {'icon': Icons.memory_outlined, 'label': 'Engine', 'key': 'engine'},
-    {
-      'icon': Icons.storefront_outlined,
-      'label': 'Marktplatz',
-      'key': 'marketplace',
-    },
-    {
-      'icon': Icons.model_training_outlined,
-      'label': 'Training',
-      'key': 'training',
-    },
-    {
-      'icon': Icons.compress_outlined,
-      'label': 'Quantisierung',
-      'key': 'quantization',
-    },
-    {
-      'icon': Icons.movie_creation_outlined,
-      'label': 'Gen Studio',
-      'key': 'generative',
-    },
-    {'icon': Icons.newspaper_outlined, 'label': 'News', 'key': 'news'},
-    {'icon': Icons.speed_outlined, 'label': 'Benchmark', 'key': 'benchmark'},
+    {'icon': Icons.forum_outlined, 'key': 'chat'},
+    {'icon': Icons.memory_outlined, 'key': 'engine'},
+    {'icon': Icons.storefront_outlined, 'key': 'marketplace'},
+    {'icon': Icons.model_training_outlined, 'key': 'training'},
+    {'icon': Icons.compress_outlined, 'key': 'quantization'},
+    {'icon': Icons.movie_creation_outlined, 'key': 'generative'},
+    {'icon': Icons.newspaper_outlined, 'key': 'news'},
+    {'icon': Icons.speed_outlined, 'key': 'benchmark'},
   ];
   final List<Map<String, dynamic>> _deletedModules = [];
+
+  /// Module, die in der Lite-Version sichtbar sind. Classic zeigt alle.
+  static const Set<String> _liteModuleKeys = {
+    'chat',
+    'engine',
+    'marketplace',
+    'news',
+    'benchmark',
+  };
+
+  /// Screens, die zwar nicht in der Sidebar stehen, aber in beiden Versionen
+  /// erreichbar bleiben muessen (z. B. Settings ueber das Zahnrad).
+  static const Set<String> _nonSidebarScreens = {
+    'settings',
+    'bot_management',
+    'philox',
+  };
+
+  List<Map<String, dynamic>> get _visibleModules {
+    if (_appState.frontendVersion != 'lite') return _sidebarModules;
+    return _sidebarModules
+        .where((m) => _liteModuleKeys.contains(m['key']))
+        .toList();
+  }
+
+  /// Anzeigename eines Moduls ueber seinen Key (lokalisiert).
+  static String _moduleLabel(String key) => tr('sidebar.$key');
 
   void _confirmLogout() {
     showDialog(
@@ -105,19 +118,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Abmelden',
-                    style: TextStyle(
+                  Text(
+                    tr('dashboard.logoutTitle'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Möchtest du dich wirklich ausloggen?',
+                  Text(
+                    tr('dashboard.logoutConfirm'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -129,7 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             foregroundColor: Colors.white60,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: const Text('Abbrechen'),
+                          child: Text(tr('common.cancel')),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -147,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Text('Ja, abmelden'),
+                          child: Text(tr('dashboard.logoutYes')),
                         ),
                       ),
                     ],
@@ -185,11 +198,26 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // newIndex kommt bereits korrigiert vom ReorderableListView.onReorderItem-
   // Callback; die frühere manuelle `if (oldIndex < newIndex) newIndex -= 1`
-  // Anpassung entfällt dadurch.
+  // Anpassung entfällt dadurch. Die Indizes beziehen sich auf die sichtbaren
+  // Module; in der Lite-Version wird die neue Reihenfolge in die Gesamtliste
+  // uebertragen, versteckte Module behalten ihre Position.
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
-      final Map<String, dynamic> item = _sidebarModules.removeAt(oldIndex);
-      _sidebarModules.insert(newIndex, item);
+      final visible = List<Map<String, dynamic>>.of(_visibleModules);
+      final moved = visible.removeAt(oldIndex);
+      visible.insert(newIndex, moved);
+      if (_appState.frontendVersion == 'lite') {
+        final queue = List<Map<String, dynamic>>.of(visible);
+        for (var i = 0; i < _sidebarModules.length && queue.isNotEmpty; i++) {
+          if (_liteModuleKeys.contains(_sidebarModules[i]['key'])) {
+            _sidebarModules[i] = queue.removeAt(0);
+          }
+        }
+      } else {
+        _sidebarModules
+          ..clear()
+          ..addAll(visible);
+      }
     });
   }
 
@@ -197,6 +225,16 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     _appState.loadShortcuts();
+    // Erster Login dieses Users: Sprache und Frontend-Version abfragen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _appState.needsOnboarding) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const OnboardingDialog(),
+        );
+      }
+    });
     _settingsRotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -243,22 +281,22 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF16161D),
-          title: const Text(
-            'Externe Website öffnen',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            tr('dashboard.benchmarkTitle'),
+            style: const TextStyle(color: Colors.white),
           ),
-          content: const Text(
-            'Du bist dabei, artificialanalysis.ai im Browser zu öffnen. Möchtest du wirklich auf diese Seite wechseln?',
-            style: TextStyle(color: Colors.white70),
+          content: Text(
+            tr('dashboard.benchmarkBody'),
+            style: const TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Abbrechen'),
+              child: Text(tr('common.cancel')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Weiter'),
+              child: Text(tr('dashboard.benchmarkContinue')),
             ),
           ],
         );
@@ -277,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (!launched && mounted) {
         showTopNotification(
           context,
-          'Die externe Benchmark-Seite konnte nicht geöffnet werden.',
+          tr('dashboard.benchmarkOpenFailed'),
           color: Colors.redAccent,
         );
       }
@@ -287,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
       showTopNotification(
         context,
-        'Fehler beim Öffnen der Benchmark-Seite: $error',
+        tr('dashboard.benchmarkOpenError', {'error': '$error'}),
         color: Colors.redAccent,
       );
     }
@@ -467,7 +505,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                   color: _isReorderingModules
                                                       ? AppColors.gold
                                                       : textSecondary
-                                                            .withValues(alpha: 0.5),
+                                                            .withValues(
+                                                              alpha: 0.5,
+                                                            ),
                                                   size: 14,
                                                 ),
                                               ),
@@ -493,10 +533,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ? ReorderableListView(
                             padding: EdgeInsets.zero,
                             onReorderItem: _onReorder,
-                            children: _sidebarModules.map((item) {
+                            children: _visibleModules.map((item) {
                               return _SidebarNavItem(
                                 key: ValueKey(item['key']),
-                                label: item['label'] as String,
+                                label: _moduleLabel(item['key'] as String),
                                 icon: item['icon'] as IconData,
                                 selected:
                                     _appState.currentScreen == item['key'],
@@ -512,10 +552,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         : ListView(
                             padding: EdgeInsets.zero,
                             children: [
-                              for (final item in _sidebarModules) ...[
+                              for (final item in _visibleModules) ...[
                                 _SidebarNavItem(
                                   key: ValueKey(item['key']),
-                                  label: item['label'] as String,
+                                  label: _moduleLabel(item['key'] as String),
                                   icon: item['icon'] as IconData,
                                   selected:
                                       _appState.currentScreen == item['key'],
@@ -525,7 +565,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   trailingActionIcon: item['key'] == 'chat'
                                       ? Icons.add_comment_outlined
                                       : null,
-                                  trailingActionTooltip: 'Neuer Chat erstellen',
+                                  trailingActionTooltip: tr(
+                                    'dashboard.tooltipNewChat',
+                                  ),
                                   onTrailingAction: item['key'] == 'chat'
                                       ? () => _triggerChatAction(
                                           'new_chat_session',
@@ -606,8 +648,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               children: [
                                 CircleAvatar(
                                   radius: 14,
-                                  backgroundColor: AppColors.gold.withValues(alpha: 
-                                    0.18,
+                                  backgroundColor: AppColors.gold.withValues(
+                                    alpha: 0.18,
                                   ),
                                   child: Text(
                                     (_appState.username ?? 'D')[0]
@@ -644,7 +686,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                           fontSize: 9,
                                           fontWeight: FontWeight.w400,
                                           letterSpacing: 0.4,
-                                          color: textSecondary.withValues(alpha: 0.6),
+                                          color: textSecondary.withValues(
+                                            alpha: 0.6,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -659,8 +703,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   ),
                                   child: IconButton(
                                     tooltip: brightness == Brightness.dark
-                                        ? 'Helles Design'
-                                        : 'Dunkles Design',
+                                        ? tr('dashboard.tooltipLightTheme')
+                                        : tr('dashboard.tooltipDarkTheme'),
                                     constraints: const BoxConstraints.tightFor(
                                       width: 32,
                                       height: 32,
@@ -714,7 +758,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   child: RotationTransition(
                                     turns: _settingsRotationController,
                                     child: IconButton(
-                                      tooltip: 'Einstellungen',
+                                      tooltip: tr('dashboard.tooltipSettings'),
                                       constraints:
                                           const BoxConstraints.tightFor(
                                             width: 32,
@@ -740,7 +784,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   onExit: (_) =>
                                       setState(() => _isLogoutHovered = false),
                                   child: IconButton(
-                                    tooltip: 'Abmelden',
+                                    tooltip: tr('dashboard.tooltipLogout'),
                                     constraints: const BoxConstraints.tightFor(
                                       width: 32,
                                       height: 32,
@@ -765,8 +809,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 children: [
                                   CircleAvatar(
                                     radius: 14,
-                                    backgroundColor: AppColors.gold.withValues(alpha: 
-                                      0.18,
+                                    backgroundColor: AppColors.gold.withValues(
+                                      alpha: 0.18,
                                     ),
                                     child: Text(
                                       (_appState.username ?? 'D')[0]
@@ -788,8 +832,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                     child: IconButton(
                                       tooltip: brightness == Brightness.dark
-                                          ? 'Helles Design'
-                                          : 'Dunkles Design',
+                                          ? tr('dashboard.tooltipLightTheme')
+                                          : tr('dashboard.tooltipDarkTheme'),
                                       constraints:
                                           const BoxConstraints.tightFor(
                                             width: 40,
@@ -847,7 +891,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     child: RotationTransition(
                                       turns: _settingsRotationController,
                                       child: IconButton(
-                                        tooltip: 'Einstellungen',
+                                        tooltip: tr(
+                                          'dashboard.tooltipSettings',
+                                        ),
                                         constraints:
                                             const BoxConstraints.tightFor(
                                               width: 40,
@@ -873,7 +919,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                       () => _isLogoutHovered = false,
                                     ),
                                     child: IconButton(
-                                      tooltip: 'Abmelden',
+                                      tooltip: tr('dashboard.tooltipLogout'),
                                       constraints:
                                           const BoxConstraints.tightFor(
                                             width: 40,
@@ -1011,6 +1057,16 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, _) {
         final currentScreen = _appState.currentScreen;
 
+        // Wird auf Lite gewechselt, waehrend ein Lite-fremdes Modul offen
+        // ist, zurueck auf den Chat. Settings & Co. bleiben erreichbar.
+        if (_appState.frontendVersion == 'lite' &&
+            !_liteModuleKeys.contains(currentScreen) &&
+            !_nonSidebarScreens.contains(currentScreen)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _appState.setScreen('chat');
+          });
+        }
+
         return KeyboardListener(
           focusNode: FocusNode(),
           autofocus: true,
@@ -1025,11 +1081,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     elevation: 0,
                     title: Text(
-                      [..._sidebarModules, ..._deletedModules].firstWhere(
-                            (item) => item['key'] == currentScreen,
-                            orElse: () => {'label': 'Chat'},
-                          )['label']
-                          as String,
+                      _moduleLabel(
+                        [
+                              ..._sidebarModules,
+                              ..._deletedModules,
+                            ].any((item) => item['key'] == currentScreen)
+                            ? currentScreen
+                            : 'chat',
+                      ),
                       style: TextStyle(
                         color: AppColors.textPrimary(
                           Theme.of(context).brightness,
@@ -1104,14 +1163,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             16,
                                           ),
                                           border: Border.all(
-                                            color: Colors.white.withValues(alpha: 
-                                              0.08,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.08,
                                             ),
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 
-                                                0.5,
+                                              color: Colors.black.withValues(
+                                                alpha: 0.5,
                                               ),
                                               blurRadius: 20,
                                               offset: const Offset(0, 10),
@@ -1134,17 +1193,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                   MainAxisAlignment
                                                       .spaceBetween,
                                               children: [
-                                                const Row(
+                                                Row(
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.widgets_outlined,
                                                       color: Color(0xFFC9A24A),
                                                       size: 18,
                                                     ),
-                                                    SizedBox(width: 8),
+                                                    const SizedBox(width: 8),
                                                     Text(
-                                                      'Gelöschte Module',
-                                                      style: TextStyle(
+                                                      tr(
+                                                        'dashboard.deletedModules',
+                                                      ),
+                                                      style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 15,
                                                         fontWeight:
@@ -1181,8 +1242,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                         Icon(
                                                           Icons.info_outline,
                                                           color: Colors.white
-                                                              .withValues(alpha: 
-                                                                0.15,
+                                                              .withValues(
+                                                                alpha: 0.15,
                                                               ),
                                                           size: 32,
                                                         ),
@@ -1190,13 +1251,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                           height: 12,
                                                         ),
                                                         Text(
-                                                          'Keine gelöschten Module.\nNutze das "-" Symbol an Modulen,\num sie zu entfernen.',
+                                                          tr(
+                                                            'dashboard.deletedModulesEmpty',
+                                                          ),
                                                           textAlign:
                                                               TextAlign.center,
                                                           style: TextStyle(
                                                             color: Colors.white
-                                                                .withValues(alpha: 
-                                                                  0.4,
+                                                                .withValues(
+                                                                  alpha: 0.4,
                                                                 ),
                                                             fontSize: 12,
                                                             height: 1.4,
@@ -1224,8 +1287,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                               decoration: BoxDecoration(
                                                                 color: Colors
                                                                     .white
-                                                                    .withValues(alpha: 
-                                                                      0.02,
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.02,
                                                                     ),
                                                                 borderRadius:
                                                                     BorderRadius.circular(
@@ -1234,8 +1298,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                                 border: Border.all(
                                                                   color: Colors
                                                                       .white
-                                                                      .withValues(alpha: 
-                                                                        0.04,
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.04,
                                                                       ),
                                                                 ),
                                                               ),
@@ -1253,8 +1318,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                                   ),
                                                                   Expanded(
                                                                     child: Text(
-                                                                      m['label']
-                                                                          as String,
+                                                                      _moduleLabel(
+                                                                        m['key']
+                                                                            as String,
+                                                                      ),
                                                                       style: const TextStyle(
                                                                         color: Colors
                                                                             .white70,
@@ -1303,8 +1370,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         decoration: BoxDecoration(
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 
-                                                0.5,
+                                              color: Colors.black.withValues(
+                                                alpha: 0.5,
                                               ),
                                               blurRadius: 20,
                                               offset: const Offset(0, 10),
@@ -1340,7 +1407,15 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildContentPanel(String currentScreen, bool isDesktop) {
     final brightness = Theme.of(context).brightness;
-    final panel = _buildBody(currentScreen);
+    // Most module screens are const widgets so they retain their state while
+    // unrelated AppState notifications arrive. A language change is the one
+    // exception: keying the active module by locale recreates it exactly then,
+    // ensuring all handwritten `tr(...)` calls are rendered in the newly
+    // selected language instead of waiting for an unrelated interaction.
+    final panel = KeyedSubtree(
+      key: ValueKey<String>('locale-${_appState.language}'),
+      child: _buildBody(currentScreen),
+    );
 
     if (!isDesktop) return panel;
 
@@ -1409,7 +1484,7 @@ class _CodeAssistantDrawer extends StatelessWidget {
                   ),
                   if (blocks.length > 1)
                     PopupMenuButton<int>(
-                      tooltip: 'Codeblock wechseln',
+                      tooltip: tr('dashboard.codeBlockSwitch'),
                       color: const Color(0xFF18181D),
                       onSelected: (index) {
                         final block = blocks[index];
@@ -1423,7 +1498,9 @@ class _CodeAssistantDrawer extends StatelessWidget {
                         blocks.length,
                         (index) => PopupMenuItem(
                           value: index,
-                          child: Text('Codeblock ${index + 1}'),
+                          child: Text(
+                            tr('dashboard.codeBlockN', {'n': '${index + 1}'}),
+                          ),
                         ),
                       ),
                       icon: const Icon(
@@ -1433,7 +1510,7 @@ class _CodeAssistantDrawer extends StatelessWidget {
                       ),
                     ),
                   IconButton(
-                    tooltip: 'Code-Ansicht schließen',
+                    tooltip: tr('dashboard.codeClose'),
                     onPressed: appState.closeCodeAssistant,
                     icon: const Icon(
                       Icons.close,
@@ -1467,10 +1544,10 @@ class _CodeAssistantDrawer extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: code));
-                  showTopNotification(context, 'Code kopiert');
+                  showTopNotification(context, tr('dashboard.codeCopied'));
                 },
                 icon: const Icon(Icons.copy_outlined, size: 16),
-                label: const Text('Kopieren'),
+                label: Text(tr('dashboard.copy')),
               ),
             ),
           ],
@@ -1658,7 +1735,9 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                                   IconButton(
                                     icon: Icon(
                                       Icons.remove_circle_outline,
-                                      color: Colors.redAccent.withValues(alpha: 0.7),
+                                      color: Colors.redAccent.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       size: 16,
                                     ),
                                     padding: EdgeInsets.zero,
@@ -1667,7 +1746,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                                       height: 24,
                                     ),
                                     onPressed: widget.onDelete,
-                                    tooltip: 'Entfernen',
+                                    tooltip: tr('dashboard.tooltipRemove'),
                                   ),
                                   const SizedBox(width: 8),
                                 ],

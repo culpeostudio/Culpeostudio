@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/marketplace_detail_strings.dart';
+
 // Tooltip mit der Hardware-Empfehlung zu einem Modell.
 
 class RecommendationTooltip extends StatelessWidget {
@@ -16,21 +18,15 @@ class RecommendationTooltip extends StatelessWidget {
 
   String _body() {
     if (isRecommended) {
-      return 'Q4_K_M / Q4_0 ist fuer die meisten User der beste '
-          'Kompromiss: ca. 50% der Originalgroesse, aber fast '
-          'volle Qualitaet. Laeuft auf fast jeder Hardware.';
+      return tr('marketplaceDetail.recommendation.balanced');
     }
     if (isMaxQuality) {
-      return 'FP16 / Q8 / Q5_0 behalten fast 100% der Original-'
-          'Qualitaet, brauchen aber 2-3x mehr Speicher/RAM. '
-          'Nur fuer starke GPUs (24 GB+ VRAM) sinnvoll.';
+      return tr('marketplaceDetail.recommendation.maxQuality');
     }
     if (isCompact) {
-      return 'Q2 / Q3 / Q5_K_S sind sehr klein (30-40% Groesse), '
-          'aber die Ausgabe-Qualitaet leidet deutlich. Nur wenn '
-          'Speicher ganz knapp ist.';
+      return tr('marketplaceDetail.recommendation.compact');
     }
-    return 'Keine Empfehlung verfuegbar.';
+    return tr('marketplaceDetail.recommendation.unavailable');
   }
 
   Color _color() {

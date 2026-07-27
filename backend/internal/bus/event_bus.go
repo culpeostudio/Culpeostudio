@@ -112,8 +112,6 @@ const (
 	// Chat (PhiloBot / Philox)
 	EventPhiloBotSessionCreated = "philobot_session_created"
 	EventPhiloBotMessageSent    = "philobot_message_sent"
-	EventPhiloxSessionCreated   = "philox_session_created"
-	EventPhiloxMessageSent      = "philox_message_sent"
 
 	// Settings
 	EventSettingsChanged = "settings_changed"

@@ -27,8 +27,7 @@ func (e *outsideRootsError) Error() string {
 }
 
 // fileToolExecutor fuehrt Datei-Operationen strikt innerhalb der freigegebenen
-// Roots aus (Sandbox). Portiert und entkoppelt aus modules/philox/tools.go: die
-// Roots liegen direkt auf dem Executor statt auf einer Philox-Session, und
+// Roots aus (Sandbox). Die Roots liegen direkt auf dem Executor, und
 // "read before write" wird ueber ein internes Set nachgehalten. Ein Executor
 // lebt pro Tool-Loop-Durchlauf und ist NICHT nebenlaeufig sicher.
 //
@@ -179,12 +178,16 @@ func (e *fileToolExecutor) Execute(name string, args map[string]interface{}) map
 	if args == nil {
 		args = map[string]interface{}{}
 	}
+	// Gaengige Feldnamen-Varianten auf die erwarteten Namen bringen, bevor
+	// geprueft wird: kleinere Modelle schreiben "glob" statt "pattern" und
+	// scheitern sonst wiederholt am selben Aufruf.
+	args = normalizeToolArguments(name, args)
 	if err := validateFileToolArguments(name, args); err != nil {
 		return map[string]interface{}{
 			"ok":         false,
 			"error":      "ungueltige Tool-Argumente: " + err.Error(),
 			"error_code": "invalid_tool_arguments",
-			"hint":       fileToolArgumentHint(name),
+			"hint":       truncationAwareHint(name, args),
 		}
 	}
 

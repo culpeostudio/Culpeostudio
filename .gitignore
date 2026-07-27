@@ -1,6 +1,9 @@
 # Added by code-review-graph
 .code-review-graph/
 
+# Lokal gebauter Bootstrap-Updater für Quellcode-Starts
+.philoengine/
+
 # Local credentials and runtime/user data
 .env
 .env.*
@@ -10,6 +13,11 @@ backend/data/
 frontend/.dart_tool/
 frontend/build/
 frontend/.flutter-plugins-dependencies
+
+# Gebaute Release-Archive. Sie werden als GitHub-Release-Assets veroeffentlicht,
+# nicht im Repository: jeder Release wuerde die Git-Historie sonst dauerhaft um
+# rund 60 MB aufblaehen. Nur quikinstall/manifest.json gehoert versioniert.
+quikinstall/releases/
 
 # Local Python environments, caches, and compiled server binaries
 backend/.venv/

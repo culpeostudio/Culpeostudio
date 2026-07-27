@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/marketplace_detail_strings.dart';
+
 // Dialog mit der Detail-Aufschluesselung, ob ein Modell auf die Hardware passt.
 
 // Gemeinsamer Tap-Dialog fuer die GPU/RAM-Aufschluesselung eines Modells.
@@ -67,37 +69,44 @@ void showFitDetailsDialog(
           const SizedBox(height: 10),
           if (estimatedVram > 0)
             Text(
-              '${vramEstimated ? "Geschätzter" : "Ermittelter"} Speicherbedarf: '
-              '~${estimatedVram.toStringAsFixed(1)} GB',
+              tr(
+                vramEstimated
+                    ? 'marketplaceDetail.fit.memoryEstimated'
+                    : 'marketplaceDetail.fit.memoryMeasured',
+                {'value': estimatedVram.toStringAsFixed(1)},
+              ),
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
           if (fit == 'partial_offload') ...[
             const SizedBox(height: 6),
             Text(
-              '• ${gpuPortionGb.toStringAsFixed(1)} GB auf der GPU',
+              tr('marketplaceDetail.fit.gpuPortion', {
+                'value': gpuPortionGb.toStringAsFixed(1),
+              }),
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
             Text(
-              '• ${ramOffloadGb.toStringAsFixed(1)} GB im Arbeitsspeicher (RAM)',
+              tr('marketplaceDetail.fit.ramPortion', {
+                'value': ramOffloadGb.toStringAsFixed(1),
+              }),
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
           ] else if (fit == 'cpu_only' && estimatedVram > 0) ...[
             const SizedBox(height: 6),
             Text(
-              '• Läuft komplett über den Arbeitsspeicher (RAM), ohne GPU-Beschleunigung',
+              tr('marketplaceDetail.fit.cpuOnly'),
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
           ] else if (fit == 'unknown') ...[
             const SizedBox(height: 6),
             Text(
-              'Für dieses Modell liegen keine Größen- oder Quantisierungs-'
-              'daten vor, aus denen sich der Bedarf schätzen lässt.',
+              tr('marketplaceDetail.fit.unknownRequirement'),
               style: const TextStyle(color: Colors.white70, fontSize: 12.5),
             ),
           ],
           const Divider(color: Colors.white24, height: 22),
           Text(
-            'DEINE HARDWARE',
+            tr('marketplaceDetail.fit.hardwareTitle'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
               fontSize: 10.5,
@@ -108,12 +117,19 @@ void showFitDetailsDialog(
           const SizedBox(height: 4),
           Text(
             hasGpu
-                ? '${gpuName.isEmpty ? "GPU erkannt" : gpuName} · ${gpuVram.toStringAsFixed(0)} GB VRAM'
-                : 'Keine GPU erkannt',
+                ? tr('marketplaceDetail.fit.gpuSummary', {
+                    'gpu': gpuName.isEmpty
+                        ? tr('marketplaceDetail.fit.gpuDetected')
+                        : gpuName,
+                    'vram': gpuVram.toStringAsFixed(0),
+                  })
+                : tr('marketplaceDetail.fit.noGpu'),
             style: const TextStyle(color: Colors.white70, fontSize: 12.5),
           ),
           Text(
-            '${totalRam.toStringAsFixed(0)} GB Arbeitsspeicher (RAM)',
+            tr('marketplaceDetail.fit.ramSummary', {
+              'ram': totalRam.toStringAsFixed(0),
+            }),
             style: const TextStyle(color: Colors.white70, fontSize: 12.5),
           ),
           if (warnings.isNotEmpty) ...[
@@ -136,7 +152,7 @@ void showFitDetailsDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Schließen'),
+          child: Text(tr('common.close')),
         ),
       ],
     ),
@@ -151,17 +167,17 @@ void showFitDetailsDialog(
 String runtimeFitLabel(String fit) {
   switch (fit) {
     case 'full_gpu':
-      return 'Passt komplett auf GPU';
+      return tr('marketplaceDetail.fit.fullGpu');
     case 'partial_offload':
-      return 'GPU + Arbeitsspeicher';
+      return tr('marketplaceDetail.fit.partialOffload');
     case 'cpu_only':
-      return 'Nur CPU (langsamer)';
+      return tr('marketplaceDetail.fit.cpuOnlyLabel');
     case 'unsupported':
-      return 'Passt auf diesem Gerät nicht';
+      return tr('marketplaceDetail.fit.unsupported');
     case 'unknown':
-      return 'Kompatibilität unbekannt';
+      return tr('marketplaceDetail.fit.unknown');
     default:
-      return 'Kompatibilität unbekannt';
+      return tr('marketplaceDetail.fit.unknown');
   }
 }
 

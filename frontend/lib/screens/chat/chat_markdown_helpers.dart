@@ -5,6 +5,7 @@ import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/chat_aux_strings.dart';
 import '../../widgets/top_notification.dart';
 
 String normalizeChatMarkdown(String input) {
@@ -31,7 +32,7 @@ String normalizeChatMarkdown(String input) {
 String buildCodePreviewLabel(String code) {
   final lineCount = code.trim().isEmpty ? 0 : code.trim().split('\n').length;
   final displayCount = lineCount == 0 ? 1 : lineCount;
-  return '$displayCount Zeilen Code \u2022 Klicken zum Anzeigen';
+  return tr('chatAux.markdown.codePreview', {'count': displayCount.toString()});
 }
 
 bool isMarkdownSourceLanguage(String? language) {
@@ -108,7 +109,7 @@ Future<void> openMarkdownLink(BuildContext context, String? href) async {
     if (context.mounted) {
       showTopNotification(
         context,
-        'Link konnte nicht geoeffnet werden',
+        tr('chatAux.markdown.linkOpenFailed'),
         color: Colors.redAccent,
       );
     }
@@ -120,7 +121,7 @@ Future<void> openMarkdownLink(BuildContext context, String? href) async {
     if (!launched && context.mounted) {
       showTopNotification(
         context,
-        'Link konnte nicht geoeffnet werden: $href',
+        tr('chatAux.markdown.linkOpenFailedWithUrl', {'url': href}),
         color: Colors.redAccent,
       );
     }
@@ -128,7 +129,7 @@ Future<void> openMarkdownLink(BuildContext context, String? href) async {
     if (context.mounted) {
       showTopNotification(
         context,
-        'Link konnte nicht geoeffnet werden: $href',
+        tr('chatAux.markdown.linkOpenFailedWithUrl', {'url': href}),
         color: Colors.redAccent,
       );
     }
@@ -159,14 +160,14 @@ class _MarkdownSourceBlockState extends State<MarkdownSourceBlock> {
     if (!mounted) {
       return;
     }
-    showTopNotification(context, 'Quelltext kopiert');
+    showTopNotification(context, tr('chatAux.markdown.sourceCopied'));
   }
 
   @override
   Widget build(BuildContext context) {
     final languageLabel = (widget.language?.trim().isNotEmpty ?? false)
         ? widget.language!.trim().toUpperCase()
-        : 'TEXT';
+        : tr('chatAux.markdown.plainText');
     final borderColor = Colors.white.withValues(alpha: 0.08);
 
     return Container(
@@ -213,11 +214,14 @@ class _MarkdownSourceBlockState extends State<MarkdownSourceBlock> {
                   onPressed: (index) {
                     setState(() => _showSource = index == 1);
                   },
-                  children: const [Text('Vorschau'), Text('Quelltext')],
+                  children: [
+                    Text(tr('chatAux.markdown.preview')),
+                    Text(tr('chatAux.markdown.source')),
+                  ],
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  tooltip: 'Quelltext kopieren',
+                  tooltip: tr('chatAux.markdown.copySource'),
                   visualDensity: VisualDensity.compact,
                   iconSize: 18,
                   color: Colors.white70,

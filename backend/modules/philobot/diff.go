@@ -113,7 +113,7 @@ func diffOps(oldLines, newLines []string) []diffOp {
 // diffHunk ist ein zusammenhaengender Aenderungsblock samt 1-basierten
 // Startzeilen in alter und neuer Datei.
 type diffHunk struct {
-	ops              []diffOp
+	ops                []diffOp
 	oldStart, newStart int
 }
 
@@ -122,8 +122,8 @@ func groupDiffHunks(ops []diffOp) []diffHunk {
 	// Laufende 1-basierte Zeilennummern pro Operation vormerken.
 	oldLine, newLine := 1, 1
 	type numberedOp struct {
-		op              diffOp
-		oldNo, newNo    int
+		op           diffOp
+		oldNo, newNo int
 	}
 	numbered := make([]numberedOp, 0, len(ops))
 	for _, op := range ops {
@@ -142,7 +142,7 @@ func groupDiffHunks(ops []diffOp) []diffHunk {
 	var hunks []diffHunk
 	var current []numberedOp
 	var pendingContext []numberedOp // letzte Kontextzeilen vor einem moeglichen Hunk
-	gap := 0 // Kontextzeilen seit der letzten Aenderung
+	gap := 0                        // Kontextzeilen seit der letzten Aenderung
 	flush := func() {
 		if len(current) == 0 {
 			return

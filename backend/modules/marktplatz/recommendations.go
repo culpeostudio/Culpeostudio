@@ -86,9 +86,8 @@ func marketplaceRecommendation(model types.ModelSummary, profile HardwareProfile
 		// single-model "?blobs=true" lookup does, see DetailHuggingFace).
 		// When the artifact has a real, filename-derived quantization and the
 		// model has a name-derived parameter count, recommender.Check falls
-		// back to the same weights * bits-per-weight formula llama.cpp/
-		// whichllm use for GGUF size estimates instead of skipping the
-		// option outright.
+		// back to the common weights * bits-per-weight formula used for GGUF
+		// size estimates instead of skipping the option outright.
 		if sizeBytes <= 0 && (quantization == "" || model.ParameterCountB <= 0) {
 			continue
 		}

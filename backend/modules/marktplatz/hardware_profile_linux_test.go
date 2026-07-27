@@ -36,11 +36,11 @@ func TestDetectLinuxGPUFromSysfsReadsAMDNameAndVRAM(t *testing.T) {
 	}
 }
 
-func TestNormalizeWhichLLMGPUNameEnrichesNewAMDDeviceID(t *testing.T) {
-	if got := normalizeWhichLLMGPUName("amd", "Device 7550"); got != "AMD Radeon RX 9070 XT" {
+func TestNormalizePhiloEngineGPUNameEnrichesNewAMDDeviceID(t *testing.T) {
+	if got := normalizePhiloEngineGPUName("amd", "Device 7550"); got != "AMD Radeon RX 9070 XT" {
 		t.Fatalf("unexpected enriched name: %q", got)
 	}
-	if got := normalizeWhichLLMGPUName("amd", "AMD Radeon RX 7900 XTX"); got != "AMD Radeon RX 7900 XTX" {
+	if got := normalizePhiloEngineGPUName("amd", "AMD Radeon RX 7900 XTX"); got != "AMD Radeon RX 7900 XTX" {
 		t.Fatalf("driver name must be retained, got %q", got)
 	}
 }

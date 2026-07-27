@@ -17,29 +17,6 @@ type Service struct {
 	chatCompressor *memorychat.Compressor
 }
 
-type PhiloxSessionStartInput struct {
-	UserID    string   `json:"user_id"`
-	SessionID string   `json:"session_id"`
-	Project   string   `json:"project"`
-	Goals     []string `json:"goals"`
-}
-
-type PhiloxPromptInput struct {
-	UserID    string `json:"user_id"`
-	SessionID string `json:"session_id"`
-	Prompt    string `json:"prompt"`
-}
-
-type PhiloxToolInput struct {
-	UserID      string                 `json:"user_id"`
-	SessionID   string                 `json:"session_id"`
-	ToolName    string                 `json:"tool_name"`
-	Arguments   map[string]interface{} `json:"arguments"`
-	Result      map[string]interface{} `json:"result"`
-	SourcePath  string                 `json:"source_path"`
-	Success     bool                   `json:"success"`
-}
-
 type AssistantReplyInput struct {
 	UserID    string `json:"user_id"`
 	SessionID string `json:"session_id"`
@@ -76,63 +53,6 @@ func (s *Service) ClearSession(sessionID string) {
 	}
 }
 
-
-func (s *Service) CapturePhiloxSessionStart(input PhiloxSessionStartInput) (*memory.Session, error) {
-	return s.memory.EnsureSession(memory.CreateSessionInput{
-		SessionID: input.SessionID,
-		UserID:    input.UserID,
-		Project:   input.Project,
-		Source:    "philox",
-		Goals:     input.Goals,
-	})
-}
-
-func (s *Service) CapturePhiloxPrompt(input PhiloxPromptInput) (*memory.ContextEnvelope, error) {
-	if _, err := s.memory.EnsureSession(memory.CreateSessionInput{
-		SessionID: input.SessionID,
-		UserID:    input.UserID,
-		Source:    "philox",
-	}); err != nil {
-		return nil, err
-	}
-	_, context, err := s.memory.AddPrompt(input.SessionID, memory.AddPromptInput{
-		UserID: input.UserID,
-		Role: memory.PromptRoleUser,
-		Text: input.Prompt,
-	})
-	return context, err
-}
-
-func (s *Service) CapturePhiloxTool(input PhiloxToolInput) (*memory.Observation, error) {
-	if _, err := s.memory.EnsureSession(memory.CreateSessionInput{
-		SessionID: input.SessionID,
-		UserID:    input.UserID,
-		Source:    "philox",
-	}); err != nil {
-		return nil, err
-	}
-	arguments := sanitizeMap(input.Arguments)
-	result := sanitizeMap(input.Result)
-	stage := "tool_result"
-	title := fmt.Sprintf("Philox tool %s", strings.TrimSpace(input.ToolName))
-	if len(result) == 0 {
-		stage = "tool_start"
-	}
-	narrative := renderToolNarrative(arguments, result, input.Success)
-	return s.memory.AddObservation(input.SessionID, memory.AddObservationInput{
-		Source:     "philox",
-		UserID:     input.UserID,
-		Layer:      memory.LayerProjectData,
-		Category:   memory.CategoryStatus,
-		Type:       stage,
-		Title:      title,
-		Narrative:  narrative,
-		ToolName:   input.ToolName,
-		SourcePath: input.SourcePath,
-		Tags:       []string{"philox", strings.TrimSpace(input.ToolName), stage},
-	})
-}
-
 func (s *Service) CaptureAssistantReply(input AssistantReplyInput, source string) (*memory.Observation, error) {
 	source = strings.TrimSpace(source)
 	if source == "" {
@@ -147,8 +67,8 @@ func (s *Service) CaptureAssistantReply(input AssistantReplyInput, source string
 	}
 	if _, _, err := s.memory.AddPrompt(input.SessionID, memory.AddPromptInput{
 		UserID: input.UserID,
-		Role: memory.PromptRoleAssistant,
-		Text: input.Reply,
+		Role:   memory.PromptRoleAssistant,
+		Text:   input.Reply,
 	}); err != nil {
 		return nil, err
 	}
@@ -177,8 +97,8 @@ func (s *Service) CaptureChatMessage(userID, sessionID, project, prompt, reply s
 	}
 	_, context, err := s.memory.AddPrompt(sessionID, memory.AddPromptInput{
 		UserID: userID,
-		Role: memory.PromptRoleUser,
-		Text: prompt,
+		Role:   memory.PromptRoleUser,
+		Text:   prompt,
 	})
 	if err != nil {
 		return nil, err
@@ -186,8 +106,8 @@ func (s *Service) CaptureChatMessage(userID, sessionID, project, prompt, reply s
 	if strings.TrimSpace(reply) != "" {
 		if _, _, err := s.memory.AddPrompt(sessionID, memory.AddPromptInput{
 			UserID: userID,
-			Role: memory.PromptRoleAssistant,
-			Text: reply,
+			Role:   memory.PromptRoleAssistant,
+			Text:   reply,
 		}); err != nil {
 			return nil, err
 		}

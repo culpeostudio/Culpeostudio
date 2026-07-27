@@ -14,6 +14,7 @@ import (
 	"github.com/fillyengine/backend/internal/apimodels"
 	"github.com/fillyengine/backend/internal/bus"
 	"github.com/fillyengine/backend/internal/localinference"
+	"github.com/fillyengine/backend/internal/pathmention"
 )
 
 // maxModelHistoryMessages caps how much conversation history is replayed to the
@@ -49,6 +50,26 @@ func (m *PhiloBotModule) projectPathForSessionLocked(userID string, session *phi
 		return ""
 	}
 	return strings.TrimSpace(project.Path)
+}
+
+// resolveToolRoots bestimmt, in welchen Ordnern die Datei-Werkzeuge dieser
+// Anfrage arbeiten duerfen: im Projekt-Ordner der Session und zusaetzlich in
+// jedem Ordner, den der Nutzer in seiner Nachricht ausdruecklich genannt hat.
+//
+// Wer "schau mal in /home/nutzer/projekt" schreibt, hat den Zugriff damit
+// erkennbar gemeint; ohne das muesste er denselben Pfad noch einmal ueber die
+// Erlaubnis-Abfrage bestaetigen. Ist gar kein Ordner bekannt, bleibt die Liste
+// leer und der Bot arbeitet ohne Dateizugriff.
+func resolveToolRoots(projectPath, message string) []string {
+	var roots []string
+	if strings.TrimSpace(projectPath) != "" {
+		roots = append(roots, projectPath)
+	}
+	mentioned := pathmention.Extract(message)
+	if len(mentioned) > 0 {
+		log.Printf("[philobot] In der Nachricht genannte Ordner freigegeben: %v", mentioned)
+	}
+	return append(roots, mentioned...)
 }
 
 func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, message string, options chatOptions, onBotSelected func(botID, botName string), emit func(string) error, emitWarmup func(localinference.WarmupProgress) error, emitEvent func(eventType string, data interface{}) error) (string, string, string, *BotConfig, error) {
@@ -166,12 +187,30 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 		// succeeds, and StreamLocalChat is invoked exactly once.
 		history = append(history, chatMessage{Role: "user", Content: message})
 		modelStart := time.Now()
-		if projectPath != "" {
-			// Projekt-Kontext: Datei-Tool-Loop statt einmaligem Chat, damit der Bot
-			// im Projekt-Ordner arbeiten kann. Roots strikt auf den Projekt-Pfad.
-			// Der Permission-Broker erlaubt dem Nutzer, Zugriffe ausserhalb des
-			// Projektpfads im laufenden Stream freizugeben oder abzulehnen; er
-			// lebt nur fuer diesen Request und wird danach aufgeloest.
+		planned, planReply, planErr := m.runPlanningFlow(ctx, planningRequest{
+			userID:       userID,
+			sessionID:    sessionID,
+			provider:     provider,
+			modelID:      modelID,
+			message:      message,
+			systemPrompt: systemPrompt,
+			thinking:     thinking,
+			projectPath:  projectPath,
+			options:      options,
+			emitText:     providerEmit,
+			emitEvent:    emitEvent,
+		})
+		if planned {
+			// Der Planungsmodus hat uebernommen: entweder liegt jetzt ein Plan
+			// zur Freigabe vor, oder ein freigegebener Plan wurde abgearbeitet.
+			reply, err = planReply, planErr
+		} else if roots := resolveToolRoots(projectPath, message); len(roots) > 0 {
+			// Datei-Tool-Loop statt einmaligem Chat, damit der Bot im Projekt-
+			// Ordner arbeiten kann — oder in einem Ordner, den der Nutzer in
+			// seiner Nachricht genannt hat.
+			// Der Permission-Broker erlaubt dem Nutzer, Zugriffe ausserhalb der
+			// Roots im laufenden Stream freizugeben oder abzulehnen; er lebt nur
+			// fuer diesen Request und wird danach aufgeloest.
 			broker := newPermissionBroker()
 			m.mu.Lock()
 			m.permissionBrokers[sessionID] = broker
@@ -182,7 +221,7 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 				m.mu.Unlock()
 				broker.Close()
 			}()
-			reply, err = m.runProjectToolLoop(ctx, provider, modelID, history, systemPrompt, thinking, []string{projectPath}, providerEmit, emitEvent, broker, sessionID)
+			reply, err = m.runProjectToolLoop(ctx, provider, modelID, history, systemPrompt, thinking, roots, providerEmit, emitEvent, broker, sessionID)
 		} else {
 			emitReasoning := func(chunk string) error {
 				if emitEvent == nil {
@@ -190,14 +229,20 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 				}
 				return emitEvent("reasoning_delta", map[string]interface{}{"chunk": chunk})
 			}
-			// thinkFilter loest inline <think> Bloecke (Modelle ohne natives
-			// Reasoning-Feld) aus dem sichtbaren Text heraus, BEVOR er providerEmit
-			// (ggf. der BotBuilder-Filter) erreicht.
-			thinkFilter := newThinkTagFilter(providerEmit, emitReasoning)
-			reply, err = m.streamProviderChat(ctx, provider, modelID, history, systemPrompt, thinking, thinkFilter.Emit, emitReasoning)
-			if err == nil {
-				err = thinkFilter.Flush()
-			}
+			// Ohne Projekt gibt es keine Datei-Werkzeuge, aber die Web-Recherche:
+			// der Bot entscheidet selbst, ob eine Frage eine Suche rechtfertigt.
+			reply, err = runWebOnlyToolLoop(ctx, history, systemPrompt, providerEmit, emitEvent,
+				func(convo []chatMessage, prompt string, filterEmit func(string) error) (string, error) {
+					// thinkFilter loest inline <think> Bloecke (Modelle ohne natives
+					// Reasoning-Feld) aus dem sichtbaren Text heraus, BEVOR filterEmit
+					// entscheidet, ob ein Tool-Aufruf oder die Endantwort vorliegt.
+					thinkFilter := newThinkTagFilter(filterEmit, emitReasoning)
+					out, streamErr := m.streamProviderChat(ctx, provider, modelID, convo, prompt, thinking, thinkFilter.Emit, emitReasoning)
+					if streamErr == nil {
+						streamErr = thinkFilter.Flush()
+					}
+					return out, streamErr
+				})
 		}
 		// Modellzeit getrennt loggen: so ist im Log sofort erkennbar, dass die
 		// wahrgenommene Langsamkeit an der Inferenz haengt, nicht am Recall.
@@ -279,79 +324,19 @@ func (m *PhiloBotModule) generateAgenticReply(ctx context.Context, userID, sessi
 		m.mu.Unlock()
 		return "", "", "", err
 	}
-	if finalBot.ModelBinding != nil {
-		m.mu.Unlock()
-		return m.generateBoundAgenticReply(ctx, userID, sessionID, message, options, finalBot, onBotSelected, emit)
-	}
-	// Gehoert die Session zu einem Projekt mit Pfad, laeuft die Arbeit ueber den
-	// Datei-Tool-Loop (via generateReply) statt ueber den abgeschalteten Philox-
-	// Pfad — so kann JEDER Bot im Projekt-Ordner arbeiten, egal welches
-	// Thinking-Level gewaehlt ist.
-	if m.projectPathForSessionLocked(userID, session) != "" {
-		m.mu.Unlock()
-		return m.generateBoundAgenticReply(ctx, userID, sessionID, message, options, finalBot, onBotSelected, emit)
-	}
 	if len(session.AllowedRoots) == 0 {
 		session.AllowedRoots = append([]string{}, finalBot.AllowedRoots...)
 	}
-	roots := append([]string{}, session.AllowedRoots...)
-	mode := session.AgenticMode
-	if mode == "" {
-		mode = "execute"
-	}
 	m.mu.Unlock()
-	if m.philoxClient == nil {
-		return "", "", "", fmt.Errorf("Philox gRPC Client ist nicht konfiguriert")
-	}
 
-	if onBotSelected != nil {
-		onBotSelected(finalBot.ID, finalBot.Name)
-	}
-
-	reply, err := m.philoxClient.StreamAgentic(ctx, agenticStreamRequest{
-		SessionID:    sessionID,
-		Message:      message,
-		Mode:         mode,
-		AllowedRoots: roots,
-		Context:      agenticContext(finalBot, options.ApprovePlan),
-	}, emit)
-	if err != nil {
-		return reply, finalBot.ID, finalBot.Name, err
-	}
-
-	m.mu.Lock()
-	session = m.sessions[sessionID]
-	if session == nil || session.UserID != userID {
-		m.mu.Unlock()
-		return "", "", "", errPhiloBotSessionNotFound
-	}
-	session.Messages = append(session.Messages,
-		chatMessage{Role: "user", Content: message},
-		chatMessage{Role: "assistant", Content: reply, BotID: finalBot.ID, BotName: finalBot.Name},
-	)
-	// project unter dem Lock lesen, damit die Chat-Memory im Projekt-Grid landet.
-	project := session.ProjectID
-	m.mu.Unlock()
-	m.persistSession(sessionID)
-
-	bus.Get().Emit("philobot", bus.EventPhiloBotMessageSent, map[string]interface{}{
-		"session_id": sessionID,
-		"user_id":    userID,
-		"project":    project,
-		"message":    message,
-		"reply":      reply,
-		"bot_id":     finalBot.ID,
-		"bot_name":   finalBot.Name,
-		"thinking":   "agentic",
-		"mode":       mode,
-	})
-	return reply, finalBot.ID, finalBot.Name, nil
+	// Jede agentische Anfrage laeuft ueber den Datei-Tool-Loop in
+	// generateReply.
+	return m.generateBoundAgenticReply(ctx, userID, sessionID, message, options, finalBot, onBotSelected, emit)
 }
 
 // A fixed model binding is authoritative even when the UI requests agentic
-// thinking. Philox has its own model selection and therefore cannot preserve
-// that guarantee; bound bots use the normal provider pipeline instead, while
-// keeping agentic prompt/style settings and the same SSE event contract.
+// thinking: bound bots use the normal provider pipeline, keeping agentic
+// prompt/style settings and the same SSE event contract.
 func (m *PhiloBotModule) generateBoundAgenticReply(ctx context.Context, userID, sessionID, message string, options chatOptions, finalBot BotConfig, onBotSelected func(botID, botName string), emit func(string, interface{}) error) (string, string, string, error) {
 	delegated := options
 	delegated.EditMessageIndex = -1 // generateAgenticReply already applied the edit atomically.

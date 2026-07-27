@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../engine/models.dart';
 import '../../engine/widgets.dart';
+import '../../l10n/app_strings.dart';
 
 /// Karte einer Engine-Instanz in der Instanzliste: Status, Fortschritt,
 /// Fehlermeldung samt Sofort-Fix und die Aktionsleiste (Start/Stopp, Kontext,
@@ -115,20 +116,20 @@ class InstanceCard extends StatelessWidget {
               ),
               EngineStatusBadge(status: instance.state),
               PopupMenuButton<String>(
-                tooltip: 'Weitere Aktionen',
+                tooltip: tr('engineWidget.instance.moreActions'),
                 enabled: !busy,
                 icon: const Icon(Icons.more_vert, color: Colors.white54),
                 onSelected: (value) {
                   if (value == 'delete') onDelete();
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'delete',
                     child: ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.delete_outline),
-                      title: Text('Modellinstanz entfernen'),
+                      leading: const Icon(Icons.delete_outline),
+                      title: Text(tr('engineWidget.instance.remove')),
                     ),
                   ),
                 ],
@@ -148,7 +149,13 @@ class InstanceCard extends StatelessWidget {
               EngineGuardBadge(state: instance.guardState),
               if (instance.activeRequests > 0)
                 Text(
-                  '${instance.activeRequests} aktive ${instance.activeRequests == 1 ? 'Anfrage' : 'Anfragen'}',
+                  instance.activeRequests == 1
+                      ? tr('engineWidget.instance.activeRequest', {
+                          'count': '${instance.activeRequests}',
+                        })
+                      : tr('engineWidget.instance.activeRequests', {
+                          'count': '${instance.activeRequests}',
+                        }),
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
             ],
@@ -204,8 +211,10 @@ class InstanceCard extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 instance.progress > 0
-                    ? '${(instance.progress * 100).round()} % abgeschlossen'
-                    : 'Wird vorbereitet …',
+                    ? tr('engineWidget.instance.progressComplete', {
+                        'percent': '${(instance.progress * 100).round()}',
+                      })
+                    : tr('engineWidget.instance.preparing'),
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
@@ -217,7 +226,11 @@ class InstanceCard extends StatelessWidget {
           if (instance.plan != null && transitional) ...[
             const SizedBox(height: 9),
             Text(
-              '${formatTokenCount(instance.plan!.effectiveContextTokens)} Token Kontext sind eingeplant.',
+              tr('engineWidget.instance.plannedContext', {
+                'tokens': formatTokenCount(
+                  instance.plan!.effectiveContextTokens,
+                ),
+              }),
               style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ],
@@ -270,13 +283,13 @@ class InstanceCard extends StatelessWidget {
                   : (value) => onUpdateInstance({
                       'show_in_chat_picker': value == true,
                     }),
-              title: const Text(
-                'Auch ausgeschaltet im Chat anzeigen',
-                style: TextStyle(color: Colors.white, fontSize: 12),
+              title: Text(
+                tr('engineWidget.instance.showInChatTitle'),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
-              subtitle: const Text(
-                'Die Auswahl startet das Modell bei Bedarf automatisch.',
-                style: TextStyle(color: Colors.white38, fontSize: 12),
+              subtitle: Text(
+                tr('engineWidget.instance.showInChatSubtitle'),
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ),
           ),
@@ -289,7 +302,7 @@ class InstanceCard extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: busy ? null : () => onAction('stop'),
                   icon: const Icon(Icons.stop, size: 17),
-                  label: const Text('Stoppen'),
+                  label: Text(tr('engine.stopInstance')),
                 )
               else if (!instance.isActive)
                 FilledButton.tonalIcon(
@@ -301,21 +314,23 @@ class InstanceCard extends StatelessWidget {
                     size: 17,
                   ),
                   label: Text(
-                    instance.state == 'failed' ? 'Erneut versuchen' : 'Starten',
+                    instance.state == 'failed'
+                        ? tr('common.retry')
+                        : tr('engine.startInstance'),
                   ),
                 ),
               if (instance.isReady)
                 OutlinedButton.icon(
                   onPressed: busy ? null : () => onEditSampling(),
                   icon: const Icon(Icons.graphic_eq, size: 17),
-                  label: const Text('Antwortverhalten'),
+                  label: Text(tr('engine.responseBehavior')),
                 ),
               if (instance.isReady && instance.plan != null)
                 OutlinedButton.icon(
                   key: Key('engine-context-edit-${instance.id}'),
                   onPressed: busy ? null : () => onEditContext(),
                   icon: const Icon(Icons.memory_outlined, size: 17),
-                  label: const Text('Kontext'),
+                  label: Text(tr('engine.context')),
                 ),
               TextButton.icon(
                 key: Key('engine-instance-details-toggle-${instance.id}'),
@@ -324,7 +339,11 @@ class InstanceCard extends StatelessWidget {
                   detailsExpanded ? Icons.expand_less : Icons.expand_more,
                   size: 17,
                 ),
-                label: Text(detailsExpanded ? 'Weniger' : 'Details'),
+                label: Text(
+                  detailsExpanded
+                      ? tr('engine.detailsLess')
+                      : tr('engine.detailsMore'),
+                ),
               ),
             ],
           ),
@@ -373,34 +392,35 @@ String _instanceFallbackMessage(EngineInstance instance) {
       instance.effectiveConfig.contextTokens ??
       0;
   if (failedContext > activeContext && activeContext > 0) {
-    return 'Der höhere Kontext von ${formatTokenCount(failedContext)} war nicht stabil. '
-        'Aktiv und erfolgreich geprüft: ${formatTokenCount(activeContext)} Token. '
-        'Das rechnerische Maximum bleibt über „Kontext“ testbar.';
+    return tr('engineWidget.instance.fallback.unstableContext', {
+      'failed': formatTokenCount(failedContext),
+      'active': formatTokenCount(activeContext),
+    });
   }
-  return 'Die Engine hat automatisch eine kompatible Ausführung gewählt. Das Modell bleibt nutzbar.';
+  return tr('engineWidget.instance.fallback.compatibleRuntime');
 }
 
 String _instanceStageTitle(EngineInstance instance) {
   switch (instance.state) {
     case 'installing':
-      return 'Einmalige Einrichtung läuft';
+      return tr('engineWidget.instance.stage.installing');
     case 'queued':
-      return 'Start wird vorbereitet';
+      return tr('engineWidget.instance.stage.queued');
     case 'starting':
-      return 'Modell wird gestartet';
+      return tr('engineWidget.instance.stage.starting');
     case 'draining':
-      return 'Laufende Anfragen werden abgeschlossen';
+      return tr('engineWidget.instance.stage.draining');
     case 'restarting':
-      return 'Neue Einstellungen werden angewendet';
+      return tr('engineWidget.instance.stage.restarting');
     case 'ready':
-      return 'Bereit für lokale Anfragen';
+      return tr('engineWidget.instance.stage.ready');
     case 'failed':
     case 'failed_rollback':
-      return 'Start konnte nicht abgeschlossen werden';
+      return tr('engineWidget.instance.stage.failed');
     case 'stopped':
-      return 'Derzeit ausgeschaltet';
+      return tr('engineWidget.instance.stage.stopped');
     default:
-      return 'Lokales Modell';
+      return tr('engineWidget.instance.stage.default');
   }
 }
 
@@ -410,37 +430,37 @@ String instanceStageDescription(EngineInstance instance) {
   }
   switch (instance.state) {
     case 'installing':
-      return 'PhiloEngine richtet die benötigten Komponenten im Hintergrund ein. Danach startet das Modell automatisch.';
+      return tr('engineWidget.instance.description.installing');
     case 'queued':
-      return 'Die sichere Speicheraufteilung ist berechnet. Der Start beginnt automatisch, sobald die Ressourcen bereit sind.';
+      return tr('engineWidget.instance.description.queued');
     case 'starting':
-      return 'Das Modell wird geladen und kurz geprüft. Du musst nichts weiter tun.';
+      return tr('engineWidget.instance.description.starting');
     case 'draining':
-      return 'Vor dem Wechsel werden laufende Antworten bis zu 30 Sekunden sauber beendet.';
+      return tr('engineWidget.instance.description.draining');
     case 'restarting':
-      return 'Die Engine startet das Modell mit dem neuen Plan und prüft es anschließend automatisch.';
+      return tr('engineWidget.instance.description.restarting');
     case 'failed':
     case 'failed_rollback':
-      return 'Die automatische Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen; technische Details sind optional verfügbar.';
+      return tr('engineWidget.instance.description.failed');
     default:
-      return 'Die Engine arbeitet im Hintergrund.';
+      return tr('engineWidget.instance.description.default');
   }
 }
 
 String friendlyEngineError(String raw) {
   final value = raw.toLowerCase();
   if (value.contains('exit status') || value.contains('exit code')) {
-    return 'Eine benötigte Komponente konnte nicht eingerichtet werden. Bitte versuche es erneut.';
+    return tr('engineWidget.error.setupFailed');
   }
   if (value.contains('out of memory') || value.contains('oom')) {
-    return 'Der verfügbare Speicher reicht für diesen Plan nicht aus. Die Engine kann beim nächsten Versuch einen kleineren Kontext wählen.';
+    return tr('engineWidget.error.memoryInsufficient');
   }
   if (value.contains('cuda') ||
       value.contains('rocm') ||
       value.contains('vulkan')) {
-    return 'Die gewünschte GPU-Ausführung ist nicht verfügbar. Eine kompatible Alternative kann automatisch gewählt werden.';
+    return tr('engineWidget.error.gpuUnavailable');
   }
-  return 'Das Modell konnte noch nicht gestartet werden. Bitte versuche es erneut oder öffne die technischen Details.';
+  return tr('engineWidget.error.generic');
 }
 
 String instanceErrorMessage(EngineInstance instance) {
@@ -453,7 +473,7 @@ String instanceErrorMessage(EngineInstance instance) {
   // as the user-facing status message.
   if (value.contains('engine plan conflict') ||
       (value.contains('minimum context') && value.contains('maximum is'))) {
-    return 'Das Speicherbudget hat sich während der Vorbereitung geändert. GPU und System-RAM werden beim nächsten Versuch neu berechnet.';
+    return tr('engineWidget.error.planChanged');
   }
   return instance.errorSummary.isNotEmpty ? raw : friendlyEngineError(raw);
 }
@@ -474,55 +494,69 @@ Widget _instanceTechnicalDetails(EngineInstance instance) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Technische Details',
-          style: TextStyle(
+        Text(
+          tr('engineWidget.details.title'),
+          style: const TextStyle(
             color: Colors.white70,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
         ),
         const SizedBox(height: 8),
-        _detailLine('Lokaler Modellname', instance.id),
+        _detailLine(tr('engineWidget.details.modelName'), instance.id),
         _detailLine(
-          'Ausführung',
+          tr('engineWidget.details.runtime'),
           runtimeLabel(instance.effectiveConfig.runtime),
         ),
-        _detailLine('Kontext', '${formatTokenCount(context)} Token'),
-        if (instance.phase.isNotEmpty)
-          _detailLine('Interne Phase', instance.phase),
         _detailLine(
-          'Priorität',
+          tr('engineWidget.details.context'),
+          tr('engineWidget.details.contextTokens', {
+            'tokens': formatTokenCount(context),
+          }),
+        ),
+        if (instance.phase.isNotEmpty)
+          _detailLine(tr('engineWidget.details.internalPhase'), instance.phase),
+        _detailLine(
+          tr('engineWidget.details.priority'),
           _priorityLabel(instance.requestedConfig.priority),
         ),
-        _detailLine('Platzierung', _placementLabel(instance.placement)),
-        _detailLine('Aktive Anfragen', instance.activeRequests.toString()),
-        _detailLine('Ressourcenschutz', _guardLabel(instance.guardState)),
+        _detailLine(
+          tr('engineWidget.details.placement'),
+          _placementLabel(instance.placement),
+        ),
+        _detailLine(
+          tr('engineWidget.details.activeRequests'),
+          instance.activeRequests.toString(),
+        ),
+        _detailLine(
+          tr('engineWidget.details.resourceProtection'),
+          _guardLabel(instance.guardState),
+        ),
         if (instance.lastUsedAt != null)
           _detailLine(
-            'Zuletzt verwendet',
+            tr('engineWidget.details.lastUsed'),
             _formatEngineTime(instance.lastUsedAt!),
           ),
         if (instance.idleExpiresAt != null)
           _detailLine(
-            'Automatisches Stoppen',
+            tr('engineWidget.details.automaticStop'),
             _formatEngineTime(instance.idleExpiresAt!),
           ),
         if (instance.fallbacks.isNotEmpty)
           _detailLine(
-            'Automatische Anpassung',
+            tr('engineWidget.details.automaticAdjustment'),
             instance.fallbacks.map((item) => item.label).join(' · '),
           ),
         if (instance.restartRequiredFields.isNotEmpty)
           _detailLine(
-            'Bei Änderung mit Neustart',
+            tr('engineWidget.details.restartRequired'),
             instance.restartRequiredFields
                 .map(_restartFieldLabel)
                 .toSet()
                 .join(', '),
           ),
         if (instance.error != null && instance.error!.isNotEmpty)
-          _detailLine('Fehlerprotokoll', instance.error!),
+          _detailLine(tr('engineWidget.details.errorLog'), instance.error!),
       ],
     ),
   );
@@ -570,7 +604,7 @@ String runtimeLabel(String runtime) {
       return 'Transformers';
     case 'auto':
     case '':
-      return 'Automatisch';
+      return tr('engineWidget.runtime.auto');
     default:
       return runtime;
   }
@@ -579,13 +613,13 @@ String runtimeLabel(String runtime) {
 String _priorityLabel(String priority) {
   switch (priority) {
     case 'low':
-      return 'Niedrig';
+      return tr('engineWidget.priority.low');
     case 'high':
-      return 'Hoch';
+      return tr('engineWidget.priority.high');
     case 'pinned':
-      return 'Fest reserviert';
+      return tr('engineWidget.priority.pinned');
     default:
-      return 'Normal';
+      return tr('engineWidget.priority.normal');
   }
 }
 
@@ -593,35 +627,39 @@ String _placementLabel(String placement) => switch (placement) {
   'gpu' => 'GPU',
   'ram' => 'RAM',
   'hybrid' => 'GPU + RAM',
-  _ => 'Noch nicht bekannt',
+  _ => tr('engineWidget.placement.unknown'),
 };
 
 String _guardLabel(String guard) => switch (guard) {
-  'warning' => 'Warnung – neue Starts pausiert',
-  'critical' => 'Kritisch – Speicher wird freigegeben',
-  'emergency' => 'Notfall – Hostschutz aktiv',
-  _ => 'Normal',
+  'warning' => tr('engineWidget.instance.guard.warning'),
+  'critical' => tr('engineWidget.instance.guard.critical'),
+  'emergency' => tr('engineWidget.instance.guard.emergency'),
+  _ => tr('engineWidget.instance.guard.normal'),
 };
 
 String _formatEngineTime(DateTime value) {
   final local = value.toLocal();
   final hour = local.hour.toString().padLeft(2, '0');
   final minute = local.minute.toString().padLeft(2, '0');
-  return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}.${local.year} $hour:$minute';
+  return tr('engineWidget.time.short', {
+    'day': local.day.toString().padLeft(2, '0'),
+    'month': local.month.toString().padLeft(2, '0'),
+    'year': '${local.year}',
+    'hour': hour,
+    'minute': minute,
+  });
 }
 
-String _restartFieldLabel(String field) {
-  const labels = <String, String>{
-    'runtime': 'Ausführung',
-    'context_tokens': 'Kontextgröße',
-    'gpu_layers': 'GPU-Layer',
-    'threads': 'CPU-Threads',
-    'tensor_parallel_size': 'GPU-Parallelität',
-    'gpu_ids': 'GPU-Auswahl',
-    'offload': 'Speicheraufteilung',
-    'kv_cache_dtype': 'Kontextspeicherformat',
-    'max_sequences': 'parallele Anfragen',
-    'trust_remote_code': 'Modellcode-Freigabe',
-  };
-  return labels[field] ?? field;
-}
+String _restartFieldLabel(String field) => switch (field) {
+  'runtime' => tr('engineWidget.restartField.runtime'),
+  'context_tokens' => tr('engineWidget.restartField.contextTokens'),
+  'gpu_layers' => tr('engineWidget.restartField.gpuLayers'),
+  'threads' => tr('engineWidget.restartField.threads'),
+  'tensor_parallel_size' => tr('engineWidget.restartField.tensorParallelSize'),
+  'gpu_ids' => tr('engineWidget.restartField.gpuIds'),
+  'offload' => tr('engineWidget.restartField.offload'),
+  'kv_cache_dtype' => tr('engineWidget.restartField.kvCacheDtype'),
+  'max_sequences' => tr('engineWidget.restartField.maxSequences'),
+  'trust_remote_code' => tr('engineWidget.restartField.trustRemoteCode'),
+  _ => field,
+};

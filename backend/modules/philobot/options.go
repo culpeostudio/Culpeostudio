@@ -7,18 +7,24 @@ import (
 	"github.com/google/uuid"
 )
 
-func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode string, allowedRoots []string, approvePlan bool) chatOptions {
+func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode string, allowedRoots []string, approvePlan, planning bool) chatOptions {
 	index := -1
 	if editIndex != nil {
 		index = *editIndex
 	}
+	mode := normalizeAgenticMode(agenticMode)
 	return chatOptions{
 		Thinking:         normalizeThinkingLevel(thinking),
 		Style:            normalizeResponseStyle(style),
 		EditMessageIndex: index,
-		AgenticMode:      normalizeAgenticMode(agenticMode),
+		AgenticMode:      mode,
 		AllowedRoots:     normalizeAllowedRoots(allowedRoots),
 		ApprovePlan:      approvePlan,
+		// Der Planungsmodus haengt an einem eigenen Schalter, nicht am
+		// Denk-Level: er laesst sich mit jeder Modell-Einstellung und mit
+		// oder ohne Projekt kombinieren. mode=="planning" bleibt als
+		// zweiter Weg bestehen, damit aeltere Clients weiter funktionieren.
+		Planning: planning || mode == "planning",
 	}
 }
 

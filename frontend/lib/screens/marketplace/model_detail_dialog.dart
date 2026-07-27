@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/marketplace_detail_strings.dart';
 import 'fit_details_dialog.dart';
 import 'marketplace_format.dart';
 
@@ -45,13 +46,19 @@ class ModelDetailDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = _firstText(['display_name', 'name', 'model_id'], 'Modell');
+    final name = _firstText([
+      'display_name',
+      'name',
+      'model_id',
+    ], tr('marketplaceDetail.model.fallbackName'));
     final modelId = _firstText(['model_id', 'id'], '');
     final provider = (summary['provider'] ?? '').toString();
     final providerBadge =
         (summary['provider_badge'] ?? (detail?['provider_badge']) ?? provider)
             .toString();
-    final desc = _firstText(['description'], 'Keine Beschreibung verfuegbar.');
+    final desc = _firstText([
+      'description',
+    ], tr('marketplaceDetail.model.noDescription'));
     final tags = _stringList('capability_tags');
     final quantizations = _stringList('quantizations');
     final formats = _stringList('formats');
@@ -134,7 +141,9 @@ class ModelDetailDialog extends StatelessWidget {
                   const SizedBox(width: 6),
                   if (contextLength > 0)
                     _pill(
-                      '${(contextLength / 1000).round()}K ctx',
+                      tr('marketplaceDetail.model.contextBadge', {
+                        'count': (contextLength / 1000).round().toString(),
+                      }),
                       Colors.tealAccent,
                     ),
                 ],
@@ -160,17 +169,34 @@ class ModelDetailDialog extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _metricRow(Icons.payments_outlined, 'Preis: $price'),
-                  _metricRow(Icons.psychology_alt_outlined, 'IQ $score'),
-                  _metricRow(Icons.trending_up_rounded, '$downloads Hits'),
+                  _metricRow(
+                    Icons.payments_outlined,
+                    tr('marketplaceDetail.model.price', {'price': price}),
+                  ),
+                  _metricRow(
+                    Icons.psychology_alt_outlined,
+                    tr('marketplaceDetail.model.intelligence', {
+                      'score': score.toString(),
+                    }),
+                  ),
+                  _metricRow(
+                    Icons.trending_up_rounded,
+                    tr('marketplaceDetail.model.downloads', {
+                      'count': downloads.toString(),
+                    }),
+                  ),
                   if (estimatedVram > 0)
                     _metricRow(
                       fitsGpu
                           ? Icons.check_circle_outline
                           : runtimeFitIcon(runtimeFit),
-                      '${vramEstimated ? "~" : ""}'
-                      '${estimatedVram.toStringAsFixed(1)} GB VRAM'
-                      '${vramEstimated ? " (geschätzt)" : ""}',
+                      tr('marketplaceDetail.model.vram', {
+                        'prefix': vramEstimated ? '~' : '',
+                        'value': estimatedVram.toStringAsFixed(1),
+                        'suffix': vramEstimated
+                            ? tr('marketplaceDetail.model.vramEstimatedSuffix')
+                            : '',
+                      }),
                       color: fitsGpu
                           ? Colors.greenAccent
                           : runtimeFitColor(runtimeFit),
@@ -199,9 +225,9 @@ class ModelDetailDialog extends StatelessWidget {
                   quantizations.isNotEmpty ||
                   formats.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                const Text(
-                  'Tags',
-                  style: TextStyle(
+                Text(
+                  tr('marketplaceDetail.model.tags'),
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -220,9 +246,9 @@ class ModelDetailDialog extends StatelessWidget {
               ],
               if (optionList.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                const Text(
-                  'Verfuegbare Varianten',
-                  style: TextStyle(
+                Text(
+                  tr('marketplaceDetail.model.availableVariants'),
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -247,14 +273,16 @@ class ModelDetailDialog extends StatelessWidget {
                     title: Text(
                       option['label']?.toString() ??
                           option['format']?.toString() ??
-                          'Variante',
+                          tr('marketplaceDetail.model.variantFallback'),
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                     subtitle: Text(
                       [
                         if (size > 0) formatBytes(size),
                         if (shardCount > 1)
-                          '$shardCount zusammengehörende Dateien',
+                          tr('marketplaceDetail.model.shardCount', {
+                            'count': shardCount.toString(),
+                          }),
                         if (size == 0 && shardCount == 0)
                           option['format']?.toString() ?? '',
                       ].where((part) => part.isNotEmpty).join(' · '),

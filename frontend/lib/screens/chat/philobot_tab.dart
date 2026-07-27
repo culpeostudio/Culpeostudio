@@ -10,6 +10,7 @@ import 'package:markdown/markdown.dart' as md;
 import '../../services/api_service.dart';
 import '../../state/app_state.dart';
 import '../../engine/models.dart';
+import '../../l10n/chat_tabs_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/top_notification.dart';
 import 'chat_history_panel.dart';
@@ -91,6 +92,12 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   bool _isInitializingChat = true;
   String _thinkingLevel = 'medium';
   bool _webSearchEnabled = false;
+  // Planungsmodus: PhiloBot zerlegt die Aufgabe zuerst in Schritte und legt
+  // sie zur Freigabe vor, statt sofort loszuarbeiten. Die Ausfuehrung startet
+  // erst mit approve_plan aus dem Freigabe-Panel. Der Schalter haengt bewusst
+  // nicht am Denk-Level, sondern laesst sich mit jeder Einstellung und mit
+  // oder ohne geoeffnetes Projekt kombinieren.
+  bool _planningEnabled = false;
   final String _agenticMode = 'execute';
   bool _showPlanningApproval = false;
   Map<String, dynamic>? _pendingPlanningData;
@@ -195,7 +202,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             modelId: choice.modelId,
             instanceId: choice.instanceId,
             label: choice.label,
-            subtitle: 'Lokal • Bereit',
+            subtitle: chatTabsText('philobot.localReady'),
             selectable: true,
             state: 'ready',
             placement: choice.placement,
@@ -305,10 +312,10 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       final pct = (_warmup.displayProgress * 100).clamp(0, 100).round();
       final base = _warmup.message.isNotEmpty
           ? _warmup.message
-          : 'Modell wird geladen';
+          : chatTabsText('philobot.loadingModel');
       phase = pct > 0 ? '$base · $pct %' : base;
     } else {
-      phase = 'PhiloBot denkt nach';
+      phase = chatTabsText('philobot.thinking');
     }
     final elapsedLabel = elapsed >= 2 ? '  ·  ${elapsed}s' : '';
     return Row(
@@ -398,7 +405,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   Widget _buildChatHistoryBar() {
     final currentId = _sessionId ?? _appState.currentChatSessionId;
     final currentTitle = currentId == null
-        ? 'Kein aktiver Chat'
+        ? chatTabsText('philobot.noActiveChat')
         : _appState.getSessionTitle(currentId);
     final currentProjectId = currentId == null
         ? null
@@ -439,7 +446,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
           if ((currentProject?.path ?? '').isNotEmpty)
             IconButton(
               key: const Key('file-tree-toggle'),
-              tooltip: 'Dateibaum anzeigen',
+              tooltip: chatTabsText('philobot.showFileTree'),
               splashRadius: 16,
               onPressed: () {
                 setState(() => _showFileTree = !_showFileTree);
@@ -501,12 +508,12 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                     size: 14,
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Websuche',
+                          chatTabsText('common.webSearch'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -515,7 +522,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                         ),
                         SizedBox(height: 1),
                         Text(
-                          'Echtzeit-Informationen',
+                          chatTabsText('common.realtimeInformation'),
                           style: TextStyle(color: Colors.white30, fontSize: 12),
                         ),
                       ],
@@ -526,6 +533,62 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                         ? Icons.check_circle
                         : Icons.radio_button_unchecked,
                     color: _webSearchEnabled ? themeColor : Colors.white24,
+                    size: 14,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Planungsmodus
+          InkWell(
+            key: const Key('chat-planning-toggle'),
+            onTap: () {
+              setState(() {
+                _planningEnabled = !_planningEnabled;
+              });
+              _plusMenuEntry?.markNeedsBuild();
+            },
+            borderRadius: BorderRadius.circular(8),
+            hoverColor: themeColor.withValues(alpha: 0.09),
+            splashColor: themeColor.withValues(alpha: 0.12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.fact_check_outlined,
+                    color: _planningEnabled ? themeColor : Colors.white70,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          chatTabsText('common.planningMode'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          chatTabsText('common.planningModeHint'),
+                          style: const TextStyle(
+                            color: Colors.white30,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _planningEnabled
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: _planningEnabled ? themeColor : Colors.white24,
                     size: 14,
                   ),
                 ],
@@ -546,7 +609,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             splashColor: themeColor.withValues(alpha: 0.12),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(
                     Icons.chat_bubble_outline,
@@ -558,7 +621,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Neustart',
+                        chatTabsText('common.restart'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -567,7 +630,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                       ),
                       SizedBox(height: 1),
                       Text(
-                        'Unterhaltung zurücksetzen',
+                        chatTabsText('common.resetConversation'),
                         style: TextStyle(color: Colors.white30, fontSize: 12),
                       ),
                     ],
@@ -584,7 +647,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             splashColor: themeColor.withValues(alpha: 0.12),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.attach_file, color: Colors.white70, size: 14),
                   SizedBox(width: 10),
@@ -593,7 +656,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Datei hochladen',
+                          chatTabsText('common.uploadFile'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -602,7 +665,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                         ),
                         SizedBox(height: 1),
                         Text(
-                          'Lokale Datei auswählen',
+                          chatTabsText('common.chooseLocalFile'),
                           style: TextStyle(color: Colors.white30, fontSize: 12),
                         ),
                       ],
@@ -840,7 +903,10 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         if (!target.isLocal) {
           _appState.setSelectedModelId(target.modelRef);
         }
-        showTopNotification(context, 'Modell gewechselt: ${target.label}');
+        showTopNotification(
+          context,
+          chatTabsText('philobot.modelSwitched', {'model': target.label}),
+        );
       }
       return;
     }
@@ -870,7 +936,8 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     if (result['status'] == 'ok') return true;
     if (mounted) {
       _showChatError(
-        result['error']?.toString() ?? 'Modellwechsel fehlgeschlagen',
+        result['error']?.toString() ??
+            chatTabsText('philobot.modelSwitchFailed'),
       );
     }
     return false;
@@ -891,7 +958,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         setState(() => _isLoading = false);
         showTopNotification(
           context,
-          'Bitte zuerst ein lokales Engine- oder API-Modell starten',
+          chatTabsText('philobot.startModelFirst'),
           color: Colors.orange,
         );
       }
@@ -923,12 +990,15 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     }
     if (sId == null && mounted) {
       _showChatError(
-        _appState.lastChatError ?? 'Konnte Chat-Sitzung nicht starten',
+        _appState.lastChatError ?? chatTabsText('philobot.startSessionFailed'),
       );
       return false;
     }
     if (announce && mounted) {
-      showTopNotification(context, 'Neuer Chat mit ${target.label} gestartet');
+      showTopNotification(
+        context,
+        chatTabsText('philobot.newChatStarted', {'model': target.label}),
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _inputFocusNode.requestFocus();
       });
@@ -946,7 +1016,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         placement: choice.placement,
       );
       _warmup.fail(
-        message: 'Das lokale Modell ist nicht mehr verfügbar.',
+        message: chatTabsText('philobot.localModelUnavailable'),
         code: 'local_model_not_found',
       );
       if (mounted) setState(() {});
@@ -1028,7 +1098,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       });
       if (result.isReady) {
         _markChoiceReady(choice, instance: result.instance);
-        _warmup.complete(message: 'Modell ist bereit');
+        _warmup.complete(message: chatTabsText('philobot.modelReady'));
         return true;
       }
 
@@ -1063,7 +1133,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         if (mounted) setState(() {});
       }
       _warmup.fail(
-        message: 'Der Modellstart hat zu lange gewartet.',
+        message: chatTabsText('philobot.modelStartTimedOut'),
         code: 'model_queue_timeout',
       );
       return false;
@@ -1075,7 +1145,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       return false;
     } catch (error) {
       _warmup.fail(
-        message: 'Das lokale Modell konnte nicht gestartet werden: $error',
+        message: chatTabsText('philobot.localModelStartFailed', {
+          'error': error.toString(),
+        }),
         code: 'local_model_unavailable',
       );
       return false;
@@ -1195,7 +1267,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       _warmup.reset();
     });
     _appState.clearCurrentChatSessionSelection();
-    showTopNotification(context, 'Bitte jetzt ein anderes Modell auswählen');
+    showTopNotification(context, chatTabsText('philobot.chooseAnotherModel'));
   }
 
   void _showChatError(String message) {
@@ -1207,7 +1279,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       context,
       message,
       color: Colors.redAccent,
-      actionLabel: needsSettingsShortcut ? 'Einstellungen' : null,
+      actionLabel: needsSettingsShortcut
+          ? chatTabsText('philobot.settings')
+          : null,
       onAction: needsSettingsShortcut
           ? () => _appState.setScreen('settings')
           : null,
@@ -1319,6 +1393,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         mode: _thinkingLevel == 'agent' ? _agenticMode : null,
         allowedRoots: _thinkingLevel == 'agent' ? _allowedRoots() : null,
         approvePlan: approvePlan,
+        // Bei der Freigabe selbst nicht erneut planen lassen, sonst legt
+        // der Bot einen zweiten Plan vor statt den ersten auszufuehren.
+        planning: approvePlan == true ? null : (_planningEnabled ? true : null),
       ),
     );
     _activeMessageStream = streamIterator;
@@ -1338,7 +1415,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 .firstOrNull;
             _warmup.begin(
               instanceId: instanceId,
-              modelName: label ?? 'Lokales Modell',
+              modelName: label ?? chatTabsText('philobot.localModel'),
               placement: event.data['placement']?.toString() ?? 'unknown',
             );
           }
@@ -1398,7 +1475,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
           if (mounted && botName != null && botName.isNotEmpty) {
             showTopNotification(
               context,
-              '$botName wurde in der Bot-Verwaltung gespeichert',
+              chatTabsText('philobot.botSavedInManagement', {'name': botName}),
               color: Colors.green,
             );
           }
@@ -1430,7 +1507,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
           _flushPendingAssistantDelta();
           final message =
               event.data['message']?.toString() ??
-              'Antwort konnte nicht erzeugt werden';
+              chatTabsText('philobot.responseFailed');
           final code = event.data['code']?.toString() ?? '';
           const warmupCodes = {
             'resource_guard_rejected',
@@ -1446,7 +1523,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             if (_warmup.status == 'idle') {
               _warmup.begin(
                 instanceId: event.data['instance_id']?.toString() ?? '',
-                modelName: _selectedChatModel?.label ?? 'Lokales Modell',
+                modelName:
+                    _selectedChatModel?.label ??
+                    chatTabsText('philobot.localModel'),
                 placement: _selectedChatModel?.placement ?? 'unknown',
               );
             }
@@ -1559,7 +1638,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       }
     });
     if (event.type == 'compression' && mounted) {
-      showTopNotification(context, 'Memory wurde komprimiert');
+      showTopNotification(context, chatTabsText('philobot.memoryCompressed'));
     }
     _scrollToBottom();
   }
@@ -1610,7 +1689,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     if (content.trim().isEmpty) return;
     await Clipboard.setData(ClipboardData(text: content));
     if (!mounted) return;
-    showTopNotification(context, 'Antwort kopiert');
+    showTopNotification(context, chatTabsText('philobot.responseCopied'));
   }
 
   void _startEditingUserMessage(int index, String currentContent) {
@@ -1736,7 +1815,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   @override
   Widget build(BuildContext context) {
     if (_isInitializingChat) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1750,7 +1829,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             ),
             SizedBox(height: 14),
             Text(
-              'Chat wird vorbereitet …',
+              chatTabsText('philobot.chatPreparing'),
               style: TextStyle(color: Colors.white54, fontSize: 13),
             ),
           ],
@@ -1783,10 +1862,10 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                             const SizedBox(height: 16),
                             Text(
                               _isLoading
-                                  ? 'Initialisiere neuen Chat...'
+                                  ? chatTabsText('philobot.initializingNewChat')
                                   : _chatModelChoices.isEmpty
-                                  ? 'Noch kein Modell bereit'
-                                  : 'Kein aktiver Chat',
+                                  ? chatTabsText('philobot.noModelReady')
+                                  : chatTabsText('philobot.noActiveChat'),
                               style: const TextStyle(
                                 color: Colors.white30,
                                 fontSize: 13,
@@ -1794,8 +1873,8 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                             ),
                             if (!_isLoading && _chatModelChoices.isEmpty) ...[
                               const SizedBox(height: 8),
-                              const Text(
-                                'Starte ein lokales Engine- oder API-Modell, um loszulegen.',
+                              Text(
+                                chatTabsText('philobot.startModelToBegin'),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white24,
@@ -1813,7 +1892,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                     onPressed: () =>
                                         _appState.setScreen('engine'),
                                     icon: const Icon(Icons.memory, size: 15),
-                                    label: const Text('Lokales Modell starten'),
+                                    label: Text(
+                                      chatTabsText('philobot.startLocalModel'),
+                                    ),
                                   ),
                                   TextButton.icon(
                                     onPressed: _showModelManagementDialog,
@@ -1821,7 +1902,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                       Icons.cloud_outlined,
                                       size: 15,
                                     ),
-                                    label: const Text('API-Modell wählen'),
+                                    label: Text(
+                                      chatTabsText('philobot.selectApiModel'),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -2266,7 +2349,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         _buildFloatingInputBar(),
         const SizedBox(height: 6),
         Text(
-          'Powered by PhiloEngine • Created by fillystudio',
+          chatTabsText('common.poweredBy'),
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.18),
             fontSize: 12,
@@ -2298,26 +2381,45 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         final summary = planning['plan_summary']?.toString() ?? '';
         final label = switch (type) {
           'tool_start' =>
-            toolName.isEmpty ? 'Tool gestartet' : '$toolName gestartet',
+            toolName.isEmpty
+                ? chatTabsText('philobot.agentEvent.toolStartedDefault')
+                : chatTabsText('philobot.agentEvent.toolStarted', {
+                    'tool': toolName,
+                  }),
           'tool_result' =>
-            toolName.isEmpty ? 'Tool beendet' : '$toolName beendet',
-          'planning_questions' => 'Planungsfragen',
-          'plan_ready' => summary.isEmpty ? 'Plan bereit' : summary,
+            toolName.isEmpty
+                ? chatTabsText('philobot.agentEvent.toolFinishedDefault')
+                : chatTabsText('philobot.agentEvent.toolFinished', {
+                    'tool': toolName,
+                  }),
+          'planning_questions' => chatTabsText(
+            'philobot.agentEvent.planningQuestions',
+          ),
+          'plan_ready' =>
+            summary.isEmpty
+                ? chatTabsText('philobot.agentEvent.planReady')
+                : summary,
           'approval_needed' =>
-            summary.isEmpty ? 'Freigabe erforderlich' : summary,
-          'permission_request' => 'Zugriff außerhalb angefragt',
+            summary.isEmpty
+                ? chatTabsText('philobot.agentEvent.approvalRequired')
+                : summary,
+          'permission_request' => chatTabsText(
+            'philobot.agentEvent.permissionRequested',
+          ),
           'permission_result' => switch (data['decision']?.toString()) {
-            'once' => 'Zugriff erlaubt (einmalig)',
-            'session' => 'Zugriff erlaubt (Sitzung)',
-            _ => 'Zugriff abgelehnt',
+            'once' => chatTabsText('philobot.agentEvent.permissionAllowedOnce'),
+            'session' => chatTabsText(
+              'philobot.agentEvent.permissionAllowedSession',
+            ),
+            _ => chatTabsText('philobot.agentEvent.permissionDenied'),
           },
           'file_changed' => switch (data['action']?.toString()) {
-            'created' => 'Datei erstellt',
-            'deleted' => 'Datei gelöscht',
-            'moved' => 'Datei verschoben',
-            _ => 'Datei geändert',
+            'created' => chatTabsText('philobot.agentEvent.fileCreated'),
+            'deleted' => chatTabsText('philobot.agentEvent.fileDeleted'),
+            'moved' => chatTabsText('philobot.agentEvent.fileMoved'),
+            _ => chatTabsText('philobot.agentEvent.fileModified'),
           },
-          'compression' => 'Memory komprimiert',
+          'compression' => chatTabsText('philobot.agentEvent.memoryCompressed'),
           _ => type,
         };
         final icon = switch (type) {
@@ -2401,9 +2503,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             padding: const EdgeInsets.fromLTRB(12, 8, 4, 6),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Dateien',
+                    chatTabsText('philobot.files'),
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
@@ -2413,7 +2515,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 ),
                 IconButton(
                   key: const Key('file-tree-refresh'),
-                  tooltip: 'Aktualisieren',
+                  tooltip: chatTabsText('philobot.refresh'),
                   splashRadius: 14,
                   onPressed: _loadFileTree,
                   icon: const Icon(
@@ -2522,13 +2624,25 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   (String, Color) _fileChangeActionStyle(String action) {
     switch (action) {
       case 'created':
-        return ('Neu', const Color(0xFF7BAE7F));
+        return (
+          chatTabsText('philobot.fileAction.new'),
+          const Color(0xFF7BAE7F),
+        );
       case 'deleted':
-        return ('Gelöscht', const Color(0xFFD97B7B));
+        return (
+          chatTabsText('philobot.fileAction.deleted'),
+          const Color(0xFFD97B7B),
+        );
       case 'moved':
-        return ('Verschoben', const Color(0xFF6E8FE0));
+        return (
+          chatTabsText('philobot.fileAction.moved'),
+          const Color(0xFF6E8FE0),
+        );
       default:
-        return ('Geändert', const Color(0xFFC9A24A));
+        return (
+          chatTabsText('philobot.fileAction.modified'),
+          const Color(0xFFC9A24A),
+        );
     }
   }
 
@@ -2545,12 +2659,17 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        for (final change in changes) _buildFileChangeCard(change),
+        // Der Index gehoert in den Schluessel: derselbe Pfad kann in einer
+        // Antwort mehrfach geaendert werden (ein Agent patcht eine Datei
+        // gern in mehreren Schritten), und zwei Karten mit gleichem
+        // Schluessel lassen Flutter mit "Duplicate keys" abstuerzen.
+        for (final (index, change) in changes.indexed)
+          _buildFileChangeCard(change, index),
       ],
     );
   }
 
-  Widget _buildFileChangeCard(Map<String, dynamic> change) {
+  Widget _buildFileChangeCard(Map<String, dynamic> change, int index) {
     final data = change['data'] is Map
         ? Map<String, dynamic>.from(change['data'] as Map)
         : <String, dynamic>{};
@@ -2561,7 +2680,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     final diffSkipped = data['diff_skipped'] == true;
     final (label, color) = _fileChangeActionStyle(action);
     return FileChangeCard(
-      key: ValueKey('file-change-$path-$action-$destination'),
+      key: ValueKey('file-change-$index-$path-$action-$destination'),
       path: path,
       actionLabel: label,
       actionColor: color,
@@ -2573,7 +2692,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
 
   Widget _buildPlanningApprovalPanel() {
     final planning = _pendingPlanningData ?? {};
-    final summary = planning['plan_summary']?.toString() ?? 'Plan bereit';
+    final summary =
+        planning['plan_summary']?.toString() ??
+        chatTabsText('philobot.agentEvent.planReady');
     final steps = planning['steps'] is List
         ? List<dynamic>.from(planning['steps'])
         : <dynamic>[];
@@ -2592,7 +2713,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Icon(
                 Icons.fact_check_outlined,
                 color: Color(0xFFDFC077),
@@ -2600,7 +2721,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               ),
               SizedBox(width: 8),
               Text(
-                'Planfreigabe',
+                chatTabsText('philobot.planApproval'),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 13,
@@ -2639,7 +2760,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 onPressed: _isLoading
                     ? null
                     : () => setState(() => _showPlanningApproval = false),
-                child: const Text('Ablehnen'),
+                child: Text(chatTabsText('common.reject')),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -2649,7 +2770,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFC9A24A),
                 ),
-                child: const Text('Genehmigen'),
+                child: Text(chatTabsText('common.approve')),
               ),
             ],
           ),
@@ -2675,7 +2796,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       // und faehrt mit "abgelehnt" fort — nur als Hinweis zeigen.
       showTopNotification(
         context,
-        'Zugriffsanfrage war nicht mehr offen',
+        chatTabsText('philobot.permissionNoLongerOpen'),
         color: const Color(0xFFE06C75),
       );
     }
@@ -2712,7 +2833,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   /// Panel fuer die live-Zugriffsanfrage: der Agent will ausserhalb des
   /// Projektpfads arbeiten und wartet blockierend auf die Entscheidung.
   Widget _buildCreatedBotCard(Map<String, dynamic> bot) {
-    final name = bot['name']?.toString() ?? 'Neuer Bot';
+    final name = bot['name']?.toString() ?? chatTabsText('philobot.newBot');
     final keywords = bot['keywords'];
     final keywordText = keywords is List
         ? keywords
@@ -2738,7 +2859,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '$name gespeichert',
+                  chatTabsText('philobot.botSaved', {'name': name}),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -2765,13 +2886,13 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               chatActionChip(
                 enabled: !_isLoading,
                 icon: Icons.play_arrow,
-                label: 'Testen',
+                label: chatTabsText('philobot.test'),
                 onTap: () => _testCreatedBot(bot),
               ),
               chatActionChip(
                 enabled: !_isLoading,
                 icon: Icons.tune,
-                label: 'Bearbeiten',
+                label: chatTabsText('common.edit'),
                 onTap: () => _appState.setScreen('settings'),
               ),
             ],
@@ -2799,7 +2920,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
           ),
           decoration: InputDecoration(
             isDense: true,
-            hintText: 'Nachricht bearbeiten …',
+            hintText: chatTabsText('philobot.editMessageHint'),
             hintStyle: const TextStyle(color: Colors.white38),
             border: InputBorder.none,
           ),
@@ -2815,7 +2936,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 minimumSize: const Size(0, 30),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
-              child: const Text('Abbrechen'),
+              child: Text(chatTabsText('common.cancel')),
             ),
             const SizedBox(width: 4),
             TextButton(
@@ -2825,7 +2946,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 minimumSize: const Size(0, 30),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
-              child: const Text('Neu senden'),
+              child: Text(chatTabsText('philobot.resend')),
             ),
           ],
         ),
@@ -2848,7 +2969,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                 _editingMessageIndex == index ||
                 _hoveredNavigatorMessageIndex == index;
             return Tooltip(
-              message: 'Zu deiner Nachricht',
+              message: chatTabsText('philobot.jumpToYourMessage'),
               child: MouseRegion(
                 onEnter: (_) =>
                     setState(() => _hoveredNavigatorMessageIndex = index),
@@ -2899,14 +3020,14 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         children: [
           messageActionButton(
             enabled: !_isLoading,
-            tooltip: 'Bearbeiten',
+            tooltip: chatTabsText('common.edit'),
             icon: Icons.edit_outlined,
             onTap: () => _startEditingUserMessage(index, content),
           ),
           const SizedBox(width: 4),
           messageActionButton(
             enabled: !_isLoading,
-            tooltip: 'Text kopieren',
+            tooltip: chatTabsText('common.copyText'),
             icon: Icons.copy_outlined,
             onTap: () => _copyAssistantMessage(content),
           ),
@@ -2919,7 +3040,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       children: [
         messageActionButton(
           enabled: !_isLoading,
-          tooltip: 'Text kopieren',
+          tooltip: chatTabsText('common.copyText'),
           icon: Icons.copy_outlined,
           onTap: () => _copyAssistantMessage(content),
         ),
@@ -2931,7 +3052,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
 
   Widget _buildAssistantMessageMenu({required Map<String, dynamic> message}) {
     return PopupMenuButton<String>(
-      tooltip: 'Aktionen',
+      tooltip: chatTabsText('common.actions'),
       enabled: !_isLoading,
       color: const Color(0xFF0F0F14),
       elevation: 8,
@@ -2969,17 +3090,33 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       },
       itemBuilder: (context) {
         return [
-          messageMenuItem('shorter', Icons.compress, 'Kuerzer'),
-          messageMenuItem('critical', Icons.gavel, 'Kritischer'),
+          messageMenuItem(
+            'shorter',
+            Icons.compress,
+            chatTabsText('philobot.shorter'),
+          ),
+          messageMenuItem(
+            'critical',
+            Icons.gavel,
+            chatTabsText('philobot.moreCritical'),
+          ),
           messageMenuItem(
             'structure',
             Icons.format_list_bulleted,
-            'Mehr Struktur',
+            chatTabsText('philobot.moreStructure'),
           ),
           if (message['bot_id'] == 'botbuilder')
-            messageMenuItem('tune', Icons.auto_fix_high, 'Feintunen')
+            messageMenuItem(
+              'tune',
+              Icons.auto_fix_high,
+              chatTabsText('philobot.fineTune'),
+            )
           else
-            messageMenuItem('rule', Icons.smart_toy_outlined, 'Als Regel'),
+            messageMenuItem(
+              'rule',
+              Icons.smart_toy_outlined,
+              chatTabsText('philobot.useAsRule'),
+            ),
         ];
       },
       child: Container(
@@ -3012,30 +3149,30 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         final composerHint = AppColors.textSecondary(brightness);
 
         final thinkingOptions = [
-          const ThinkingModeOption(
+          ThinkingModeOption(
             value: 'none',
-            label: 'Fast',
+            label: chatTabsText('common.thinkingFast'),
             icon: Icons.speed,
           ),
-          const ThinkingModeOption(
+          ThinkingModeOption(
             value: 'medium',
-            label: 'Fast Thinking',
+            label: chatTabsText('common.thinkingFastThinking'),
             icon: Icons.bolt,
           ),
-          const ThinkingModeOption(
+          ThinkingModeOption(
             value: 'max',
-            label: 'Extra',
+            label: chatTabsText('common.thinkingExtra'),
             icon: Icons.auto_awesome,
           ),
-          const ThinkingModeOption(
+          ThinkingModeOption(
             value: 'dual',
-            label: 'Dual',
+            label: chatTabsText('common.thinkingDual'),
             icon: Icons.psychology,
             enabled: false,
           ),
-          const ThinkingModeOption(
+          ThinkingModeOption(
             value: 'agent',
-            label: 'Agent',
+            label: chatTabsText('common.thinkingAgent'),
             icon: Icons.smart_toy_outlined,
             enabled: false,
           ),
@@ -3139,7 +3276,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                             maxLines: 4,
                             minLines: 1,
                             decoration: InputDecoration(
-                              hintText: 'Nachricht...',
+                              hintText: chatTabsText('philobot.messageHint'),
                               hintStyle: TextStyle(
                                 color: composerHint,
                                 fontSize: 13,
@@ -3167,7 +3304,9 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                       link: _plusMenuLink,
                                       child: IconButton(
                                         key: const Key('chat-add-button'),
-                                        tooltip: 'Datei oder Chat-Aktion',
+                                        tooltip: chatTabsText(
+                                          'philobot.addAction',
+                                        ),
                                         onPressed: _interactionLocked
                                             ? null
                                             : _togglePlusMenu,
@@ -3194,9 +3333,13 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                             !_interactionLocked &&
                                             !_modelPickerLocked,
                                         disabledReason: _modelPickerLocked
-                                            ? 'Das Modell ist fest mit dem ausgewählten Bot verbunden'
+                                            ? chatTabsText(
+                                                'philobot.modelBoundToBot',
+                                              )
                                             : _warmup.isActive
-                                            ? 'Das Modell läuft gerade warm'
+                                            ? chatTabsText(
+                                                'philobot.modelWarming',
+                                              )
                                             : null,
                                         useBottomSheet: useBottomSheets,
                                         onSelected: _selectChatModel,
@@ -3212,7 +3355,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                       const SizedBox(width: 6),
                                       ChatBadge(
                                         icon: Icons.language,
-                                        label: 'Web',
+                                        label: chatTabsText('common.web'),
                                         themeColor: const Color(0xFFC9A24A),
                                         onTap: () => setState(
                                           () => _webSearchEnabled = false,
@@ -3236,19 +3379,19 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                               const SizedBox(width: 8),
                               HoverIconButton(
                                 icon: Icons.mic_none,
-                                tooltip: 'Sprachnachricht',
+                                tooltip: chatTabsText('philobot.voiceMessage'),
                                 onPressed: () {},
                               ),
                               const SizedBox(width: 8),
                               IconButton(
                                 key: const Key('chat-send-button'),
                                 tooltip: _sessionId == null
-                                    ? 'Bitte zuerst ein Modell auswählen'
+                                    ? chatTabsText('philobot.selectModelFirst')
                                     : _isLoading
-                                    ? 'PhiloBot arbeitet noch …'
+                                    ? chatTabsText('philobot.botWorking')
                                     : _warmup.isActive
-                                    ? 'Warten, bis das Modell bereit ist'
-                                    : 'Nachricht senden',
+                                    ? chatTabsText('philobot.waitForModel')
+                                    : chatTabsText('philobot.sendMessage'),
                                 onPressed:
                                     _interactionLocked ||
                                         _sessionId == null ||

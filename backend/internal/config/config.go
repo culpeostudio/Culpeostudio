@@ -13,17 +13,18 @@ import (
 type Config struct {
 	// HTTPHost: Bind-Adresse. Standard 127.0.0.1 (nur lokal erreichbar);
 	// HTTP_HOST=0.0.0.0 oeffnet den Server bewusst fuer das Netzwerk.
-	HTTPHost          string
-	HTTPPort          string
-	GRPCPort          string
-	JWTSecret         string
-	LoginAccountsFile string
-	AuthConfigFile    string
-	SettingsFile      string
-	TLSCert           string
-	TLSKey            string
-	UseHTTPS          bool
-	AgenticTimeoutSec int
+	HTTPHost            string
+	HTTPPort            string
+	GRPCPort            string
+	JWTSecret           string
+	LoginAccountsFile   string
+	AuthConfigFile      string
+	UserPreferencesFile string
+	SettingsFile        string
+	TLSCert             string
+	TLSKey              string
+	UseHTTPS            bool
+	AgenticTimeoutSec   int
 
 	// Memory-Modul
 	MemoryDataDir          string
@@ -72,17 +73,18 @@ func Load() *Config {
 	memoryDataDir := getEnv("MEMORY_DATA_DIR", "data")
 	vectorDims := getEnvInt("MEMORY_VECTOR_DIMS", 128)
 	return &Config{
-		HTTPHost:          getEnv("HTTP_HOST", "127.0.0.1"),
-		HTTPPort:          getEnv("HTTP_PORT", "8080"),
-		GRPCPort:          getEnv("GRPC_PORT", "50051"),
-		JWTSecret:         getOrCreateSecret("JWT_SECRET", filepath.Join(memoryDataDir, "jwt_secret")),
-		LoginAccountsFile: getEnv("LOGIN_ACCOUNTS_FILE", "data/login_accounts.json"),
-		AuthConfigFile:    getEnv("AUTH_CONFIG_FILE", "data/login_authenticator.json"),
-		SettingsFile:      getEnv("SETTINGS_FILE", "data/settings.json"),
-		TLSCert:           getEnv("TLS_CERT", ""),
-		TLSKey:            getEnv("TLS_KEY", ""),
-		UseHTTPS:          getEnv("USE_HTTPS", "false") == "true",
-		AgenticTimeoutSec: getEnvInt("AGENTIC_TIMEOUT_SEC", 300),
+		HTTPHost:            getEnv("HTTP_HOST", "127.0.0.1"),
+		HTTPPort:            getEnv("HTTP_PORT", "8080"),
+		GRPCPort:            getEnv("GRPC_PORT", "50051"),
+		JWTSecret:           getOrCreateSecret("JWT_SECRET", filepath.Join(memoryDataDir, "jwt_secret")),
+		LoginAccountsFile:   getEnv("LOGIN_ACCOUNTS_FILE", "data/login_accounts.json"),
+		AuthConfigFile:      getEnv("AUTH_CONFIG_FILE", "data/login_authenticator.json"),
+		UserPreferencesFile: getEnv("USER_PREFERENCES_FILE", "data/user_preferences.json"),
+		SettingsFile:        getEnv("SETTINGS_FILE", "data/settings.json"),
+		TLSCert:             getEnv("TLS_CERT", ""),
+		TLSKey:              getEnv("TLS_KEY", ""),
+		UseHTTPS:            getEnv("USE_HTTPS", "false") == "true",
+		AgenticTimeoutSec:   getEnvInt("AGENTIC_TIMEOUT_SEC", 300),
 
 		MemoryDataDir:          memoryDataDir,
 		MemoryProjectTag:       getEnv("MEMORY_PROJECT_TAG", "myphiloengine"),

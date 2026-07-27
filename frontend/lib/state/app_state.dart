@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/app_strings.dart';
+import '../l10n/remaining_ui_strings.dart';
 import '../services/api_service.dart';
 
 class ModelFolder {
@@ -164,6 +166,40 @@ class ChatProject {
   }
 }
 
+/// The UI preferences stored for one authenticated account.
+///
+/// The backend owns this record in its data directory. Keeping the wire model
+/// here makes it explicit that display values are validated before they affect
+/// the application shell.
+class UserPreferences {
+  const UserPreferences({
+    required this.configured,
+    required this.language,
+    required this.frontendVersion,
+  });
+
+  static const defaultLanguage = 'de';
+  static const defaultFrontendVersion = 'classic';
+  static const supportedLanguages = {'de', 'en'};
+  static const supportedFrontendVersions = {'lite', 'classic'};
+
+  final bool configured;
+  final String language;
+  final String frontendVersion;
+
+  bool get hasSupportedValues =>
+      supportedLanguages.contains(language) &&
+      supportedFrontendVersions.contains(frontendVersion);
+
+  factory UserPreferences.fromJson(Map<String, dynamic> json) {
+    return UserPreferences(
+      configured: json['configured'] == true,
+      language: json['language']?.toString() ?? '',
+      frontendVersion: json['frontend_version']?.toString() ?? '',
+    );
+  }
+}
+
 class AppState extends ChangeNotifier {
   static const _rememberedTokenKey = 'remembered_auth_token';
   static const _rememberedUsernameKey = 'remembered_auth_username';
@@ -192,8 +228,7 @@ class AppState extends ChangeNotifier {
       if (_sessionExpiryHandled) return;
       _sessionExpiryHandled = true;
       logout();
-      _lastChatError =
-          'Die Sitzung ist abgelaufen. Bitte melde dich erneut an.';
+      _lastChatError = remainingUiText('appState.sessionExpired');
       notifyListeners();
     };
   }
@@ -203,6 +238,188 @@ class AppState extends ChangeNotifier {
   bool _sessionExpiryHandled = false;
 
   Brightness themeBrightness = Brightness.dark;
+
+  /// UI-Sprache ('de' oder 'en') und Frontend-Version ('lite' oder
+  /// 'classic'). The authenticated backend profile is the source of truth;
+  /// SharedPreferences is intentionally not used for these account settings.
+  String language = UserPreferences.defaultLanguage;
+  String frontendVersion = UserPreferences.defaultFrontendVersion;
+
+  /// The profile is deliberately considered configured only after a successful
+  /// authenticated GET confirms that both choices have been saved. Starting at
+  /// `true` avoids showing onboarding in widget tests that inject a token
+  /// without going through the login flow; production login always loads first.
+  bool _hasUserPrefs = true;
+  bool _userPreferencesLoaded = false;
+  bool _isSavingUserPreferences = false;
+  String? _userPreferencesError;
+  UserPreferences? _pendingUserPreferences;
+
+  /// True, once the profile endpoint has answered for the current account.
+  bool get userPreferencesLoaded => _userPreferencesLoaded;
+
+  /// True while a PUT request is in flight. Both settings controls and the
+  /// onboarding confirmation disable their inputs during this period, so a
+  /// slower earlier response can never overwrite a newer selection.
+  bool get isSavingUserPreferences => _isSavingUserPreferences;
+
+  /// Last profile read/write failure. The UI displays a localized explanation
+  /// and offers [retryUserPreferencesSave] when a pending choice exists.
+  String? get userPreferencesError => _userPreferencesError;
+  bool get canRetryUserPreferencesSave => _pendingUserPreferences != null;
+
+  /// True as long as a logged-in account still needs to choose language and
+  /// frontend version. A failed profile read intentionally keeps onboarding
+  /// open rather than silently treating local defaults as a completed choice.
+  bool get needsOnboarding =>
+      isLoggedIn && _userPreferencesLoaded && !_hasUserPrefs;
+
+  Future<bool> setLanguage(String lang) {
+    return saveUserPreferences(
+      language: lang,
+      frontendVersion: frontendVersion,
+    );
+  }
+
+  Future<bool> setFrontendVersion(String version) {
+    return saveUserPreferences(language: language, frontendVersion: version);
+  }
+
+  /// Loads the account profile after login or remembered-session restoration.
+  ///
+  /// Defaults are reset before every load so a first-time second user cannot
+  /// inherit the preceding user's language or Lite/Classic choice.
+  Future<bool> loadUserPrefs() async {
+    _resetUserPreferencesForUnknownUser();
+    if (!isLoggedIn) {
+      notifyListeners();
+      return false;
+    }
+
+    final result = await api.getUserPreferences();
+    if (result.containsKey('error')) {
+      _markUserPreferencesUnavailable(result['error']);
+      notifyListeners();
+      return false;
+    }
+
+    final preferences = UserPreferences.fromJson(result);
+    if (!preferences.hasSupportedValues) {
+      _markUserPreferencesUnavailable(
+        remainingUiText('preferences.invalidReceived'),
+      );
+      notifyListeners();
+      return false;
+    }
+
+    _applyUserPreferences(preferences);
+    _userPreferencesLoaded = true;
+    _hasUserPrefs = preferences.configured;
+    _userPreferencesError = null;
+    _pendingUserPreferences = null;
+    notifyListeners();
+    return true;
+  }
+
+  /// Saves both choices in one authenticated PUT request. The local UI changes
+  /// only after the server returns its normalized record, preserving the
+  /// backend JSON as the single source of truth.
+  Future<bool> saveUserPreferences({
+    required String language,
+    required String frontendVersion,
+  }) async {
+    final requested = UserPreferences(
+      configured: true,
+      language: language,
+      frontendVersion: frontendVersion,
+    );
+    if (!requested.hasSupportedValues) {
+      _pendingUserPreferences = requested;
+      _userPreferencesError = remainingUiText('preferences.invalidChoice');
+      notifyListeners();
+      return false;
+    }
+    if (!isLoggedIn) {
+      _pendingUserPreferences = requested;
+      _userPreferencesError = remainingUiText('preferences.notSignedIn');
+      notifyListeners();
+      return false;
+    }
+    if (_isSavingUserPreferences) return false;
+
+    _isSavingUserPreferences = true;
+    _userPreferencesError = null;
+    notifyListeners();
+
+    final result = await api.updateUserPreferences(
+      language: requested.language,
+      frontendVersion: requested.frontendVersion,
+    );
+    _isSavingUserPreferences = false;
+
+    if (result.containsKey('error')) {
+      _pendingUserPreferences = requested;
+      _userPreferencesError = result['error']?.toString();
+      notifyListeners();
+      return false;
+    }
+
+    final persisted = UserPreferences.fromJson(result);
+    if (!persisted.configured || !persisted.hasSupportedValues) {
+      _pendingUserPreferences = requested;
+      _userPreferencesError = remainingUiText('preferences.invalidSaved');
+      notifyListeners();
+      return false;
+    }
+
+    _applyUserPreferences(persisted);
+    _userPreferencesLoaded = true;
+    _hasUserPrefs = true;
+    _userPreferencesError = null;
+    _pendingUserPreferences = null;
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> retryUserPreferencesSave() async {
+    final pending = _pendingUserPreferences;
+    if (pending == null) return false;
+    return saveUserPreferences(
+      language: pending.language,
+      frontendVersion: pending.frontendVersion,
+    );
+  }
+
+  /// Re-reads the account profile after an interrupted initial load. This is
+  /// intentionally separate from retrying a failed PUT so an existing user's
+  /// stored choices are never overwritten with client defaults after a
+  /// temporary GET failure.
+  Future<bool> retryUserPreferencesLoad() => loadUserPrefs();
+
+  void _applyUserPreferences(UserPreferences preferences) {
+    language = preferences.language;
+    frontendVersion = preferences.frontendVersion;
+    appLanguage = language;
+  }
+
+  void _resetUserPreferencesForUnknownUser() {
+    language = UserPreferences.defaultLanguage;
+    frontendVersion = UserPreferences.defaultFrontendVersion;
+    appLanguage = language;
+    _hasUserPrefs = true;
+    _userPreferencesLoaded = false;
+    _isSavingUserPreferences = false;
+    _userPreferencesError = null;
+    _pendingUserPreferences = null;
+  }
+
+  void _markUserPreferencesUnavailable(dynamic error) {
+    _hasUserPrefs = false;
+    _userPreferencesLoaded = true;
+    _userPreferencesError = error?.toString();
+    _pendingUserPreferences = null;
+  }
+
   final _actionStreamController = StreamController<String>.broadcast();
   Stream<String> get actionStream => _actionStreamController.stream;
 
@@ -424,7 +641,7 @@ class AppState extends ChangeNotifier {
     }
     _lastChatError =
         result['error']?.toString() ??
-        'Chat-Sitzung konnte nicht erstellt werden.';
+        remainingUiText('appState.sessionCreateFailed');
     notifyListeners();
     return null;
   }
@@ -500,7 +717,8 @@ class AppState extends ChangeNotifier {
       }
     }
     _lastChatError =
-        result['error']?.toString() ?? 'Projekt konnte nicht erstellt werden.';
+        result['error']?.toString() ??
+        remainingUiText('appState.projectCreateFailed');
     notifyListeners();
     return null;
   }
@@ -835,11 +1053,12 @@ class AppState extends ChangeNotifier {
       } else {
         await _clearRememberedSession();
       }
+      await loadUserPrefs();
       await restoreChatSessions();
       notifyListeners();
       return true;
     } else {
-      _authError = 'Login fehlgeschlagen.';
+      _authError = remainingUiText('appState.loginFailed');
       notifyListeners();
       return false;
     }
@@ -858,6 +1077,7 @@ class AppState extends ChangeNotifier {
       }
       api.token = token;
       api.username = user;
+      await loadUserPrefs();
       await restoreChatSessions();
       notifyListeners();
       return true;
@@ -1062,7 +1282,7 @@ class AppState extends ChangeNotifier {
     final file = File(path);
     if (!file.existsSync()) {
       selectedFileType = 'unknown';
-      selectedCode = 'Datei existiert nicht: $path';
+      selectedCode = remainingUiText('appState.fileNotFound', {'path': path});
       selectedCodeLanguage = 'txt';
       notifyListeners();
       return;
@@ -1114,7 +1334,9 @@ class AppState extends ChangeNotifier {
         }
       } catch (e) {
         selectedFileType = 'unknown';
-        selectedCode = 'Fehler beim Lesen der Datei: $e';
+        selectedCode = remainingUiText('appState.fileReadFailed', {
+          'error': '$e',
+        });
         selectedCodeLanguage = 'txt';
       }
     } else if (imageExtensions.contains(ext)) {
@@ -1184,6 +1406,7 @@ class AppState extends ChangeNotifier {
   void logout() {
     api.logout();
     unawaited(_clearRememberedSession());
+    _resetUserPreferencesForUnknownUser();
     _currentScreen = 'chat';
     _selectedModelId = null;
     _modelThreshold = 'medium';
