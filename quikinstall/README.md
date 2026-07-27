@@ -214,6 +214,17 @@ python3 quikinstall/merge_manifests.py \
 Veröffentlichte Dateien niemals überschreiben; für Änderungen immer eine neue
 Version bauen. Der Tag `v1.2.3` bleibt unveränderlich.
 
+> **Nach jedem Release:** Der Workflow committet `quikinstall/manifest.json`
+> selbst nach `main`. Wer aus einer Arbeitskopie heraus veröffentlicht, muss
+> diesen Commit erst zurückholen — sonst überschreibt der nächste Upload das
+> Manifest mit dem älteren lokalen Stand und alle Clients sehen wieder „kein
+> Build verfügbar":
+>
+> ```bash
+> git fetch origin main
+> git checkout origin/main -- quikinstall/manifest.json
+> ```
+
 Der Launcher lädt das Manifest weiterhin aus dem Repository
 (`raw.githubusercontent.com/.../quikinstall/manifest.json`) — nur die Archive
 liegen bei den Release Assets. Die Origin-Policy des Updaters vertraut sowohl
