@@ -6,12 +6,17 @@ startet er immer `myphiloengine` (unter Windows `myphiloengine.exe`); der
 Launcher prüft `manifest.json`, verifiziert Größe und SHA-256, installiert eine
 neue Version atomar und startet Backend und Flutter-Frontend.
 
-Abgedeckt sind `linux-x64`, `windows-x64`, `macos-x64` und `macos-arm64`. Ein
+Automatisch gebaut werden `linux-x64`, `windows-x64` und `macos-arm64`. Ein
 Flutter-Desktop-Bundle lässt sich nicht plattformübergreifend bauen — Windows
 braucht Visual Studio auf Windows, macOS braucht Xcode auf macOS. Deshalb baut
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) jede
 Plattform auf einem nativen Runner und führt die Ergebnisse zusammen. Lokal
 lässt sich immer nur die eigene Plattform bauen.
+
+`macos-x64` unterstützt das Build-Skript weiterhin, wird aber nicht automatisch
+gebaut: Der `macos-13`-Runner, der ein Intel-Bundle erzeugen könnte, ist bei
+GitHub ausgemustert. Wer Intel-Macs bedienen will, baut das Archiv auf einem
+solchen Rechner und reicht es manuell nach (siehe „Veröffentlichen").
 
 ## Verzeichnis- und Archivlayout
 

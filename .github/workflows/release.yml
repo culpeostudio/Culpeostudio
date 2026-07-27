@@ -38,8 +38,9 @@ jobs:
             target: linux-x64
           - os: macos-latest
             target: macos-arm64
-          - os: macos-13
-            target: macos-x64
+          # macos-x64 is absent on purpose: the macos-13 runner that could build
+          # an Intel bundle has been retired, so the job waits forever for a
+          # machine that no longer exists.
           - os: windows-latest
             target: windows-x64
     steps:

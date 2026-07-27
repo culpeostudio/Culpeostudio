@@ -490,9 +490,17 @@ def create_archive(
 
 def _run(command: Sequence[str], cwd: Path, env: Mapping[str, str] | None = None) -> None:
     print(f"+ {shlex.join(command)}", file=sys.stderr)
+    # Windows ships flutter as flutter.bat, and the bare name never resolves
+    # because CreateProcess does not search PATHEXT. shutil.which does, and
+    # CreateProcess runs a .bat once it is given the full name.
+    executable = shutil.which(
+        command[0], path=None if env is None else env.get("PATH")
+    )
+    if executable is None:
+        raise ReleaseBuildError(f"Required build tool not found: {command[0]}")
     try:
         subprocess.run(
-            list(command),
+            [executable, *command[1:]],
             cwd=cwd,
             env=dict(env) if env is not None else None,
             check=True,
