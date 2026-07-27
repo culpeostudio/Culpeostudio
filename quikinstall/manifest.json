@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "version": "1.1.0-alpha",
+  "version": "1.1.1-alpha",
   "assets": {
     "linux-x64": {
-      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.0-alpha/myphiloengine-1.1.0-alpha-linux-x64.tar.gz",
-      "sha256": "0c63e787f7651da1ec9a244c871b703f19dd19b73fbdeff32190717123285d9e",
-      "size": 26163699,
+      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.1-alpha/myphiloengine-1.1.1-alpha-linux-x64.tar.gz",
+      "sha256": "f717a118f8d9a04efa1d48295068a2cd97f743fb0efc0b56fec8690a879eb987",
+      "size": 26164311,
       "format": "tar.gz",
       "launcher": {
         "path": "launcher/myphiloengine",
@@ -22,9 +22,9 @@
       "health_url": "http://127.0.0.1:8080/health"
     },
     "macos-arm64": {
-      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.0-alpha/myphiloengine-1.1.0-alpha-macos-arm64.tar.gz",
-      "sha256": "5691c2f52b53308158e20408f2b504ff4cbcf49a8448501611b241e93032aa98",
-      "size": 35010373,
+      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.1-alpha/myphiloengine-1.1.1-alpha-macos-arm64.tar.gz",
+      "sha256": "6cc0a285afd017639a20d4f6991fa774c0c8ee2f3fe5da0940e17ab8901295ec",
+      "size": 35011400,
       "format": "tar.gz",
       "launcher": {
         "path": "launcher/myphiloengine",
@@ -41,9 +41,9 @@
       "health_url": "http://127.0.0.1:8080/health"
     },
     "windows-x64": {
-      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.0-alpha/myphiloengine-1.1.0-alpha-windows-x64.zip",
-      "sha256": "5e68aec9fcb4552783e19bfca830ba700e1aa8523e1f670e7e4e84a45f6a0b96",
-      "size": 28711004,
+      "url": "https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.1.1-alpha/myphiloengine-1.1.1-alpha-windows-x64.zip",
+      "sha256": "8b00fe318d7ff901dd3c77072e7f037141da092824cf1ebc4a3c149cbb7e71d1",
+      "size": 28711696,
       "format": "zip",
       "launcher": {
         "path": "launcher/myphiloengine.exe",
@@ -60,5 +60,5 @@
       "health_url": "http://127.0.0.1:8080/health"
     }
   },
-  "published_at": "2026-07-27T16:50:28Z"
+  "published_at": "2026-07-27T17:17:57Z"
 }
