@@ -9,16 +9,22 @@ Your models, your keys, your data — nothing leaves your machine unless you say
 
 [![Licence: AGPL v3](https://img.shields.io/badge/Licence-AGPL_v3-c9a24a.svg)](LICENSE)
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange.svg)](#roadmap)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-blue.svg)](#requirements)
+[![Platform](https://img.shields.io/badge/Platform-Linux_·_macOS_·_Windows-blue.svg)](#requirements)
+[![Language](https://img.shields.io/badge/UI-Deutsch_·_English-c9a24a.svg)](#pick-your-language-and-your-layout)
 [![Backend: Go](https://img.shields.io/badge/Backend-Go-00ADD8.svg)](https://go.dev)
 [![Frontend: Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B.svg)](https://flutter.dev)
+
+<br>
+
+<img src="docs/screenshots/marketplace.png" alt="Model marketplace showing which models fit the installed GPU" width="850">
+
+<em>Every model tells you whether it fits your GPU — before you download it.</em>
 
 </div>
 
 ---
 
 > **Alpha (Phase 1).** Usable day to day, but expect rough edges.
-> The interface is currently **German-only**; Linux desktop is the supported target.
 
 ## Why another one?
 
@@ -43,6 +49,11 @@ sensibly when a configuration does not hold.
 - **Resource guard** prevents starting a model that would push the machine into
   swapping
 
+<img src="docs/screenshots/engine.png" alt="Model studio with live hardware monitor" width="850">
+
+The engine view walks a model from selection to running instance in three steps,
+with live RAM and VRAM usage next to it.
+
 ### Or use API providers
 
 OpenRouter and Featherless are supported. Keys are stored in your local settings
@@ -58,6 +69,36 @@ and used only for the requests you trigger.
 - File changes are shown as expandable diffs, not silent writes
 - Reasoning models: the thought process streams live, then collapses into a
   dropdown so it does not clutter the transcript
+
+<img src="docs/screenshots/chat.png" alt="Chat with session history, model picker and reasoning selector" width="850">
+
+### Planning mode
+
+A large request is not answered in one pass. A model first breaks it into
+numbered, readable steps; you see the plan before anything runs. Each step is
+then handled by its own subagent with a fresh context. An agent working through
+a big task in a single stretch loses the thread after a few tool calls — this
+keeps every step short enough to stay coherent, and a failed step is reported
+rather than silently skipped.
+
+### Web search built in
+
+Bots can browse. Queries go through DuckDuckGo, Brave, Google, Bing or
+Wikipedia, results are fetched and condensed before they reach the model.
+`philosearch` exposes the same engine on the command line.
+
+### Pick your language, and your layout
+
+The interface ships in **German and English**, switchable at any time — the
+choice is stored per user account, not globally.
+
+The first login also asks which frontend you want, and settings can change it
+later:
+
+| | |
+|---|---|
+| **Classic** | every module: Chat, Engine, Marketplace, Training, Quantisation, Gen Studio, News, Benchmark |
+| **Lite** | only Chat, Engine, Marketplace, News and Benchmark — the rest stays out of the way |
 
 ### Long-term memory
 
@@ -78,9 +119,9 @@ downloading**, then manage what you have locally.
 └──────────────┬──────────────┘
                │ HTTP + SSE (127.0.0.1)
 ┌──────────────┴──────────────┐
-│  Go backend                 │   modules: engine, philobot, philox,
-│                             │   marktplatz, memory, skills, settings,
-│                             │   login, news
+│  Go backend                 │   modules: engine, philobot, marktplatz,
+│                             │   memory, skills, settings, login, news,
+│                             │   philosearch
 └──────────────┬──────────────┘
                │ spawns & supervises
 ┌──────────────┴──────────────┐
@@ -96,10 +137,14 @@ Both servers bind to `127.0.0.1` by default. The backend keeps all state under
 
 | | |
 |---|---|
-| OS | Linux desktop |
+| OS | Linux desktop (primary), macOS on Apple Silicon, Windows x64 |
 | [Flutter](https://flutter.dev) | 3.44+ (Dart 3.12+) |
 | [Go](https://go.dev) | 1.25+ |
 | GPU | optional — CPU inference works, just slower |
+
+Linux is what gets the most use and testing. macOS and Windows builds are
+produced on native runners for every release; Intel Macs are not covered,
+because the runner able to build them has been retired.
 
 ## Getting started
 
@@ -206,7 +251,7 @@ locked, so you can see where this is going.
 
 | Phase | Scope | Status |
 |---|---|---|
-| **1** | Chat, local + API models, memory, marketplace, skills | **current** |
+| **1** | Chat, local + API models, memory, marketplace, skills, planning mode, web search | **current** |
 | 2 | Stabilisation, broader hardware coverage | planned |
 | 3 | Fine-tuning and quantisation | locked in UI |
 | 4 | Image and video generation | locked in UI |
