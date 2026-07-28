@@ -16,9 +16,10 @@ Your models, your keys, your data — nothing leaves your machine unless you say
 
 <br>
 
-<img src="docs/screenshots/marketplace.png" alt="Model marketplace showing which models fit the installed GPU" width="850">
+<img src="docs/screenshots/demo.gif" alt="Picking a model in the marketplace, starting it, and the engine retrying with a smaller context when the requested one does not fit" width="850">
 
-<em>Every model tells you whether it fits your GPU — before you download it.</em>
+<em>Picking a model, starting it — and at the end, 64k context does not fit,<br>
+so the engine retries with 32k on its own.</em>
 
 </div>
 
@@ -108,8 +109,11 @@ search, scoped per user and per project.
 
 ### Model marketplace
 
-Search Hugging Face, see **whether a model fits your hardware before
-downloading**, then manage what you have locally.
+Search Hugging Face and the API providers in one view, filtered by provider,
+category and quantisation. Every entry states the estimated VRAM and whether it
+fits your card **before you download it**, then manage what you have locally.
+
+<img src="docs/screenshots/marketplace.png" alt="Model marketplace showing which models fit the installed GPU" width="850">
 
 ## How it works
 
