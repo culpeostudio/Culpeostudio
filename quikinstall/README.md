@@ -218,12 +218,27 @@ Version bauen. Der Tag `v1.2.3` bleibt unveränderlich.
 > selbst nach `main`. Wer aus einer Arbeitskopie heraus veröffentlicht, muss
 > diesen Commit erst zurückholen — sonst überschreibt der nächste Upload das
 > Manifest mit dem älteren lokalen Stand und alle Clients sehen wieder „kein
-> Build verfügbar":
+> Build verfügbar".
+>
+> In einem Klon mit Remote genügt:
 >
 > ```bash
 > git fetch origin main
 > git checkout origin/main -- quikinstall/manifest.json
 > ```
+>
+> Wird über eine getrennte Veröffentlichungskopie gearbeitet, hat die
+> Arbeitskopie keinen Remote. Dann aus der Kopie heraus holen:
+>
+> ```bash
+> cd <veröffentlichungskopie>
+> git fetch origin main && git merge --ff-only origin/main
+> git show origin/main:quikinstall/manifest.json > <arbeitskopie>/quikinstall/manifest.json
+> ```
+>
+> Zu prüfen ist danach nicht die `raw.githubusercontent.com`-URL: Deren CDN
+> liefert das alte Manifest noch einige Minuten weiter. Verlässlich ist die
+> lokale Datei oder `gh api repos/<owner>/<repo>/contents/quikinstall/manifest.json`.
 
 Der Launcher lädt das Manifest weiterhin aus dem Repository
 (`raw.githubusercontent.com/.../quikinstall/manifest.json`) — nur die Archive
