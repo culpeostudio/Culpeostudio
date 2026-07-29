@@ -61,6 +61,11 @@ class ModelDetailDialog extends StatelessWidget {
     ], tr('marketplaceDetail.model.noDescription'));
     final tags = _stringList('capability_tags');
     final quantizations = _stringList('quantizations');
+    final quantizationSummary = summarizeMarketplaceQuantizations([
+      ...quantizations,
+      ...tags.where(isMarketplaceQuantization),
+    ]);
+    final capabilityTags = marketplaceNonQuantizationTags(tags);
     final formats = _stringList('formats');
     final category = (summary['category'] ?? (detail?['category']) ?? '')
         .toString();
@@ -221,8 +226,8 @@ class ModelDetailDialog extends StatelessWidget {
                     ),
                 ],
               ),
-              if (tags.isNotEmpty ||
-                  quantizations.isNotEmpty ||
+              if (capabilityTags.isNotEmpty ||
+                  !quantizationSummary.isEmpty ||
                   formats.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(
@@ -238,8 +243,11 @@ class ModelDetailDialog extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    ...tags.map(_tag),
-                    ...quantizations.map(_tag),
+                    ...capabilityTags.map(_tag),
+                    if (!quantizationSummary.isEmpty)
+                      MarketplaceQuantizationSummaryTag(
+                        summary: quantizationSummary,
+                      ),
                     ...formats.map(_tag),
                   ],
                 ),

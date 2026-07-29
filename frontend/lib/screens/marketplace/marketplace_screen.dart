@@ -36,7 +36,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   String _quantization = '';
   bool _gpuFit = false;
   bool _localOnly = false;
-  bool _showAdvancedFilters = true;
+  String? _openFilterDropdownGroup;
   bool _showDownloadsPanel = false;
   bool _searchExpanded = false;
   bool _gridView = true;
@@ -892,7 +892,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildToolbar(),
-        const SizedBox(height: 12),
         _buildFilters(),
         const SizedBox(height: 12),
         Expanded(child: _buildResults()),
@@ -901,15 +900,38 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   }
 
   Widget _buildToolbar() {
-    return SizedBox(
-      height: 48,
+    return Container(
+      key: const ValueKey('marketplace-toolbar'),
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16161D).withValues(alpha: 0.22),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.045)),
+        ),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           const actionsWidth = 208.0;
-          final availableSearchWidth = constraints.maxWidth - actionsWidth - 12;
+          final availableSearchWidth = constraints.maxWidth - actionsWidth - 14;
           final expandedSearchWidth = availableSearchWidth
-              .clamp(190.0, 360.0)
+              .clamp(210.0, 520.0)
               .toDouble();
+
+          // Die Suche ist Teil der Desktop-Kopfzeile wie in der Referenz.
+          // Nur in sehr schmalen Fenstern bleibt die bekannte einklappbare
+          // Variante erhalten, damit die vorhandenen Toolbar-Aktionen nicht
+          // gequetscht werden.
+          if (constraints.maxWidth >= 470) {
+            return Row(
+              children: [
+                _buildExpandedSearch(expandedSearchWidth),
+                const Spacer(),
+                _buildToolbarActions(),
+              ],
+            );
+          }
+
           return Stack(
             children: [
               Positioned(
@@ -920,69 +942,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   curve: Curves.easeOutCubic,
                   alignment: Alignment.centerLeft,
                   child: _searchExpanded
-                      ? Container(
-                          key: const ValueKey('expanded-search'),
-                          width: expandedSearchWidth,
-                          height: 48,
-                          padding: const EdgeInsets.only(left: 14, right: 4),
-                          decoration: _panelDecoration(),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  focusNode: _searchFocusNode,
-                                  controller: _searchController,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                  onChanged: _onSearchChanged,
-                                  textInputAction: TextInputAction.search,
-                                  decoration: InputDecoration(
-                                    hintText: tr(
-                                      'marketplaceScreen.searchHint',
-                                    ),
-                                    hintStyle: const TextStyle(
-                                      color: Colors.white30,
-                                    ),
-                                    border: InputBorder.none,
-                                  ),
-                                  onSubmitted: (_) =>
-                                      _triggerSearch(collapseSearch: true),
-                                ),
-                              ),
-                              Tooltip(
-                                message: tr('marketplaceScreen.search.submit'),
-                                child: IconButton(
-                                  onPressed: () =>
-                                      _triggerSearch(collapseSearch: true),
-                                  icon: const Icon(Icons.search_rounded),
-                                  style: IconButton.styleFrom(
-                                    hoverColor: const Color(
-                                      0xFFC9A24A,
-                                    ).withValues(alpha: 0.22),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(
-                          key: const ValueKey('collapsed-search'),
-                          width: 44,
-                          height: 48,
-                          decoration: _panelDecoration(),
-                          child: Tooltip(
-                            message: tr('marketplaceScreen.search.open'),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: _openSearch,
-                              child: const Center(
-                                child: Icon(Icons.search_rounded, size: 19),
-                              ),
-                            ),
-                          ),
-                        ),
+                      ? _buildExpandedSearch(expandedSearchWidth)
+                      : _buildCollapsedSearch(),
                 ),
               ),
               Positioned(top: 0, right: 0, child: _buildToolbarActions()),
@@ -993,76 +954,196 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
+  Widget _buildExpandedSearch(double width) {
+    return Container(
+      key: const ValueKey('expanded-search'),
+      width: width,
+      height: 48,
+      decoration: _panelDecoration(),
+      child: TextField(
+        key: const ValueKey('marketplace-search-input'),
+        focusNode: _searchFocusNode,
+        controller: _searchController,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        onChanged: _onSearchChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: tr('marketplaceScreen.searchHint'),
+          hintStyle: const TextStyle(color: Colors.white30),
+          // Der Rahmen kommt allein vom umgebenden Panel. Ohne das explizite
+          // Abschalten setzt das globale inputDecorationTheme zusaetzlich einen
+          // eigenen (enger gerundeten) Rahmen und es entsteht ein Doppelrand.
+          filled: false,
+          contentPadding: const EdgeInsets.fromLTRB(0, 14, 12, 14),
+          prefixIcon: const Icon(Icons.search_rounded, size: 19),
+          prefixIconColor: Colors.white38,
+          suffixIcon: Tooltip(
+            message: tr('marketplaceScreen.search.submit'),
+            child: IconButton(
+              onPressed: () => _triggerSearch(collapseSearch: true),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              style: IconButton.styleFrom(
+                hoverColor: const Color(0xFFC9A24A).withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+        ),
+        onSubmitted: (_) => _triggerSearch(collapseSearch: true),
+      ),
+    );
+  }
+
+  Widget _buildCollapsedSearch() {
+    return Container(
+      key: const ValueKey('collapsed-search'),
+      width: 44,
+      height: 48,
+      decoration: _panelDecoration(),
+      child: Tooltip(
+        message: tr('marketplaceScreen.search.open'),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _openSearch,
+          child: const Center(child: Icon(Icons.search_rounded, size: 19)),
+        ),
+      ),
+    );
+  }
+
   Widget _buildToolbarActions() {
     return Container(
+      key: const ValueKey('marketplace-toolbar-actions'),
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.035),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      decoration: _panelDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
+          _buildToolbarIconControl(
+            controlKey: const ValueKey('marketplace-toolbar-wiki'),
             tooltip: tr('marketplaceScreen.wiki.title'),
-            style: IconButton.styleFrom(
-              hoverColor: const Color(0xFF8E7CFF).withValues(alpha: 0.24),
-            ),
+            accent: const Color(0xFFBAA6FF),
             onPressed: _showMarketplaceWiki,
-            icon: const Icon(Icons.menu_book_outlined),
+            icon: Icons.menu_book_outlined,
           ),
-          IconButton(
+          const SizedBox(width: 6),
+          _buildToolbarActionDivider(),
+          const SizedBox(width: 6),
+          _buildToolbarIconControl(
+            controlKey: const ValueKey('marketplace-toolbar-downloads'),
             tooltip: _showDownloadsPanel
                 ? tr('marketplaceScreen.downloads.close')
                 : tr('marketplaceScreen.downloads.title'),
+            accent: const Color(0xFFC9A24A),
+            selected: _showDownloadsPanel,
             onPressed: () =>
                 setState(() => _showDownloadsPanel = !_showDownloadsPanel),
-            style: IconButton.styleFrom(
-              hoverColor: const Color(0xFFC9A24A).withValues(alpha: 0.24),
-            ),
-            icon: Icon(
-              _showDownloadsPanel
-                  ? Icons.close_rounded
-                  : Icons.download_for_offline_rounded,
-            ),
+            icon: _showDownloadsPanel
+                ? Icons.close_rounded
+                : Icons.download_for_offline_rounded,
           ),
-          SegmentedButton<bool>(
-            showSelectedIcon: false,
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              backgroundColor: WidgetStateProperty.all(Colors.transparent),
-              foregroundColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected)
-                    ? Colors.white
-                    : Colors.white60,
-              ),
-              side: WidgetStateProperty.all(BorderSide.none),
-              overlayColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.hovered)
-                    ? const Color(0xFFC9A24A).withValues(alpha: 0.18)
-                    : null,
-              ),
+          const SizedBox(width: 6),
+          _buildToolbarActionDivider(),
+          const SizedBox(width: 6),
+          Container(
+            height: 34,
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.025),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
             ),
-            segments: [
-              ButtonSegment(
-                value: true,
-                icon: const Icon(Icons.grid_view_rounded, size: 18),
-                tooltip: tr('marketplaceScreen.view.grid'),
-              ),
-              ButtonSegment(
-                value: false,
-                icon: const Icon(Icons.view_list_rounded, size: 20),
-                tooltip: tr('marketplaceScreen.view.list'),
-              ),
-            ],
-            selected: {_gridView},
-            onSelectionChanged: (value) {
-              setState(() => _gridView = value.first);
-            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildToolbarIconControl(
+                  controlKey: const ValueKey('marketplace-toolbar-view-grid'),
+                  tooltip: tr('marketplaceScreen.view.grid'),
+                  accent: const Color(0xFFC9A24A),
+                  selected: _gridView,
+                  size: 28,
+                  icon: Icons.grid_view_rounded,
+                  onPressed: () => setState(() => _gridView = true),
+                ),
+                const SizedBox(width: 2),
+                _buildToolbarIconControl(
+                  controlKey: const ValueKey('marketplace-toolbar-view-list'),
+                  tooltip: tr('marketplaceScreen.view.list'),
+                  accent: const Color(0xFFC9A24A),
+                  selected: !_gridView,
+                  size: 28,
+                  icon: Icons.view_list_rounded,
+                  onPressed: () => setState(() => _gridView = false),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildToolbarIconControl({
+    required Key controlKey,
+    required String tooltip,
+    required Color accent,
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool selected = false,
+    double size = 34,
+  }) {
+    final cornerRadius = BorderRadius.circular(size <= 28 ? 4 : 6);
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: controlKey,
+            borderRadius: cornerRadius,
+            onTap: onPressed,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOutCubic,
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: selected
+                    ? accent.withValues(alpha: 0.17)
+                    : Colors.white.withValues(alpha: 0.012),
+                borderRadius: cornerRadius,
+                border: Border.all(
+                  color: selected
+                      ? accent.withValues(alpha: 0.48)
+                      : Colors.white.withValues(alpha: 0.045),
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: size <= 28 ? 16 : 18,
+                color: selected ? accent : accent.withValues(alpha: 0.78),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolbarActionDivider() {
+    return Container(
+      width: 1,
+      height: 20,
+      color: Colors.white.withValues(alpha: 0.08),
     );
   }
 
@@ -1242,218 +1323,573 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   }
 
   Widget _buildFilters() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1040),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16161D).withValues(alpha: 0.34),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
+    return Container(
+      key: const ValueKey('marketplace-filter-strip'),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16161D).withValues(alpha: 0.34),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.045)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.055)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final primaryGroups = _buildPrimaryFilterGroups();
+                final quickFilters = _buildQuickFilterControls();
+
+                Widget primaryFilterRow() {
+                  return KeyedSubtree(
+                    key: const ValueKey('marketplace-primary-filter-row'),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 7,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: primaryGroups,
+                    ),
+                  );
+                }
+
+                // Auf breiten Desktop-Flaechen entspricht die Leiste der
+                // horizontalen Referenz: Gruppen links, Schnellfilter rechts.
+                // Darunter faellt sie kontrolliert in eine mehrzeilige Wrap-
+                // Anordnung statt einen RenderFlex-Overflow zu erzeugen.
+                if (constraints.maxWidth >= 2100) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: primaryFilterRow()),
+                      if (quickFilters.isNotEmpty) ...[
+                        const SizedBox(width: 14),
+                        _buildFilterDivider(),
+                        const SizedBox(width: 14),
+                        Wrap(
+                          spacing: 7,
+                          runSpacing: 7,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: quickFilters,
+                        ),
+                      ],
+                    ],
+                  );
+                }
+
+                return KeyedSubtree(
+                  key: const ValueKey('marketplace-primary-filter-row'),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 7,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      ...primaryGroups,
+                      if (quickFilters.isNotEmpty) ...[
+                        _buildFilterDivider(),
+                        ...quickFilters,
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          _buildFilterStatusRow(),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildPrimaryFilterGroups() {
+    return [
+      _buildFilterLabel(),
+      _buildFilterDivider(),
+      _buildInlineFilterGroup(
+        group: 'provider',
+        label: tr('marketplaceScreen.filters.provider'),
+        options: _providers,
+        value: _provider,
+        onSelected: _setProvider,
+      ),
+      _buildFilterDivider(),
+      _buildFilterDropdown(
+        group: 'category',
+        label: tr('marketplaceScreen.filters.category'),
+        options: _categories,
+        value: _category,
+        width: 150,
+        dropdownKey: const ValueKey('marketplace-category-dropdown'),
+        onSelected: (value) {
+          setState(() => _category = value);
+          _triggerSearch();
+        },
+      ),
+      if (_gpuFitControlVisible) ...[
+        _buildFilterDivider(),
+        _buildFilterDropdown(
+          group: 'quantization',
+          label: tr('marketplaceScreen.filters.quantization'),
+          options: _quantizations,
+          value: _quantization,
+          width: 138,
+          dropdownKey: const ValueKey('marketplace-quantization-dropdown'),
+          onSelected: (value) {
+            setState(() => _quantization = value);
+            _triggerSearch();
+          },
+        ),
+      ],
+      _buildFilterDivider(),
+      _buildFilterDropdown(
+        group: 'sort',
+        label: tr('marketplaceScreen.filters.sort'),
+        options: _sortOptionsForProvider(),
+        value: _sort,
+        width: 178,
+        dropdownKey: const ValueKey('marketplace-sort-dropdown'),
+        onSelected: (value) {
+          setState(() => _sort = value);
+          _triggerSearch();
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildQuickFilterControls() {
+    return [
+      if (_localControlsVisible)
+        _buildToggleBubble(
+          label: tr('marketplaceScreen.filters.localOnly'),
+          icon: Icons.download_for_offline_outlined,
+          selected: _localOnly,
+          color: const Color(0xFFFFC107),
+          onTap: () {
+            setState(() {
+              _localOnly = !_localOnly;
+              if (!_localOnly) {
+                _quantization = '';
+                _gpuFit = false;
+              }
+            });
+            _triggerSearch();
+          },
+        ),
+      if (_gpuFitControlVisible)
+        _buildToggleBubble(
+          label: tr('marketplaceScreen.filters.gpuOnly'),
+          icon: Icons.memory_rounded,
+          selected: _gpuFit,
+          color: const Color(0xFF66BB6A),
+          onTap: () {
+            setState(() {
+              _gpuFit = !_gpuFit;
+              if (_gpuFit) _localOnly = true;
+            });
+            _triggerSearch();
+          },
+        ),
+    ];
+  }
+
+  Widget _buildFilterLabel() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.tune_rounded, size: 15, color: Color(0xFFC9A24A)),
+        const SizedBox(width: 6),
+        Text(
+          tr('marketplaceScreen.filters.title'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterDivider() {
+    return Container(
+      width: 1,
+      height: 38,
+      color: Colors.white.withValues(alpha: 0.08),
+    );
+  }
+
+  Widget _buildInlineFilterGroup({
+    required String group,
+    required String label,
+    required List<FilterOption> options,
+    required String value,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Tooltip(
+      message: _filterHelp(group),
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 5,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(color: Colors.white54, fontSize: 10.5),
+          ),
+          ...options.map(
+            (option) => _buildChoiceChip(
+              option.label,
+              option.value,
+              value,
+              onSelected,
+              _filterOptionColor(group, option.value),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown({
+    required String group,
+    required String label,
+    required List<FilterOption> options,
+    required String value,
+    required double width,
+    required Key dropdownKey,
+    required ValueChanged<String> onSelected,
+  }) {
+    final selectedColor = _filterOptionColor(group, value);
+    final selectedLabel = _optionLabel(options, value);
+    final isOpen = _openFilterDropdownGroup == group;
+    final borderColor = selectedColor.withValues(alpha: 0.32);
+    return Tooltip(
+      message: _filterHelp(group),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label:',
+            style: const TextStyle(color: Colors.white54, fontSize: 10.5),
+          ),
+          const SizedBox(width: 5),
+          PopupMenuButton<String>(
+            key: dropdownKey,
+            tooltip: _filterHelp(group),
+            padding: EdgeInsets.zero,
+            position: PopupMenuPosition.under,
+            offset: const Offset(0, -1),
+            constraints: BoxConstraints.tightFor(width: width),
+            menuPadding: const EdgeInsets.all(4),
+            color: const Color(0xFF17171F),
+            surfaceTintColor: Colors.transparent,
+            shadowColor: Colors.black.withValues(alpha: 0.58),
+            elevation: 10,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.zero,
+                topRight: Radius.zero,
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+              side: BorderSide(color: selectedColor.withValues(alpha: 0.52)),
+            ),
+            onOpened: () {
+              setState(() => _openFilterDropdownGroup = group);
+            },
+            onCanceled: () {
+              if (_openFilterDropdownGroup == group) {
+                setState(() => _openFilterDropdownGroup = null);
+              }
+            },
+            onSelected: (selectedValue) {
+              if (_openFilterDropdownGroup == group) {
+                setState(() => _openFilterDropdownGroup = null);
+              }
+              onSelected(selectedValue);
+            },
+            itemBuilder: (context) => options.map((option) {
+              final optionColor = _filterOptionColor(group, option.value);
+              final selected = option.value == value;
+              return PopupMenuItem<String>(
+                key: ValueKey(
+                  'marketplace-filter-option-$group-${option.value}',
+                ),
+                value: option.value,
+                height: 36,
+                padding: EdgeInsets.zero,
+                child: Container(
+                  key: selected
+                      ? ValueKey(
+                          'marketplace-filter-option-selected-$group-${option.value}',
+                        )
+                      : null,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? optionColor.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: selected
+                          ? optionColor.withValues(alpha: 0.38)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: optionColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          option.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: selected ? optionColor : Colors.white70,
+                            fontSize: 10.5,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        Icon(Icons.check_rounded, size: 15, color: optionColor),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            child: Container(
+              key: ValueKey('marketplace-$group-dropdown-trigger'),
+              width: width,
+              height: 30,
+              padding: const EdgeInsets.only(left: 8, right: 4),
+              decoration: BoxDecoration(
+                color: selectedColor.withValues(alpha: 0.075),
+                borderRadius: BorderRadius.vertical(
+                  top: const Radius.circular(8),
+                  bottom: Radius.circular(isOpen ? 0 : 8),
+                ),
+                border: Border(
+                  top: BorderSide(color: borderColor),
+                  left: BorderSide(color: borderColor),
+                  right: BorderSide(color: borderColor),
+                  bottom: isOpen
+                      ? BorderSide.none
+                      : BorderSide(color: borderColor),
+                ),
+              ),
+              child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      _showAdvancedFilters
-                          ? tr('marketplaceScreen.filters.title')
-                          : tr('marketplaceScreen.filters.quickSelection'),
-                      style: TextStyle(
+                      selectedLabel,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 10.5,
                       ),
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () => setState(
-                      () => _showAdvancedFilters = !_showAdvancedFilters,
-                    ),
-                    icon: Icon(
-                      _showAdvancedFilters
-                          ? Icons.tune_rounded
-                          : Icons.tune_outlined,
-                      size: 16,
-                    ),
-                    label: Text(
-                      _showAdvancedFilters
-                          ? tr('marketplaceScreen.filters.collapse')
-                          : tr('marketplaceScreen.filters.showAll'),
-                    ),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    size: 17,
+                    color: selectedColor.withValues(alpha: 0.88),
                   ),
                 ],
               ),
-              if (!_showAdvancedFilters) ...[
-                Text(
-                  tr('marketplaceScreen.filters.compactHelp'),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.52),
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterStatusRow() {
+    final activeFilters = _activeFilters();
+    return Container(
+      key: const ValueKey('marketplace-active-filters'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.045)),
+        ),
+      ),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.filter_alt_outlined,
+                size: 14,
+                color: Color(0xFFC9A24A),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                tr('marketplaceScreen.filters.activeTitle'),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    FilterChip(
-                      label: Text(tr('marketplaceScreen.filters.localModels')),
-                      selected: _localOnly && !_gpuFit,
-                      onSelected: (enabled) {
-                        setState(() {
-                          _provider = 'huggingface';
-                          _localOnly = enabled;
-                          _gpuFit = false;
-                        });
-                        _triggerSearch();
-                      },
-                    ),
-                    FilterChip(
-                      label: Text(tr('marketplaceScreen.filters.fitsMyPc')),
-                      avatar: const Icon(Icons.verified_rounded, size: 16),
-                      selected: _gpuFit,
-                      onSelected: (enabled) {
-                        setState(() {
-                          _provider = 'huggingface';
-                          _localOnly = enabled;
-                          _gpuFit = enabled;
-                        });
-                        _triggerSearch();
-                      },
-                    ),
-                  ],
-                ),
-              ] else ...[
-                const SizedBox(height: 5),
-                _buildFilterRow(
-                  'provider',
-                  tr('marketplaceScreen.filters.provider'),
-                  _providers,
-                  _provider,
-                  _setProvider,
-                ),
-                const SizedBox(height: 6),
-                _buildFilterRow(
-                  'category',
-                  tr('marketplaceScreen.filters.category'),
-                  _categories,
-                  _category,
-                  (value) {
-                    setState(() => _category = value);
-                    _triggerSearch();
-                  },
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 76,
-                      child: Text(
-                        tr('marketplaceScreen.filters.sort'),
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    _buildSortDropdown(),
-                    if (_localControlsVisible)
-                      _buildToggleBubble(
-                        label: tr('marketplaceScreen.filters.localOnly'),
-                        icon: Icons.download_for_offline_outlined,
-                        selected: _localOnly,
-                        color: const Color(0xFFFFC107),
-                        onTap: () {
-                          setState(() {
-                            _localOnly = !_localOnly;
-                            if (!_localOnly) {
-                              _quantization = '';
-                              _gpuFit = false;
-                            }
-                          });
-                          _triggerSearch();
-                        },
-                      ),
-                    if (_gpuFitControlVisible)
-                      _buildToggleBubble(
-                        label: tr('marketplaceScreen.filters.gpuOnly'),
-                        icon: Icons.memory_rounded,
-                        selected: _gpuFit,
-                        color: const Color(0xFF66BB6A),
-                        onTap: () {
-                          setState(() {
-                            _gpuFit = !_gpuFit;
-                            if (_gpuFit) _localOnly = true;
-                          });
-                          _triggerSearch();
-                        },
-                      ),
-                  ],
-                ),
-                if (_gpuFitControlVisible) ...[
-                  const SizedBox(height: 10),
-                  _buildQuantizationDropdown(),
-                ],
-              ],
+              ),
             ],
           ),
+          if (activeFilters.isEmpty)
+            _buildEmptyFilterStatus()
+          else
+            ...activeFilters.map(_buildActiveFilterBadge),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyFilterStatus() {
+    return Container(
+      key: const ValueKey('marketplace-empty-filter-state'),
+      height: 25,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle_outline_rounded, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            tr('marketplaceScreen.filters.statusDefault'),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.52),
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveFilterBadge(
+    ({String group, String value, String label, Color color}) filter,
+  ) {
+    return Tooltip(
+      message: filter.label,
+      child: Container(
+        key: ValueKey(
+          'marketplace-active-filter-${filter.group}-${filter.value}',
+        ),
+        height: 25,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: filter.color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: filter.color.withValues(alpha: 0.42)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: filter.color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              filter.label,
+              style: TextStyle(
+                color: filter.color.withValues(alpha: 0.96),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterRow(
-    String group,
-    String label,
-    List<FilterOption> options,
-    String value,
-    ValueChanged<String> onSelected,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 76,
-          height: 26,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Tooltip(
-              message: _filterHelp(group),
-              child: Text(
-                label,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Wrap(
-            spacing: 5,
-            runSpacing: 5,
-            children: options
-                .map(
-                  (option) => _buildChoiceChip(
-                    option.label,
-                    option.value,
-                    value,
-                    onSelected,
-                    _filterOptionColor(group, option.value),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-      ],
-    );
+  List<({String group, String value, String label, Color color})>
+  _activeFilters() {
+    final filters =
+        <({String group, String value, String label, Color color})>[];
+    if (_provider != 'all') {
+      filters.add((
+        group: 'provider',
+        value: _provider,
+        label: _optionLabel(_providers, _provider),
+        color: _getProviderColor(_provider),
+      ));
+    }
+    if (_category.isNotEmpty) {
+      filters.add((
+        group: 'category',
+        value: _category,
+        label: _optionLabel(_categories, _category),
+        color: marketplaceTagColor(_category),
+      ));
+    }
+    if (_quantization.isNotEmpty && _localControlsVisible) {
+      filters.add((
+        group: 'quantization',
+        value: _quantization,
+        label: _optionLabel(_quantizations, _quantization),
+        color: _filterOptionColor('quantization', _quantization),
+      ));
+    }
+    if (_localOnly) {
+      filters.add((
+        group: 'local',
+        value: 'local',
+        label: tr('marketplaceScreen.filters.localOnly'),
+        color: const Color(0xFFFFC107),
+      ));
+    }
+    if (_gpuFit) {
+      filters.add((
+        group: 'gpu',
+        value: 'fit',
+        label: tr('marketplaceScreen.filters.gpuOnly'),
+        color: const Color(0xFF66BB6A),
+      ));
+    }
+    if (_sort != 'popularity') {
+      filters.add((
+        group: 'sort',
+        value: _sort,
+        label: _optionLabel(_sortOptionsForProvider(), _sort),
+        color: const Color(0xFF8E7CFF),
+      ));
+    }
+    return filters;
+  }
+
+  String _optionLabel(List<FilterOption> options, String value) {
+    for (final option in options) {
+      if (option.value == value) return option.label;
+    }
+    return value;
   }
 
   Widget _buildChoiceChip(
@@ -1479,7 +1915,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       visualDensity: const VisualDensity(horizontal: -3, vertical: -4),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
           color: selected
               ? accent.withValues(alpha: 0.95)
@@ -1495,34 +1931,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     if (group == 'category') return marketplaceTagColor(value);
     if (group == 'provider') return _getProviderColor(value);
     return const Color(0xFFDFC077);
-  }
-
-  Widget _buildSortDropdown() {
-    return SizedBox(
-      height: 30,
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _sort,
-          dropdownColor: const Color(0xEE202028),
-          borderRadius: BorderRadius.circular(14),
-          elevation: 8,
-          style: const TextStyle(color: Colors.white, fontSize: 11),
-          items: _sortOptionsForProvider()
-              .map(
-                (item) => DropdownMenuItem(
-                  value: item.value,
-                  child: Text(item.label),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _sort = value);
-            _triggerSearch();
-          },
-        ),
-      ),
-    );
   }
 
   Widget _buildToggleBubble({
@@ -1565,70 +1973,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildQuantizationDropdown() {
-    return Row(
-      children: [
-        SizedBox(
-          width: 76,
-          child: Tooltip(
-            message: _filterHelp('quantization'),
-            child: Text(
-              tr('marketplaceScreen.filters.quantization'),
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 240,
-          height: 30,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _quantization,
-                isExpanded: true,
-                dropdownColor: const Color(0xEE202028),
-                borderRadius: BorderRadius.circular(14),
-                elevation: 8,
-                icon: const Icon(Icons.expand_more_rounded, size: 18),
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-                items: _quantizations
-                    .map(
-                      (option) => DropdownMenuItem(
-                        value: option.value,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: option.value.isEmpty
-                                    ? Colors.white38
-                                    : marketplaceTagColor(option.value),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Text(option.label),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _quantization = value);
-                  _triggerSearch();
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1810,14 +2154,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final desc = _firstText(map, [
       'description',
     ], tr('marketplaceScreen.model.noDescription'));
-    final parameterBadge = _firstText(map, ['parameter_badge'], '');
     final providerBadge = _firstText(map, ['provider_badge'], provider);
     final price = _firstText(map, ['price_per_1m'], '-');
-    final priceLabel = _formatPriceMetric(
-      price,
-      map['price_per_1m_input'],
-      map['price_per_1m_output'],
-    );
+    final priceLabel = _formatPriceMetric(price);
     final contextLength = _asInt(map['context_length']);
     final score = _asInt(map['intelligence_score']);
     final downloads = _asInt(map['downloads']);
@@ -1829,6 +2168,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final local = map['local_model'] == true;
     final tags = _stringList(map['capability_tags']);
     final quantizations = _stringList(map['quantizations']);
+    final quantizationSummary = summarizeMarketplaceQuantizations([
+      ...quantizations,
+      ...tags.where(isMarketplaceQuantization),
+    ]);
+    final capabilityTags = marketplaceNonQuantizationTags(tags);
     final providerColor = _getProviderColor(provider);
     final cloud = _isCloudProvider(provider);
     // C3: Action-Key fuer den In-Flight-Guard.
@@ -1836,140 +2180,157 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         '${cloud ? 'api' : 'dl'}:$provider:${map['model_id'] ?? id}';
     final pending = _pendingActions.contains(actionKey);
 
+    // Cloud- und lokale Modelle nutzen dasselbe Kartengeruest; nur die
+    // Akzentfarbe bleibt an den Anbieter gebunden (lokale Modelle tragen das
+    // Gold der Engine), damit die Herkunft weiter auf einen Blick sichtbar ist.
+    final accent = cloud ? providerColor : const Color(0xFFC9A24A);
+
+    // Erste Kennzahlenzeile direkt unter der Beschreibung: Cloud-Modelle zeigen
+    // dort den Preis, lokale Modelle die Hardware-Passung (VRAM und Laufzeit).
+    final primaryPills = <Widget>[
+      if (local) ...[
+        if (estimatedVram > 0)
+          _statPill(
+            fitsGpu ? Icons.check_circle_outline : runtimeFitIcon(runtimeFit),
+            tr('marketplaceScreen.model.vram', {
+              'prefix': vramEstimated ? '~' : '',
+              'value': estimatedVram.toStringAsFixed(1),
+            }),
+            fitsGpu ? const Color(0xFF4ADE80) : runtimeFitColor(runtimeFit),
+            onTap: () => showFitDetailsDialog(
+              context,
+              modelName: name,
+              model: map,
+              hardwareProfile: _hardwareProfile,
+            ),
+          ),
+        if (runtimeFit.isNotEmpty)
+          _statPill(
+            runtimeFitIcon(runtimeFit),
+            runtimeFitLabel(runtimeFit),
+            runtimeFitColor(runtimeFit),
+            onTap: () => showFitDetailsDialog(
+              context,
+              modelName: name,
+              model: map,
+              hardwareProfile: _hardwareProfile,
+            ),
+          ),
+      ] else
+        _pricePill(
+          _asDouble(map['price_per_1m_input']),
+          _asDouble(map['price_per_1m_output']),
+          priceLabel,
+        ),
+    ];
+
+    // Zweite Zeile: Kontextlaenge und Intelligenz-Score sitzen wie Ein-/
+    // Ausgabepreis in einer geteilten Pille. Zwei getrennte Kaesten passten in
+    // schmalen Spalten nicht nebeneinander und rutschten aus der Zeile.
+    final secondaryPills = <Widget>[
+      if (contextLength > 0)
+        _splitPill([
+          _PillSegment(
+            Icons.memory_rounded,
+            _formatContext(contextLength),
+            const Color(0xFF22D3EE),
+          ),
+          _PillSegment(
+            Icons.lightbulb_outline_rounded,
+            tr('marketplaceScreen.model.score', {'score': score.toString()}),
+            const Color(0xFFF472C6),
+          ),
+        ])
+      else
+        _statPill(
+          Icons.lightbulb_outline_rounded,
+          tr('marketplaceScreen.model.score', {'score': score.toString()}),
+          const Color(0xFFF472C6),
+        ),
+      if (local && recommendationScore > 0 && !compact)
+        _statPill(
+          Icons.auto_awesome_rounded,
+          tr('marketplaceScreen.model.recommendation', {
+            'score': recommendationScore.toStringAsFixed(0),
+          }),
+          const Color(0xFF60A5FA),
+        ),
+      if (!compact)
+        _statPill(
+          Icons.trending_up_rounded,
+          tr('marketplaceScreen.model.hits', {'count': downloads.toString()}),
+          Colors.white.withValues(alpha: 0.6),
+        ),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
+          // Jeder Block hat eine feste Hoehe. Dadurch liegen Beschreibung,
+          // Kennzahlen, Tags und Aktion auf allen Karten auf derselben Linie –
+          // unabhaengig davon, wie viel ein Modell an Daten mitbringt.
+          _cardSlot(
+            _cardHeaderHeight,
+            Row(
+              children: [
+                Flexible(
+                  child: Tooltip(
+                    message: id.isNotEmpty ? id : name,
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              if (parameterBadge.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 _badge(
-                  parameterBadge,
-                  Colors.white70,
-                  Colors.white.withValues(alpha: 0.05),
+                  providerBadge,
+                  providerColor,
+                  providerColor.withValues(alpha: 0.22),
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _badge(
-                providerBadge,
-                providerColor,
-                providerColor.withValues(alpha: 0.12),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  id,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.38),
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 10),
-          Text(
-            desc,
-            maxLines: compact ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.68),
-              fontSize: 12.5,
+          _cardSlot(
+            _cardDescriptionHeight,
+            Text(
+              desc,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.62),
+                fontSize: 12.5,
+                height: 1.35,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              ...tags.take(compact ? 4 : 8).map(_tag),
-              ...quantizations.take(compact ? 2 : 4).map(_tag),
-            ],
+          _cardSlot(_cardPillRowHeight, _pillRow(primaryPills)),
+          const SizedBox(height: 8),
+          _cardSlot(_cardPillRowHeight, _pillRow(secondaryPills)),
+          if (compact) const Spacer() else const SizedBox(height: 16),
+          // Tags sitzen direkt ueber der Aktion – auf jeder Karte an derselben
+          // Stelle, egal wie viele Kennzahlen darueber stehen.
+          _cardSlot(
+            _cardTagsHeight,
+            _buildTagRow(
+              tags: capabilityTags,
+              summary: quantizationSummary,
+              cardKey: '$provider:${id.isNotEmpty ? id : name}',
+            ),
           ),
-          if (compact) const Spacer() else const SizedBox(height: 14),
-          Wrap(
-            spacing: 14,
-            runSpacing: 8,
-            children: [
-              _metric(Icons.payments_outlined, priceLabel),
-              if (contextLength > 0)
-                _metric(Icons.memory_rounded, _formatContext(contextLength)),
-              _metric(
-                Icons.psychology_alt_outlined,
-                tr('marketplaceScreen.model.score', {
-                  'score': score.toString(),
-                }),
-              ),
-              if (local && estimatedVram > 0)
-                _metric(
-                  fitsGpu
-                      ? Icons.check_circle_outline
-                      : runtimeFitIcon(runtimeFit),
-                  tr('marketplaceScreen.model.vram', {
-                    'prefix': vramEstimated ? '~' : '',
-                    'value': estimatedVram.toStringAsFixed(1),
-                  }),
-                  color: fitsGpu
-                      ? Colors.greenAccent
-                      : runtimeFitColor(runtimeFit),
-                  onTap: () => showFitDetailsDialog(
-                    context,
-                    modelName: name,
-                    model: map,
-                    hardwareProfile: _hardwareProfile,
-                  ),
-                ),
-              if (local && runtimeFit.isNotEmpty)
-                _metric(
-                  runtimeFitIcon(runtimeFit),
-                  runtimeFitLabel(runtimeFit),
-                  color: runtimeFitColor(runtimeFit),
-                  onTap: () => showFitDetailsDialog(
-                    context,
-                    modelName: name,
-                    model: map,
-                    hardwareProfile: _hardwareProfile,
-                  ),
-                ),
-              if (local && recommendationScore > 0 && !compact)
-                _metric(
-                  Icons.auto_awesome_rounded,
-                  tr('marketplaceScreen.model.recommendation', {
-                    'score': recommendationScore.toStringAsFixed(0),
-                  }),
-                  color: Colors.lightBlueAccent,
-                ),
-              if (!compact)
-                _metric(
-                  Icons.trending_up_rounded,
-                  tr('marketplaceScreen.model.hits', {
-                    'count': downloads.toString(),
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -1991,20 +2352,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Icon(
-                            cloud
-                                ? Icons.play_arrow_rounded
-                                : Icons.download_rounded,
+                            cloud ? Icons.add_rounded : Icons.download_rounded,
                             size: 17,
                           ),
                     label: Text(
                       cloud
-                          ? tr('marketplaceScreen.model.startInChat')
+                          ? tr('marketplaceScreen.model.add')
                           : tr('marketplaceScreen.model.download'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: cloud
-                          ? providerColor
-                          : const Color(0xFFC9A24A),
+                      backgroundColor: accent,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -2031,6 +2390,129 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           ),
         ],
       ),
+    );
+  }
+
+  // Gemeinsame Mindesthoehen der Kartenbloecke halten alle Karten ausgerichtet,
+  // lassen bei groesserer Schrift aber den noetigen vertikalen Spielraum.
+  static const double _cardHeaderHeight = 26;
+  static const double _cardDescriptionHeight = 52;
+  // 11.5px Text mit der App-Line-Height 1.4, 6px Innenabstand und 1px
+  // Rahmen pro Seite braucht gut 30px. 32px lassen die Rundung vollständig
+  // sichtbar, statt die unteren zwei Pixel abzuschneiden.
+  static const double _cardPillRowHeight = 32;
+  static const double _cardTagsHeight = 28;
+
+  /// Tag-Zeile mit gemessener Breite. Ein Wrap haette die nicht mehr passenden
+  /// Tags in eine verdeckte zweite Zeile geschoben; ein hartes `take(3)` haette
+  /// sie stillschweigend verschluckt. Stattdessen wird gezaehlt, was in eine
+  /// Zeile passt – der Rest steckt sichtbar in einem "+N"-Tag mit Tooltip.
+  Widget _buildTagRow({
+    required List<String> tags,
+    required MarketplaceQuantizationSummary summary,
+    required String cardKey,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 6.0;
+        final quantTag = summary.isEmpty
+            ? null
+            : MarketplaceQuantizationSummaryTag(
+                key: ValueKey(
+                  'marketplace-model-quantization-summary-$cardKey',
+                ),
+                summary: summary,
+              );
+
+        final reserved = quantTag == null
+            ? 0.0
+            : _tagWidth(context, summary.label, withIcon: true) + gap;
+
+        List<String> fitting(double budget) {
+          final visible = <String>[];
+          var used = 0.0;
+          for (final tag in tags) {
+            final width = _tagWidth(context, tag) + (visible.isEmpty ? 0 : gap);
+            if (used + width > budget) break;
+            used += width;
+            visible.add(tag);
+          }
+          return visible;
+        }
+
+        final budget = constraints.maxWidth - reserved;
+        var visible = fitting(budget);
+        String? moreLabel;
+        if (visible.length < tags.length) {
+          // Platz fuer den Zaehler freihalten – im ungueltigsten Fall traegt er
+          // die Gesamtzahl der Tags, deshalb wird damit gemessen.
+          final counterWidth = _tagWidth(context, '+${tags.length}') + gap;
+          visible = fitting(budget - counterWidth);
+          moreLabel = '+${tags.length - visible.length}';
+        }
+
+        final hiddenTags = tags.sublist(visible.length);
+
+        return Row(
+          children: [
+            for (var i = 0; i < visible.length; i++) ...[
+              if (i > 0) const SizedBox(width: gap),
+              _tag(visible[i]),
+            ],
+            if (moreLabel != null) ...[
+              if (visible.isNotEmpty) const SizedBox(width: gap),
+              Tooltip(message: hiddenTags.join(', '), child: _tag(moreLabel)),
+            ],
+            if (quantTag != null) ...[
+              if (visible.isNotEmpty || moreLabel != null)
+                const SizedBox(width: gap),
+              quantTag,
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  /// Breite eines Tag-Chips inklusive Innenabstand und Rahmen – muss zu den
+  /// Massen in [_tag] passen.
+  double _tagWidth(BuildContext context, String text, {bool withIcon = false}) {
+    final textStyle = DefaultTextStyle.of(
+      context,
+    ).style.merge(const TextStyle(fontSize: 11, fontWeight: FontWeight.w500));
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: textStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    // 9px Innenabstand je Seite + 1px Rahmen je Seite, Icon 12px + 5px Abstand.
+    return painter.width + 20 + (withIcon ? 17 : 0);
+  }
+
+  /// Eine Kennzahlenzeile. Bewusst eine Row statt eines Wrap: die Pillen
+  /// schrumpfen und kuerzen ihren Text, wenn die Spalte schmal wird. Ein Wrap
+  /// haette die zweite Pille in eine verdeckte zweite Zeile geschoben – sie
+  /// war dann schlicht abgeschnitten.
+  Widget _pillRow(List<Widget> pills) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < pills.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Flexible(child: pills[i]),
+        ],
+      ],
+    );
+  }
+
+  /// Hält die Kartenblöcke auf einer gemeinsamen Mindesthöhe, lässt sie bei
+  /// größerer Schrift aber vollständig wachsen. Der Spacer der kompakten Karte
+  /// nimmt diese wenigen Pixel auf; ein ClipRect würde sie lautlos abschneiden.
+  Widget _cardSlot(double minHeight, Widget child) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight),
+      child: SizedBox(width: double.infinity, child: child),
     );
   }
 
@@ -2101,17 +2583,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Widget _badge(String text, Color color, Color background) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
         text,
         style: TextStyle(
           color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -2120,44 +2602,166 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget _tag(String text) {
     final tagColor = marketplaceTagColor(text);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: tagColor.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: tagColor.withValues(alpha: 0.24)),
+        color: tagColor.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: tagColor.withValues(alpha: 0.45)),
       ),
-      child: Text(text, style: TextStyle(color: tagColor, fontSize: 10)),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: tagColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
-  Widget _metric(
+  // Kennzahlen der Modellkarte sitzen in eigenen Pillen statt in einer losen
+  // Icon-Text-Reihe: farbiger Inhalt auf neutralem Grund, damit Preis, Kontext
+  // und Score als eigenstaendige Bloecke lesbar bleiben.
+  // Die Pille traegt einen Hauch ihrer eigenen Farbe, statt neutral grau zu
+  // bleiben – dadurch heben sich Preis, Kontext und Score deutlicher ab.
+  BoxDecoration _pillDecoration(Color color) {
+    return BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withValues(alpha: 0.30)),
+    );
+  }
+
+  Widget _statPill(
     IconData icon,
-    String text, {
-    Color? color,
+    String text,
+    Color color, {
     VoidCallback? onTap,
   }) {
-    final metricColor = color ?? Colors.white.withValues(alpha: 0.52);
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: metricColor, size: 15),
-        const SizedBox(width: 5),
-        Text(text, style: TextStyle(color: metricColor, fontSize: 11)),
-        if (onTap != null) ...[
-          const SizedBox(width: 3),
-          Icon(
-            Icons.info_outline_rounded,
-            color: metricColor.withValues(alpha: 0.55),
-            size: 11,
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: _pillDecoration(color),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          // Flexible statt fester Breite: auf schmalen Karten kuerzt die Pille
+          // ihren Text, statt ueber den Kartenrand zu laufen.
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.info_outline_rounded,
+              color: color.withValues(alpha: 0.55),
+              size: 11,
+            ),
+          ],
         ],
-      ],
+      ),
     );
-    if (onTap == null) return row;
+    if (onTap == null) return pill;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: row,
+      borderRadius: BorderRadius.circular(8),
+      child: pill,
+    );
+  }
+
+  // Preis-Pille mit getrennten Segmenten fuer Ein- und Ausgabe-Tokens. Liefert
+  // das Backend keine getrennten Werte, faellt sie auf das vorhandene
+  // Sammel-Label zurueck (z.B. "Lokal" oder "Gratis").
+  Widget _pricePill(double input, double output, String fallbackLabel) {
+    if (input <= 0 && output <= 0) {
+      return _statPill(
+        Icons.payments_outlined,
+        fallbackLabel,
+        const Color(0xFFA9BDD9),
+      );
+    }
+    return _splitPill([
+      _PillSegment(
+        Icons.south_rounded,
+        tr('marketplaceScreen.price.in', {'value': _formatDollar(input)}),
+        const Color(0xFF4ADE80),
+      ),
+      _PillSegment(
+        Icons.north_rounded,
+        tr('marketplaceScreen.price.out', {'value': _formatDollar(output)}),
+        const Color(0xFFFF8A50),
+      ),
+    ]);
+  }
+
+  /// Pille mit zwei Segmenten, getrennt durch einen duennen Strich. Der
+  /// Farbverlauf im Hintergrund nimmt beide Segmentfarben auf, sodass die
+  /// Werte zusammengehoeren, aber unterscheidbar bleiben.
+  Widget _splitPill(List<_PillSegment> segments) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            segments.first.color.withValues(alpha: 0.16),
+            segments.last.color.withValues(alpha: 0.16),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < segments.length; i++) ...[
+            if (i > 0)
+              Container(
+                width: 1,
+                height: 12,
+                margin: const EdgeInsets.symmetric(horizontal: 9),
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            Flexible(child: _pillSegment(segments[i])),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _pillSegment(_PillSegment segment) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(segment.icon, color: segment.color, size: 13),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            segment.text,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: segment.color,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2783,19 +3387,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return fallback;
   }
 
-  String _formatPriceMetric(
-    String rawPrice,
-    dynamic inputPrice,
-    dynamic outputPrice,
-  ) {
-    final input = _asDouble(inputPrice);
-    final output = _asDouble(outputPrice);
-    if (input > 0 || output > 0) {
-      return tr('marketplaceScreen.price.inputOutput', {
-        'input': _formatDollar(input),
-        'output': _formatDollar(output),
-      });
-    }
+  // Sammel-Label fuer Karten ohne getrennte Token-Preise. Liegen Ein- und
+  // Ausgabepreis vor, zeigt die Karte stattdessen die zweigeteilte Preis-Pille.
+  String _formatPriceMetric(String rawPrice) {
     final value = rawPrice.trim();
     if (value.isEmpty || value == '-') return '-';
     final lowered = value.toLowerCase();
@@ -2865,6 +3459,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     }
   }
 } // Ende _MarketplaceScreenState
+
+/// Ein Wert innerhalb einer geteilten Kennzahlen-Pille (z.B. "IN $5.00" oder
+/// "1.0M ctx").
+class _PillSegment {
+  const _PillSegment(this.icon, this.text, this.color);
+
+  final IconData icon;
+  final String text;
+  final Color color;
+}
 
 @Preview(name: 'Download-Empfehlung', group: 'Marktplatz', size: Size(360, 150))
 Widget marketplaceDownloadRecommendationPreview() {

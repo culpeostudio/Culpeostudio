@@ -103,10 +103,9 @@ class _TopNotificationCardState extends State<_TopNotificationCard>
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final accent = widget.accentColor ?? AppColors.accent(brightness);
-    final background = AppColors.surface(brightness);
-    final foreground = AppColors.textPrimary(brightness);
+    final accent = widget.accentColor ?? AppColors.accent(Brightness.dark);
+    final background = AppColors.surface(Brightness.dark);
+    final foreground = AppColors.textPrimary(Brightness.dark);
     final isError = accent.r > accent.g * 1.18;
     final isSuccess = accent.g > accent.r * 1.12;
     final icon = isError
@@ -131,9 +130,7 @@ class _TopNotificationCardState extends State<_TopNotificationCard>
                 border: Border.all(color: accent.withValues(alpha: 0.48)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: brightness == Brightness.dark ? 0.32 : 0.14,
-                    ),
+                    color: Colors.black.withValues(alpha: 0.32),
                     blurRadius: 26,
                     offset: const Offset(0, 10),
                   ),

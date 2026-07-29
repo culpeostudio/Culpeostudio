@@ -58,8 +58,6 @@ const Map<String, String> appStringsDe = {
       'Die externe Benchmark-Seite konnte nicht geöffnet werden.',
   'dashboard.benchmarkOpenError':
       'Fehler beim Öffnen der Benchmark-Seite: {error}',
-  'dashboard.tooltipLightTheme': 'Helles Design',
-  'dashboard.tooltipDarkTheme': 'Dunkles Design',
   'dashboard.tooltipSettings': 'Einstellungen',
   'dashboard.tooltipLogout': 'Abmelden',
   'dashboard.tooltipNewChat': 'Neuer Chat erstellen',
@@ -268,7 +266,6 @@ const Map<String, String> appStringsDe = {
   'settings.shortcuts.action.loadModel': 'Modell laden',
   'settings.shortcuts.action.focusSearch': 'Suche fokussieren',
   'settings.shortcuts.action.showHelp': 'Tastenkürzel-Hilfe anzeigen',
-  'settings.shortcuts.action.toggleTheme': 'Theme umschalten',
 
   // Systeminformationen & Hilfe
   'settings.systemInfo.title': 'Systeminformationen',

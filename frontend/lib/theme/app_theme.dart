@@ -1,49 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dark_theme.dart';
-import 'light_theme.dart';
 
-/// Router for the "Obsidian / Alabaster" design tokens.
+/// Design tokens for the permanent Obsidian dark theme.
 ///
-/// The actual colour values live in [DarkColors] (dark_theme.dart) and
-/// [LightColors] (light_theme.dart) — edit those files to restyle a theme.
-/// This class just picks the right one based on the current [Brightness].
+/// The optional brightness parameters preserve callers that read the ambient
+/// theme, while all values intentionally resolve to the single dark palette.
 class AppColors {
   AppColors._();
 
-  /// Shared bright gold accent (dark-mode value). Kept for widgets that
-  /// reference a single accent regardless of theme.
+  /// Shared bright gold accent.
   static const Color gold = DarkColors.accent;
-  static const Color goldMuted = LightColors.accent;
 
-  /// Theme-aware accent (gold): brighter on dark, deeper on light.
-  static Color accent(Brightness b) =>
-      b == Brightness.dark ? DarkColors.accent : LightColors.accent;
+  static Color accent(Brightness _) => DarkColors.accent;
 
-  // Surface-Aliase, referenziert vom ColorScheme in main.dart's ThemeData.
+  // Surface alias referenced by the ColorScheme in main.dart's ThemeData.
   static const Color obsidianSurface = DarkColors.surface;
-  static const Color alabasterSurface = LightColors.surface;
 
-  static Color bg(Brightness b) =>
-      b == Brightness.dark ? DarkColors.bg : LightColors.bg;
-  static Color surface(Brightness b) =>
-      b == Brightness.dark ? DarkColors.surface : LightColors.surface;
-  static Color rail(Brightness b) =>
-      b == Brightness.dark ? DarkColors.rail : LightColors.rail;
-  static Color textPrimary(Brightness b) =>
-      b == Brightness.dark ? DarkColors.textPrimary : LightColors.textPrimary;
-  static Color textSecondary(Brightness b) => b == Brightness.dark
-      ? DarkColors.textSecondary
-      : LightColors.textSecondary;
-  static Color divider(Brightness b) =>
-      b == Brightness.dark ? DarkColors.divider : LightColors.divider;
+  static Color bg(Brightness _) => DarkColors.bg;
+  static Color surface(Brightness _) => DarkColors.surface;
+  static Color rail(Brightness _) => DarkColors.rail;
+  static Color textPrimary(Brightness _) => DarkColors.textPrimary;
+  static Color textSecondary(Brightness _) => DarkColors.textSecondary;
+  static Color divider(Brightness _) => DarkColors.divider;
 
   /// Edition label for the content title bar.
-  static String edition(Brightness b) =>
-      b == Brightness.dark ? DarkColors.editionLabel : LightColors.editionLabel;
+  static String edition(Brightness _) => DarkColors.editionLabel;
 }
 
-/// Shared typography (both themes use the same families).
+/// Shared application typography.
 class AppFonts {
   AppFonts._();
 

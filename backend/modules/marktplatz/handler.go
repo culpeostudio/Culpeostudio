@@ -222,22 +222,19 @@ func (m *MarktplatzModule) handleSearch(c *fiber.Ctx) error {
 	searchProvider := p.resolvedProvider()
 	postFilteredSearch := p.isPostFilteredSearch()
 
-	// M17: Wenn HuggingFace durchsucht wird (einzeln oder im Verbund), erhoehen wir
-	// das Limit und das Ziel-Ergebnismengenziel um 1. Dadurch erhalten wir fuer
-	// die Paginierung (paginateModels) immer ein zusaetzliches Element auf der
-	// naechsten Seite, um has_more praezise berechnen zu koennen.
-	if searchProvider == types.ProviderHuggingFace || searchProvider == types.ProviderAll {
-		searchLimit++
-		if searchLimit > maxSearchWindow {
-			searchLimit = maxSearchWindow
-		}
+	// M17: Wir fragen immer ein Modell mehr an, als die Seite fuellt. Nur dann
+	// kann paginateModels has_more korrekt bestimmen: liefert der Provider das
+	// Extra-Modell, existiert eine weitere Seite. Frueher galt das nur fuer
+	// HuggingFace/all – bei OpenRouter und Featherless kam deshalb exakt eine
+	// volle Seite zurueck, has_more war immer false und der Katalog endete
+	// nach der ersten Seite.
+	searchLimit++
+	if searchLimit > maxSearchWindow {
+		searchLimit = maxSearchWindow
 	}
 
 	ctx := c.UserContext()
-	targetResultCount := p.PageSize * p.Page
-	if searchProvider == types.ProviderHuggingFace || searchProvider == types.ProviderAll {
-		targetResultCount++
-	}
+	targetResultCount := p.PageSize*p.Page + 1
 	rawModelCount := 0
 	var models []types.ModelSummary
 	var providerErrors []string

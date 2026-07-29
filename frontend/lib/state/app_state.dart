@@ -237,8 +237,6 @@ class AppState extends ChangeNotifier {
   /// mehrfach ausloesen. Wird beim naechsten erfolgreichen Login zurueckgesetzt.
   bool _sessionExpiryHandled = false;
 
-  Brightness themeBrightness = Brightness.dark;
-
   /// UI-Sprache ('de' oder 'en') und Frontend-Version ('lite' oder
   /// 'classic'). The authenticated backend profile is the source of truth;
   /// SharedPreferences is intentionally not used for these account settings.
@@ -427,13 +425,6 @@ class AppState extends ChangeNotifier {
     _actionStreamController.add(action);
   }
 
-  void toggleTheme() {
-    themeBrightness = themeBrightness == Brightness.dark
-        ? Brightness.light
-        : Brightness.dark;
-    notifyListeners();
-  }
-
   double chatTextScale = 1.0;
 
   void increaseChatScale() {
@@ -459,6 +450,7 @@ class AppState extends ChangeNotifier {
         final rawShortcuts = res['shortcuts'];
         if (rawShortcuts is Map) {
           shortcuts = Map<String, String>.from(rawShortcuts);
+          shortcuts.remove('toggle_theme');
           notifyListeners();
         }
       }

@@ -56,7 +56,11 @@ void main() {
       'Chat-Bot',
       'Skills',
     ]) {
-      expect(find.text(label), findsOneWidget, reason: 'Navigationspunkt $label');
+      expect(
+        find.text(label),
+        findsOneWidget,
+        reason: 'Navigationspunkt $label',
+      );
     }
 
     await disposeSettings(tester);
@@ -98,6 +102,15 @@ void main() {
 
     await openSection(tester, 'Shortkarts');
     expect(find.text('Hugging Face'), findsNothing);
+
+    await disposeSettings(tester);
+  });
+
+  testWidgets('zeigt keinen Theme-Kurzbefehl mehr', (tester) async {
+    await pumpSettings(tester);
+    await openSection(tester, 'Shortkarts');
+
+    expect(find.text('Theme umschalten'), findsNothing);
 
     await disposeSettings(tester);
   });

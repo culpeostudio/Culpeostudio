@@ -40,7 +40,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   bool _isSettingsHovered = false;
   bool _isLogoutHovered = false;
   bool _isHeaderHovered = false;
-  bool _isThemeToggleHovered = false;
   bool _handleHovered = false;
   late AnimationController _settingsRotationController;
   late AnimationController _railController;
@@ -695,51 +694,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   ),
                                 ),
                                 MouseRegion(
-                                  onEnter: (_) => setState(
-                                    () => _isThemeToggleHovered = true,
-                                  ),
-                                  onExit: (_) => setState(
-                                    () => _isThemeToggleHovered = false,
-                                  ),
-                                  child: IconButton(
-                                    tooltip: brightness == Brightness.dark
-                                        ? tr('dashboard.tooltipLightTheme')
-                                        : tr('dashboard.tooltipDarkTheme'),
-                                    constraints: const BoxConstraints.tightFor(
-                                      width: 32,
-                                      height: 32,
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    icon: AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 260,
-                                      ),
-                                      transitionBuilder: (child, animation) =>
-                                          RotationTransition(
-                                            turns: Tween<double>(
-                                              begin: 0.72,
-                                              end: 1,
-                                            ).animate(animation),
-                                            child: ScaleTransition(
-                                              scale: animation,
-                                              child: child,
-                                            ),
-                                          ),
-                                      child: Icon(
-                                        brightness == Brightness.dark
-                                            ? Icons.light_mode_outlined
-                                            : Icons.dark_mode_outlined,
-                                        key: ValueKey(brightness),
-                                        color: _isThemeToggleHovered
-                                            ? AppColors.gold
-                                            : textSecondary,
-                                        size: 19,
-                                      ),
-                                    ),
-                                    onPressed: () => _appState.toggleTheme(),
-                                  ),
-                                ),
-                                MouseRegion(
                                   onEnter: (_) {
                                     setState(() => _isSettingsHovered = true);
                                     _settingsRotationController.repeat();
@@ -823,53 +777,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  MouseRegion(
-                                    onEnter: (_) => setState(
-                                      () => _isThemeToggleHovered = true,
-                                    ),
-                                    onExit: (_) => setState(
-                                      () => _isThemeToggleHovered = false,
-                                    ),
-                                    child: IconButton(
-                                      tooltip: brightness == Brightness.dark
-                                          ? tr('dashboard.tooltipLightTheme')
-                                          : tr('dashboard.tooltipDarkTheme'),
-                                      constraints:
-                                          const BoxConstraints.tightFor(
-                                            width: 40,
-                                            height: 40,
-                                          ),
-                                      padding: EdgeInsets.zero,
-                                      icon: AnimatedSwitcher(
-                                        duration: const Duration(
-                                          milliseconds: 260,
-                                        ),
-                                        transitionBuilder: (child, animation) =>
-                                            RotationTransition(
-                                              turns: Tween<double>(
-                                                begin: 0.72,
-                                                end: 1,
-                                              ).animate(animation),
-                                              child: ScaleTransition(
-                                                scale: animation,
-                                                child: child,
-                                              ),
-                                            ),
-                                        child: Icon(
-                                          brightness == Brightness.dark
-                                              ? Icons.light_mode_outlined
-                                              : Icons.dark_mode_outlined,
-                                          key: ValueKey(brightness),
-                                          color: _isThemeToggleHovered
-                                              ? AppColors.gold
-                                              : textSecondary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      onPressed: () => _appState.toggleTheme(),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
                                   MouseRegion(
                                     onEnter: (_) {
                                       setState(() => _isSettingsHovered = true);
