@@ -90,6 +90,13 @@ void main() {
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
   });
 
+  testWidgets('dashboard has no theme selector', (WidgetTester tester) async {
+    await _pumpDashboardApp(tester);
+
+    expect(find.byIcon(Icons.light_mode_outlined), findsNothing);
+    expect(find.byIcon(Icons.dark_mode_outlined), findsNothing);
+  });
+
   testWidgets('cancel keeps the current screen unchanged', (
     WidgetTester tester,
   ) async {

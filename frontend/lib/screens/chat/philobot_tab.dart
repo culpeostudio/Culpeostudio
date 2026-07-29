@@ -3140,13 +3140,12 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         final isDesktop = width >= 900;
         final useBottomSheets = width < 600;
         final themeColor = const Color(0xFFC9A24A);
-        final brightness = Theme.of(context).brightness;
         final composerBg = AppColors.surface(
-          brightness,
-        ).withValues(alpha: brightness == Brightness.dark ? 0.92 : 0.96);
-        final composerBorder = AppColors.divider(brightness);
-        final composerText = AppColors.textPrimary(brightness);
-        final composerHint = AppColors.textSecondary(brightness);
+          Brightness.dark,
+        ).withValues(alpha: 0.92);
+        final composerBorder = AppColors.divider(Brightness.dark);
+        final composerText = AppColors.textPrimary(Brightness.dark);
+        final composerHint = AppColors.textSecondary(Brightness.dark);
 
         final thinkingOptions = [
           ThinkingModeOption(

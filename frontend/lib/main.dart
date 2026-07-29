@@ -34,8 +34,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = AppState();
 
-    // Listen at the top so toggling the theme rebuilds MaterialApp.theme,
-    // not just the home widget.
+    // Listen at the top so profile and language changes update the app shell.
     return AnimatedBuilder(
       animation: appState,
       builder: (context, _) => _buildApp(appState),
@@ -55,24 +54,17 @@ class MyApp extends StatelessWidget {
       ],
       theme: ThemeData(
         useMaterial3: true,
-        brightness: appState.themeBrightness,
-        colorScheme: appState.themeBrightness == Brightness.dark
-            ? ColorScheme.dark(
-                primary: AppColors.gold,
-                secondary: AppColors.gold,
-                // In Material 3 ist die frühere `background`-Rolle mit `surface`
-                // verschmolzen (deprecated); der Fenster-Hintergrund wird ohnehin
-                // separat über scaffoldBackgroundColor gesetzt.
-                surface: AppColors.obsidianSurface,
-                error: Colors.redAccent,
-              )
-            : ColorScheme.light(
-                primary: AppColors.goldMuted,
-                secondary: AppColors.goldMuted,
-                surface: AppColors.alabasterSurface,
-                error: Colors.redAccent,
-              ),
-        scaffoldBackgroundColor: AppColors.bg(appState.themeBrightness),
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.gold,
+          secondary: AppColors.gold,
+          // In Material 3 ist die frühere `background`-Rolle mit `surface`
+          // verschmolzen (deprecated); der Fenster-Hintergrund wird ohnehin
+          // separat über scaffoldBackgroundColor gesetzt.
+          surface: AppColors.obsidianSurface,
+          error: Colors.redAccent,
+        ),
+        scaffoldBackgroundColor: AppColors.bg(Brightness.dark),
         textTheme: const TextTheme(
           titleLarge: TextStyle(
             fontWeight: FontWeight.bold,
@@ -89,12 +81,10 @@ class MyApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(foregroundColor: AppColors.gold),
         ),
-        iconTheme: IconThemeData(
-          color: AppColors.textPrimary(appState.themeBrightness),
-        ),
+        iconTheme: IconThemeData(color: AppColors.textPrimary(Brightness.dark)),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.surface(appState.themeBrightness),
+          fillColor: AppColors.surface(Brightness.dark),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -105,9 +95,7 @@ class MyApp extends StatelessWidget {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: AppColors.divider(appState.themeBrightness),
-            ),
+            borderSide: BorderSide(color: AppColors.divider(Brightness.dark)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),

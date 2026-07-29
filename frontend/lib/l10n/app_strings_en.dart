@@ -56,8 +56,6 @@ const Map<String, String> appStringsEn = {
   'dashboard.benchmarkOpenFailed':
       'The external benchmark page could not be opened.',
   'dashboard.benchmarkOpenError': 'Error opening the benchmark page: {error}',
-  'dashboard.tooltipLightTheme': 'Light theme',
-  'dashboard.tooltipDarkTheme': 'Dark theme',
   'dashboard.tooltipSettings': 'Settings',
   'dashboard.tooltipLogout': 'Log out',
   'dashboard.tooltipNewChat': 'Create new chat',
@@ -263,7 +261,6 @@ const Map<String, String> appStringsEn = {
   'settings.shortcuts.action.loadModel': 'Load model',
   'settings.shortcuts.action.focusSearch': 'Focus search',
   'settings.shortcuts.action.showHelp': 'Show shortcut help',
-  'settings.shortcuts.action.toggleTheme': 'Toggle theme',
 
   // System info & help
   'settings.systemInfo.title': 'System Information',

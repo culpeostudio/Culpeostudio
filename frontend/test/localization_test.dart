@@ -12,18 +12,34 @@ void main() {
     expect(englishKeys, equals(germanKeys));
   });
 
-  test('translation resolves the selected language and replaces parameters', () {
-    final previousLanguage = appLanguage;
-    addTearDown(() => appLanguage = previousLanguage);
+  test(
+    'translation resolves the selected language and replaces parameters',
+    () {
+      final previousLanguage = appLanguage;
+      addTearDown(() => appLanguage = previousLanguage);
 
-    appLanguage = 'en';
-    expect(tr('engineWidget.status.ready'), 'Ready');
-    expect(
-      tr('engineWidget.placement.planned', {'label': 'GPU'}),
-      'Planned: GPU',
-    );
+      appLanguage = 'en';
+      expect(tr('engineWidget.status.ready'), 'Ready');
+      expect(
+        tr('engineWidget.placement.planned', {'label': 'GPU'}),
+        'Planned: GPU',
+      );
 
-    appLanguage = 'de';
-    expect(tr('engineWidget.status.ready'), 'Bereit');
+      appLanguage = 'de';
+      expect(tr('engineWidget.status.ready'), 'Bereit');
+    },
+  );
+
+  test('localization bundles do not expose light-mode controls', () {
+    const removedKeys = [
+      'dashboard.tooltipLightTheme',
+      'dashboard.tooltipDarkTheme',
+      'settings.shortcuts.action.toggleTheme',
+    ];
+
+    for (final key in removedKeys) {
+      expect(appStringsDe, isNot(contains(key)));
+      expect(appStringsEn, isNot(contains(key)));
+    }
   });
 }

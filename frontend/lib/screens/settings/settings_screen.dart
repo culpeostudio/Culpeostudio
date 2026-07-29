@@ -255,6 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _featherlessTokenSet = res['featherless_token_set'] ?? false;
       if (res.containsKey('shortcuts')) {
         _shortcuts = Map<String, String>.from(res['shortcuts']);
+        _shortcuts.remove('toggle_theme');
       } else {
         _shortcuts = {};
       }
@@ -2199,7 +2200,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'load_model': tr('settings.shortcuts.action.loadModel'),
       'focus_search': tr('settings.shortcuts.action.focusSearch'),
       'show_help': tr('settings.shortcuts.action.showHelp'),
-      'toggle_theme': tr('settings.shortcuts.action.toggleTheme'),
     };
 
     return settingsGlassCard(

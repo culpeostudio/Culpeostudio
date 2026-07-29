@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// OBSIDIAN — dark theme palette.
-/// Edit these values to restyle dark mode. Colours only; fonts live in
-/// [AppFonts] (app_theme.dart) and are shared across both themes.
+/// Edit these values to restyle the application. Colours only; fonts live in
+/// [AppFonts] (app_theme.dart).
 class DarkColors {
   DarkColors._();
 
