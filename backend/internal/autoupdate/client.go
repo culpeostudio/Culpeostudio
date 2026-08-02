@@ -1,3 +1,6 @@
+// Package autoupdate downloads, verifies and activates released application
+// bundles. A release that installs but fails to start is rolled back and
+// recorded so it is not retried on every launch.
 package autoupdate
 
 import (
@@ -107,8 +110,6 @@ func NewClient(manifestURL string, policy OriginPolicy) (*Client, error) {
 	return client, nil
 }
 
-// NewClientForTesting provides dependency injection without weakening the
-// production GitHub origin policy.
 func NewClientForTesting(manifestURL string, policy OriginPolicy, httpClient *http.Client) (*Client, error) {
 	client, err := NewClient(manifestURL, policy)
 	if err != nil {
@@ -155,9 +156,6 @@ func (client *Client) FetchManifest(ctx context.Context) (Manifest, error) {
 	return manifest, nil
 }
 
-// DownloadAsset fetches asset into destination and verifies its size and
-// checksum. Transport failures are retried because an update archive is large
-// enough that a single dropped connection would otherwise abandon the update.
 func (client *Client) DownloadAsset(ctx context.Context, asset Asset, destination string) error {
 	assetURL, err := client.policy.Validate(asset.URL)
 	if err != nil {
@@ -192,10 +190,6 @@ func (client *Client) DownloadAsset(ctx context.Context, asset Asset, destinatio
 	return fmt.Errorf("download update asset after %d attempts: %w", downloadAttempts, lastErr)
 }
 
-// retryableError marks failures that are worth another attempt: dropped
-// connections, server-side errors, and truncated bodies. A checksum mismatch is
-// deliberately not retryable, because it means the server served content that
-// does not match the manifest.
 type retryableError struct{ cause error }
 
 func (err retryableError) Error() string { return err.cause.Error() }
@@ -221,8 +215,7 @@ func (client *Client) downloadOnce(
 	asset Asset,
 	destination string,
 ) (err error) {
-	// A previous attempt removes its partial file, but an interrupted process
-	// may have left one behind and the exclusive create below would fail on it.
+
 	if err := os.Remove(destination); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("remove partial update download: %w", err)
 	}

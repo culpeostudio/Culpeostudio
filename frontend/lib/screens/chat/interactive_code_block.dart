@@ -6,22 +6,11 @@ import '../../l10n/chat_aux_strings.dart';
 import 'chat_markdown_helpers.dart';
 import 'chat_visual_block.dart';
 
-/// Rendert Code-Bloecke in Chat-Antworten als kompakte, anklickbare Karte
-/// statt als vollen Code-Abschnitt: Kopfzeile mit Sprache und "Anschauen",
-/// darunter eine einzeilige Vorschau. Ein Tap oeffnet den Code im
-/// Code-Assistenten.
-///
-/// Wird von PhiloBot und Philox gemeinsam genutzt; die beiden Oberflaechen
-/// unterschieden sich nur in Schriftgroesse und Akzentfarbe, daher sind genau
-/// diese beiden Werte Parameter (frueher war die Klasse in beiden Tabs
-/// dupliziert).
 class InteractiveCodeElementBuilder extends MarkdownElementBuilder {
   final void Function(String code, String? language) onCodeTap;
 
-  /// Schriftgroesse der Kopfzeile und der Vorschauzeile.
   final double fontSize;
 
-  /// Akzentfarbe des Terminal-Icons in der Vorschauzeile.
   final Color accentColor;
 
   InteractiveCodeElementBuilder({
@@ -85,7 +74,6 @@ class InteractiveCodeElementBuilder extends MarkdownElementBuilder {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Code Block Header
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -140,7 +128,7 @@ class InteractiveCodeElementBuilder extends MarkdownElementBuilder {
                   ],
                 ),
               ),
-              // Compact code block content (hides the code behind a card)
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

@@ -3,11 +3,6 @@ import '../../l10n/app_strings.dart';
 import '../../l10n/remaining_ui_strings.dart';
 import '../../widgets/phase_lock.dart';
 
-// Das Gen Studio (Bild- und Videogenerierung) ist fuer Phase 4 geplant und
-// daher hinter PhaseLockOverlay gesperrt. Die Backend-Stub-Module wurden
-// entfernt; dieser Screen ist eine reine statische Design-Vorschau ohne
-// Backend-Anbindung, bis das Feature echt gebaut wird. Kein Polling, keine
-// API-Aufrufe.
 class GenStudioScreen extends StatefulWidget {
   const GenStudioScreen({super.key});
 
@@ -86,9 +81,6 @@ class _GenStudioScreenState extends State<GenStudioScreen>
   }
 }
 
-// _GenTab ist die statische Vorschau eines Generierungs-Tabs (Bild oder Video).
-// Die Eingabefelder zeigen Beispielwerte; der Absende-Button ist deaktiviert,
-// solange das Feature gesperrt ist.
 class _GenTab extends StatefulWidget {
   const _GenTab({
     required this.title,

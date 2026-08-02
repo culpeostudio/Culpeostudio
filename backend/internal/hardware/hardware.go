@@ -1,6 +1,5 @@
-// Package hardware provides byte-accurate, live hardware snapshots for the
-// engine scheduler.  Marketplace keeps its user-facing compatibility model,
-// while this package is deliberately independent from HTTP and module code.
+// Package hardware detects CPU, RAM, GPUs and available VRAM. The Windows and
+// non-Windows memory paths differ enough to live in separate files.
 package hardware
 
 import (
@@ -21,7 +20,6 @@ import (
 
 const commandTimeout = 3 * time.Second
 
-// GPU describes one addressable accelerator. All memory values are bytes.
 type GPU struct {
 	ID             string `json:"id"`
 	Index          int    `json:"index"`
@@ -31,9 +29,7 @@ type GPU struct {
 	VRAMTotalBytes int64  `json:"vram_total_bytes"`
 	VRAMUsedBytes  int64  `json:"vram_used_bytes"`
 	VRAMFreeBytes  int64  `json:"vram_free_bytes"`
-	// VRAMTelemetryUnavailable distinguishes a known inventory-only device
-	// from a pressure probe which measured zero free bytes. Such a device is
-	// unschedulable for GPU work but must not cause destructive host eviction.
+
 	VRAMTelemetryUnavailable bool    `json:"vram_telemetry_unavailable,omitempty"`
 	SharedMemory             bool    `json:"shared_memory,omitempty"`
 	ComputeCapability        string  `json:"compute_capability,omitempty"`
@@ -41,8 +37,6 @@ type GPU struct {
 	MemoryBandwidth          float64 `json:"memory_bandwidth_gbps,omitempty"`
 }
 
-// Snapshot is a point-in-time view. It must be refreshed for every scheduling
-// transaction; callers must not treat it as a long-lived inventory cache.
 type Snapshot struct {
 	OS                     string    `json:"os"`
 	Arch                   string    `json:"arch"`
@@ -57,8 +51,6 @@ type Snapshot struct {
 	Source                 string    `json:"source"`
 }
 
-// Detect obtains a live snapshot. modelDir determines the filesystem whose
-// free space is reported, avoiding the old CWD-volume mismatch.
 func Detect(ctx context.Context, modelDir string) Snapshot {
 	s := Snapshot{
 		OS:         runtime.GOOS,
@@ -75,10 +67,6 @@ func Detect(ctx context.Context, modelDir string) Snapshot {
 	return s
 }
 
-// DetectPressure is the bounded watchdog probe. Unlike the full inventory it
-// deliberately skips CPU identity and disk commands, and obtains RAM/native
-// pressure plus live VRAM counters concurrently under the caller's deadline.
-// A timed-out field stays zero/unknown so admission remains fail-closed.
 func DetectPressure(ctx context.Context) Snapshot {
 	return capturePressureSnapshot(ctx, detectMemory, detectGPUs)
 }
@@ -110,9 +98,6 @@ func capturePressureSnapshot(ctx context.Context, memoryProbe pressureMemoryProb
 	}()
 	go func() { gpuResults <- gpuProbe(ctx) }()
 
-	// Both native probes are required to observe the shared context. Waiting for
-	// them after cancellation ensures a timed-out sample cannot leave detached
-	// probe goroutines behind while the watchdog schedules its next refresh.
 	for completed := 0; completed < 2; completed++ {
 		select {
 		case memory := <-memoryResults:
@@ -128,11 +113,8 @@ func capturePressureSnapshot(ctx context.Context, memoryProbe pressureMemoryProb
 	return snapshot
 }
 
-// SchedulableRAM applies the engine's default physical-memory reserve. Swap
-// is intentionally excluded from Snapshot and therefore from this result.
 func (s Snapshot) SchedulableRAM() int64 {
-	// A missing total or availability measurement is not evidence that memory
-	// is free. Keep scheduling fail-closed until the native probe succeeds.
+
 	if s.RAMTotalBytes <= 0 || s.RAMAvailableBytes <= 0 {
 		return 0
 	}
@@ -150,7 +132,6 @@ func (s Snapshot) SchedulableRAM() int64 {
 	return limit
 }
 
-// SchedulableVRAM applies the engine's default per-device reserve.
 func (g GPU) SchedulableVRAM() int64 {
 	if g.SharedMemory || g.VRAMTotalBytes <= 0 || g.VRAMFreeBytes <= 0 {
 		return 0
@@ -179,25 +160,17 @@ func detectMemory(ctx context.Context) (int64, int64) {
 		return parseProcMeminfo(data)
 	case "darwin":
 		total := parseInt64(run(ctx, "sysctl", "-n", "hw.memsize"))
-		// memory_pressure is backed by Darwin's native memory-pressure accounting
-		// and reflects reclaimable memory better than treating all physical RAM as
-		// available. If that utility is unavailable, vm_stat still gives a safe
-		// free+inactive+speculative approximation. Unknown availability stays zero
-		// so the Engine pressure guard fails closed instead of admitting a start
-		// from a fabricated all-free snapshot.
+
 		if percent, ok := parseDarwinMemoryPressure(run(ctx, "memory_pressure", "-Q")); ok {
 			return darwinMemoryMeasurement(total, total*int64(percent)/100, true)
 		}
 		if available, ok := parseDarwinVMStatAvailable(run(ctx, "vm_stat")); ok {
 			return darwinMemoryMeasurement(total, available, true)
 		}
-		// Preserve the distinction between a successfully measured zero (which
-		// is Emergency) and missing telemetry (which is Warning/fail-closed).
+
 		return darwinMemoryMeasurement(total, 0, false)
 	case "windows":
-		// GlobalMemoryStatusEx is a constant-time native syscall. PowerShell/CIM
-		// regularly exceeds the watchdog deadline and used to turn every Windows
-		// sample into an artificial unknown-pressure warning.
+
 		return detectWindowsMemory(ctx)
 	}
 	return 0, 0
@@ -328,9 +301,6 @@ func detectGPUs(ctx context.Context) []GPU {
 	return nvidia
 }
 
-// mergeGPUInventories keeps accelerators from mixed-vendor systems visible.
-// nvidia-smi provides better live counters and stable UUIDs than DRM/CIM, so
-// secondary NVIDIA records are omitted only when that primary probe worked.
 func mergeGPUInventories(primary, secondary []GPU, skipSecondaryNVIDIA bool) []GPU {
 	result := append([]GPU(nil), primary...)
 	seen := make(map[string]struct{}, len(primary)+len(secondary))
@@ -472,13 +442,7 @@ func parseWindowsGPUInventory(out string) []GPU {
 	result := make([]GPU, 0, len(list))
 	for i, item := range list {
 		vendor := inferVendor(item.Name)
-		// Win32_VideoController.AdapterRAM is inventory metadata, not a live free
-		// VRAM counter (and is often truncated). Publishing it as both total and
-		// free admitted unsafe overcommit. nvidia-smi records are merged earlier;
-		// all CIM-only devices therefore remain capacity-unknown and fail closed
-		// for GPU scheduling. The telemetry-unavailable marker makes the pressure
-		// guard ignore this non-measurement, so it neither blocks CPU starts nor
-		// triggers destructive eviction.
+
 		_ = item.AdapterRAM
 		result = append(result, GPU{
 			ID: firstNonEmpty(item.PNPDeviceID, fmt.Sprintf("gpu:%d", i)), Index: i,

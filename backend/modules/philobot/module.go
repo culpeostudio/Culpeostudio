@@ -26,17 +26,6 @@ var (
 	errModelBindingMissing     = errors.New("gebundenes Modell wurde nicht gefunden")
 )
 
-// newProviderHTTPClient baut den Client fuer die Chat-Provider (OpenRouter,
-// Featherless).
-//
-// Bewusst OHNE http.Client.Timeout: der gilt fuer die gesamte Anfrage
-// einschliesslich Body und wuerde eine laufende SSE-Antwort mitten im Satz
-// abschneiden — bei langen Antworten also genau dann, wenn alles funktioniert.
-// Stattdessen begrenzen die Transport-Timeouts nur den Verbindungsaufbau und
-// die Wartezeit bis zum ersten Response-Header; ab da darf beliebig lange
-// gestreamt werden. Ohne diese Grenzen konnte ein stummer Provider die Anfrage
-// unbegrenzt haengen lassen (im UI nicht von "Modell denkt noch" zu
-// unterscheiden).
 func newProviderHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
@@ -66,7 +55,7 @@ type philoBotSession struct {
 	Provider             string
 	ModelID              string
 	DisplayName          string
-	Title                string // vom Nutzer vergebener Titel; leer = aus erster Nachricht abgeleitet
+	Title                string
 	Messages             []chatMessage
 	ActiveBotID          string
 	LockedBotID          string
@@ -81,14 +70,11 @@ type philoBotSession struct {
 	AgenticMode          string
 	AllowedRoots         []string
 	ContextLimit         int
-	// PendingPlan haelt den zur Freigabe vorgelegten Plan zwischen der
-	// Planungs-Anfrage und der Bestaetigung des Nutzers. Er wird
-	// mitpersistiert, damit ein Neuladen der Oberflaeche die offene
-	// Freigabe nicht verwirft.
+
 	PendingPlan *agentplan.Plan `json:"pending_plan,omitempty"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	// MutationInFlight ist transienter Laufzeitzustand und wird nie persistiert.
+
 	MutationInFlight bool `json:"-"`
 }
 
@@ -99,7 +85,7 @@ type chatOptions struct {
 	AgenticMode      string
 	AllowedRoots     []string
 	ApprovePlan      bool
-	// Planning schaltet die Zerlegung in Schritte mit Freigabe ein.
+
 	Planning       bool
 	PreselectedBot *BotConfig
 }
@@ -114,12 +100,6 @@ func (e *providerChatHTTPError) Error() string {
 	return fmt.Sprintf("%s Chat fehlgeschlagen (%d): %s", providerDisplayName(e.Provider), e.StatusCode, e.Detail)
 }
 
-// MemoryContextProvider liefert einen Recall-Block aus dem Projektgedaechtnis:
-// relevante Fakten aus frueheren Unterhaltungen desselben Nutzers, unabhaengig
-// von der aktuellen Session. project waehlt das Projekt-Grid (leer = nutzerweit
-// ueber alle Projekte). Read-only — PhiloBot-Chats werden bereits ueber den
-// Event-Bus erfasst. Wird in cmd/server verdrahtet; ohne Anbindung laeuft
-// PhiloBot unveraendert (nur ohne Langzeit-Recall).
 type MemoryContextProvider interface {
 	PhiloBotMemoryContext(userID, project, query string) string
 }
@@ -175,21 +155,14 @@ func (m *PhiloBotModule) SetLocalModels(provider localinference.Provider) {
 	m.localModels = provider
 }
 
-// SetMemory haengt das Projektgedaechtnis (lesend) an, damit PhiloBot Fakten
-// aus frueheren Unterhaltungen in den System-Prompt injizieren kann.
 func (m *PhiloBotModule) SetMemory(provider MemoryContextProvider) {
 	m.memory = provider
 }
 
-// SetExistingUsers supplies the login accounts used by the BotStore's one-time
-// v1 migration. New accounts are still created lazily on their first request.
 func (m *PhiloBotModule) SetExistingUsers(provider func() []string) {
 	m.botStore.SetExistingUsers(provider)
 }
 
-// EnsureUser initializes the per-login bot namespace. Login wires this into
-// successful account creation so a pending v1 migration is assigned by account
-// creation order rather than by whichever user opens the Bot UI first.
 func (m *PhiloBotModule) EnsureUser(userID string) error {
 	return m.botStore.EnsureUser(userID)
 }
@@ -228,9 +201,6 @@ func (m *PhiloBotModule) Initialize() error {
 	return nil
 }
 
-// loadPersistedSessions holt gespeicherte Chatverlaeufe zurueck in den Speicher,
-// damit sie einen Neustart ueberleben. Fehler sind nicht fatal: PhiloBot laeuft
-// im Zweifel ohne Historie weiter.
 func (m *PhiloBotModule) loadPersistedSessions() {
 	if m.storage == nil {
 		return

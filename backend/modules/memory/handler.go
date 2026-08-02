@@ -1,3 +1,5 @@
+// Package memorymodule exposes the memory service over HTTP and wires it into
+// the chat flow.
 package memorymodule
 
 import (
@@ -31,10 +33,6 @@ type ticketInfo struct {
 	expiresAt time.Time
 }
 
-// MaintenanceConfig bundles the tunables for the background reindexer and
-// the SQLite hygiene job (VACUUM / FTS5 optimize / soft-delete purge)
-// started in Initialize. Zero values fall back to the defaults documented on
-// memoryvector.RunReindexer and memorystore.RunMaintenance.
 type MaintenanceConfig struct {
 	ReindexInterval     time.Duration
 	ReindexBatchSize    int
@@ -135,9 +133,6 @@ func (m *MemoryModule) Shutdown() error {
 	return m.service.Close()
 }
 
-// authMiddleware bevorzugt die Identitaet aus der globalen JWT-Auth der Engine
-// (Locals "user_id"). Ohne JWT-Kontext (Standalone, Tests, Skripte) greift der
-// Bearer-Token-Fallback des Memory-Moduls.
 func (m *MemoryModule) authMiddleware() fiber.Handler {
 	bearer := security.BearerAuth(m.apiToken, m.defaultUserID)
 	return func(c *fiber.Ctx) error {
@@ -398,9 +393,7 @@ func (m *MemoryModule) handleCreateEventTicket(c *fiber.Ctx) error {
 }
 
 func (m *MemoryModule) handleEvents(c *fiber.Ctx) error {
-	// SSE auth runs exclusively over single-use tickets from
-	// POST /api/memory/events/ticket. Bearer tokens are never accepted as URL
-	// parameters: URLs end up in access logs, browser history and referers.
+
 	ticket := strings.TrimSpace(c.Query("ticket"))
 	if ticket == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "event ticket required"})
@@ -409,7 +402,7 @@ func (m *MemoryModule) handleEvents(c *fiber.Ctx) error {
 	m.ticketsMu.Lock()
 	info, ok := m.tickets[ticket]
 	if ok {
-		delete(m.tickets, ticket) // single-use consume
+		delete(m.tickets, ticket)
 	}
 	m.ticketsMu.Unlock()
 

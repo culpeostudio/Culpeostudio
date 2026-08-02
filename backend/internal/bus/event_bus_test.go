@@ -10,10 +10,6 @@ func newTestBus() *EventBus {
 	return &EventBus{handlers: make(map[string][]Handler)}
 }
 
-// TestEmitRecoversFromHandlerPanic ist der wichtigste Test dieses Pakets: ohne
-// Panic-Recovery in dispatch wuerde ein panischer Handler in seiner Goroutine
-// den GESAMTEN Testprozess (und im Betrieb das ganze Backend) beenden. Laeuft
-// der zweite Handler trotz des Panics des ersten durch, ist die Recovery aktiv.
 func TestEmitRecoversFromHandlerPanic(t *testing.T) {
 	b := newTestBus()
 
@@ -51,8 +47,6 @@ func TestEmitRecoversFromHandlerPanic(t *testing.T) {
 	}
 }
 
-// TestEmitDeliversToTypedAndGlobalHandlers stellt die Grundzustellung sicher:
-// typ-spezifische Handler bekommen nur ihr Event, globale Handler bekommen alle.
 func TestEmitDeliversToTypedAndGlobalHandlers(t *testing.T) {
 	b := newTestBus()
 
@@ -61,7 +55,7 @@ func TestEmitDeliversToTypedAndGlobalHandlers(t *testing.T) {
 	globalTypes := []string{}
 
 	var wg sync.WaitGroup
-	wg.Add(3) // 1x typed + 2x global (zwei Emits)
+	wg.Add(3)
 
 	b.On("ping", func(e Event) {
 		defer wg.Done()

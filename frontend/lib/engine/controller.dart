@@ -139,9 +139,6 @@ class EngineController extends ChangeNotifier {
     }
   }
 
-  /// Refreshes everything the engine page shows with a single action:
-  /// the model catalog ("Meine Modelle"), the hardware/memory budget
-  /// ("Speicher"), the available runtimes and the configured instances.
   Future<bool> refreshAll() async {
     isRescanning = true;
     error = null;
@@ -341,9 +338,7 @@ class EngineController extends ChangeNotifier {
     try {
       _upsertOperation(await api.getEngineOperation(operationId));
       _notify();
-    } catch (_) {
-      // The event stream remains the source of truth if this manual lookup fails.
-    }
+    } catch (_) {}
   }
 
   Future<bool> retryRuntime(String runtimeId) async {
@@ -463,15 +458,13 @@ class EngineController extends ChangeNotifier {
       operationId,
       Completer<EngineOperation?>.new,
     );
-    // Close the race in which a terminal event arrived between the first map
-    // lookup and waiter registration.
+
     final latest = operations[operationId];
     if (latest?.isTerminal == true) {
       _operationWaiters.remove(operationId);
       return latest;
     }
-    // One action-triggered reconciliation recovers an event that may have
-    // completed while the SSE transport was reconnecting. It is not polling.
+
     unawaited(_reconcileOperation(operationId));
     try {
       final operation = await waiter.future.timeout(
@@ -577,10 +570,6 @@ class EngineController extends ChangeNotifier {
     EngineInstance current,
     EngineInstance incoming,
   ) {
-    // A post-mutation GET can have been serialized before a ready SSE but
-    // arrive afterwards. A genuinely new restart receives a higher revision;
-    // lower revisions from authoritative SSE/snapshots are never filtered here
-    // because the backend legitimately uses them for transaction rollbacks.
     return current.isReady &&
         incoming.planRevision <= current.planRevision &&
         const {'installing', 'queued', 'starting'}.contains(incoming.state);
@@ -624,13 +613,11 @@ class EngineController extends ChangeNotifier {
         final rawInstances = event.data['instances'];
         if (rawInstances is List) {
           final snapshot = rawInstances.map(EngineInstance.fromJson).toList();
-          // The first snapshot is deliberately silent: models that were ready
-          // before opening this page are not new start notifications.
+
           _replaceInstances(snapshot, announceReady: reconnectSnapshot);
           _hasSeenEventSnapshot = true;
         }
-        // Reconcile catalogue changes whose individual event may have happened
-        // while this transport connection was down.
+
         refreshModels = catalogMayHaveChanged;
         _reconcileWaitingOperations();
         break;
@@ -654,10 +641,8 @@ class EngineController extends ChangeNotifier {
         refreshModels = true;
         break;
       case 'guard_state':
-        // Hardware/capability refresh below is enough.
         break;
       default:
-        // Unknown future events still trigger a fresh monitor snapshot.
         break;
     }
     _notify();
@@ -688,8 +673,6 @@ class EngineController extends ChangeNotifier {
       _upsertOperation(operation);
       _notify();
     } catch (_) {
-      // Live events remain authoritative; a later reconnect snapshot triggers
-      // another one-shot reconciliation if this request was unavailable.
     } finally {
       _operationReconciliations.remove(operationId);
     }
@@ -738,8 +721,7 @@ class EngineController extends ChangeNotifier {
       }
     } finally {
       _eventRefreshInProgress = false;
-      // An event can arrive after the loop observed `pending == false` but
-      // before this finally block releases the single-flight guard.
+
       if (!_disposed && _eventRefreshPending) {
         unawaited(_runEventRefresh());
       }

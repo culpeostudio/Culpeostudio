@@ -2,22 +2,11 @@ package philobot
 
 import "strings"
 
-// thinkOpenTag/thinkCloseTag markieren einen inline Denkblock, den viele
-// Reasoning-Modelle (z.B. DeepSeek-R1-Distills, Nemotron) direkt in den
-// Antworttext schreiben, statt ihn getrennt zu liefern. Der Nutzer soll diesen
-// Rohtext live erkennen koennen, aber nicht als unformatierten JSON-/Tag-Block
-// in der finalen Antwort sehen.
 const (
 	thinkOpenTag  = "<think>"
 	thinkCloseTag = "</think>"
 )
 
-// thinkTagFilter zerlegt einen rohen Modell-Textstrom in sichtbaren
-// Antworttext und Denkprozess-Text zwischen <think> und </think>. Anders als
-// toolCallStreamFilter (der nur den Anfang der Antwort bewertet) kann ein
-// Denkblock an beliebiger Stelle beginnen und der Strom danach normal
-// weiterlaufen — daher ein einfacher Zustandsautomat statt einer einmaligen
-// Ja/Nein-Entscheidung.
 type thinkTagFilter struct {
 	emitVisible   func(string) error
 	emitReasoning func(string) error
@@ -36,9 +25,6 @@ func newThinkTagFilter(emitVisible, emitReasoning func(string) error) *thinkTagF
 	return &thinkTagFilter{emitVisible: emitVisible, emitReasoning: emitReasoning}
 }
 
-// Emit speist einen neuen Roh-Chunk ein. Vollstaendige <think>/</think>
-// Uebergaenge werden sofort aufgeloest; ein evtl. am Chunk-Ende begonnenes Tag
-// wird zurueckgehalten, bis der naechste Chunk es bestaetigt oder verwirft.
 func (f *thinkTagFilter) Emit(chunk string) error {
 	f.buf.WriteString(chunk)
 	for {
@@ -72,8 +58,6 @@ func (f *thinkTagFilter) Emit(chunk string) error {
 	}
 }
 
-// Flush gibt am Rundenende den zurueckgehaltenen Rest an den passenden Kanal
-// aus (sichtbar oder Denkprozess, je nachdem ob ein Denkblock noch offen ist).
 func (f *thinkTagFilter) Flush() error {
 	s := f.buf.String()[f.consumed:]
 	if s == "" {
@@ -86,9 +70,6 @@ func (f *thinkTagFilter) Flush() error {
 	return f.emitVisible(s)
 }
 
-// trailingTagPrefixLen liefert die Laenge des laengsten Suffixes von s, das
-// ein echter Praefix von tag ist — das potenziell angefangene Tag, das
-// zurueckgehalten wird, bis der naechste Chunk es bestaetigt oder verwirft.
 func trailingTagPrefixLen(s, tag string) int {
 	max := len(tag) - 1
 	if max > len(s) {
@@ -102,12 +83,6 @@ func trailingTagPrefixLen(s, tag string) int {
 	return 0
 }
 
-// stripThinkBlocks entfernt alle <think>...</think> Bloecke aus der finalen
-// Antwort. Ihr Inhalt wurde bereits live als reasoning_delta gestreamt; in der
-// gespeicherten/finalen Antwort waeren sie nur unformatierter Rohtext. Ein
-// nicht geschlossener Denkblock (Modell wurde abgeschnitten) wird bis zum
-// Ende der Antwort verworfen, da danach kein verwertbarer sichtbarer Text
-// mehr folgen kann.
 func stripThinkBlocks(s string) string {
 	if !strings.Contains(s, thinkOpenTag) {
 		return s

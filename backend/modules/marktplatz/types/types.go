@@ -1,3 +1,5 @@
+// Package types holds the model and provider shapes shared between the
+// marketplace and its providers.
 package types
 
 import "strings"
@@ -12,9 +14,7 @@ const (
 type DownloadOption struct {
 	Label   string `json:"label"`
 	AssetID string `json:"asset_id,omitempty"`
-	// AssetIDs contains every physical file in one logical download option.
-	// Safetensors checkpoints are often sharded, and all fragments are needed
-	// before the model can be loaded.
+
 	AssetIDs  []string `json:"asset_ids,omitempty"`
 	Format    string   `json:"format,omitempty"`
 	SizeBytes int64    `json:"size_bytes,omitempty"`
@@ -46,25 +46,13 @@ type ModelSummary struct {
 	ContextLength     int      `json:"context_length,omitempty"`
 	IntelligenceScore int      `json:"intelligence_score,omitempty"`
 	EstimatedVRAMGB   float64  `json:"estimated_vram_gb,omitempty"`
-	// VRAMEstimated ist true, wenn EstimatedVRAMGB aus Parameteranzahl +
-	// Quantisierung errechnet wurde, weil der Provider (z.B. HuggingFace bei
-	// Suchlisten) keine echte Dateigroesse liefert. Das Frontend markiert
-	// diese Zahl sichtbar als Schaetzung statt sie wie einen exakten Wert
-	// darzustellen.
+
 	VRAMEstimated   bool `json:"vram_estimated,omitempty"`
 	FitsDetectedGPU bool `json:"fits_detected_gpu"`
-	// RuntimeFit ist eine von "full_gpu", "partial_offload" (GPU+RAM),
-	// "cpu_only", "unsupported" (passt auf diesem Geraet nirgends rein) oder
-	// "unknown" (keine Groessen-/Quantisierungsdaten fuer eine Schaetzung
-	// vorhanden). Das Frontend zeigt "unknown" explizit als "Kompatibilitaet
-	// unbekannt" statt das Badge stillschweigend wegzulassen.
+
 	RuntimeFit      string   `json:"runtime_fit,omitempty"`
 	RuntimeWarnings []string `json:"runtime_warnings,omitempty"`
-	// RuntimeRAMOffloadGB ist der Anteil von EstimatedVRAMGB, der bei
-	// RuntimeFit=partial_offload in den Arbeitsspeicher ausgelagert wird
-	// (bzw. bei cpu_only vollstaendig im RAM laeuft). Damit kann das
-	// Frontend auf Tap die Aufteilung "X GB GPU + Y GB RAM" anzeigen, statt
-	// nur ein pauschales "passt"/"passt nicht".
+
 	RuntimeRAMOffloadGB float64          `json:"runtime_ram_offload_gb,omitempty"`
 	RecommendationScore float64          `json:"recommendation_score,omitempty"`
 	LocalModel          bool             `json:"local_model"`
@@ -131,10 +119,6 @@ func UniqueNonEmptyLower(values []string) []string {
 	return out
 }
 
-// UniqueNonEmpty dedupliziert case-sensitiv. Gedacht fuer Werte, bei denen
-// Gross-/Kleinschreibung relevant ist – z.B. URLs
-// (https://.../Foo.gguf != https://.../foo.gguf). UniqueNonEmptyLower wuerde
-// hier fälschlich zwei unterschiedliche URLs zusammenfassen.
 func UniqueNonEmpty(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	out := make([]string, 0, len(values))

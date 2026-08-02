@@ -14,9 +14,6 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/openrouter"
 )
 
-// newOpenRouterSearchServer stellt den Katalog-Endpunkt von OpenRouter mit
-// total Modellen nach. OpenRouter kennt keinen limit-Parameter – die Antwort
-// enthaelt immer den kompletten Katalog.
 func newOpenRouterSearchServer(t *testing.T, total int) *httptest.Server {
 	t.Helper()
 
@@ -65,11 +62,6 @@ func newTestOpenRouterApp(t *testing.T, apiBase string) *fiber.App {
 	return app
 }
 
-// TestMarktplatzAPI_OpenRouterPaginatesBeyondFirstPage haelt fest, dass eine
-// Cloud-Suche ohne Filter weiterblaettern kann. Frueher wurde das Suchfenster
-// nur fuer HuggingFace um ein Modell erhoeht; OpenRouter lieferte deshalb
-// exakt eine volle Seite, has_more war false und der Katalog endete nach den
-// ersten 24 Modellen.
 func TestMarktplatzAPI_OpenRouterPaginatesBeyondFirstPage(t *testing.T) {
 	restoreHardwareProfile := cacheHardwareProfileForTest(HardwareProfile{
 		RAMGB:    16,
@@ -96,8 +88,6 @@ func TestMarktplatzAPI_OpenRouterPaginatesBeyondFirstPage(t *testing.T) {
 		t.Fatalf("expected has_more true while 60 models exist, got %#v", body["has_more"])
 	}
 
-	// Letzte Seite: 60 Modelle, 24 pro Seite -> Seite 3 traegt den Rest und
-	// meldet has_more=false.
 	lastReq := httptest.NewRequest("GET", "/api/marktplatz/search?provider=openrouter&limit=24&page=3", nil)
 	lastResp, err := app.Test(lastReq, 5000)
 	if err != nil {

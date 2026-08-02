@@ -221,9 +221,6 @@ func (e *gpuRuntimeUnavailableError) Error() string {
 	return "GPU-Runtime ist für dieses Modell noch nicht verfügbar: " + e.Reason
 }
 
-// ramOffloadRequiredError distinguishes a real GPU memory exhaustion from a
-// broken GPU runtime after automatic context reduction has reached its floor.
-// The UI can then ask for RAM consent instead of offering a runtime rebuild.
 type ramOffloadRequiredError struct {
 	Cause error
 }
@@ -243,23 +240,17 @@ func (e *ramOffloadRequiredError) Unwrap() error {
 }
 
 func ramOffloadAllowed(config EngineConfig) bool {
-	// A CPU-only request is itself an explicit decision to place the model in
-	// system RAM. Requiring a second, independent flag made offload=cpu and
-	// gpu_layers=0 impossible to start through otherwise valid API clients.
+
 	if forceCPURequested(config) {
 		return true
 	}
 	if allowed, exists := boolOption(config.RuntimeOptions, "allow_ram_offload"); exists {
 		return allowed
 	}
-	// System-RAM changes performance and host pressure materially. It is only
-	// available after an explicit UI/API decision, never as an implicit default.
+
 	return false
 }
 
-// unavailableGPURuntimeReason separates runtime/toolchain availability from
-// physical VRAM capacity. Without this distinction a forced CPU plan combined
-// with allow_ram_offload=false looks like a fake "0 bytes VRAM" conflict.
 func unavailableGPURuntimeReason(record modelcatalog.ModelRecord, config EngineConfig, snapshot hardware.Snapshot) string {
 	if offload, _ := stringOption(config.RuntimeOptions, "offload"); offload == "cpu" {
 		return ""
@@ -302,9 +293,7 @@ func (m *EngineModule) gpuRuntimePlanningError(record modelcatalog.ModelRecord, 
 	if forced, _ := boolOption(config.RuntimeOptions, "force_cpu_runtime"); forced {
 		return nil
 	}
-	// Headers and compilers are only needed to build a runtime. A previously
-	// verified, content-addressed GPU environment remains usable when those
-	// development tools are removed later.
+
 	if m.healthyLlamaGPUCapability(snapshot) {
 		return nil
 	}

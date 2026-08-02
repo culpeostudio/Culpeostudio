@@ -16,10 +16,6 @@ func (m *EngineModule) failTransactionBlocked(operationID, primaryID string, bac
 	m.failTransactionScoped(operationID, primaryID, backups, started, cause, blocked, nil)
 }
 
-// failTransactionScoped rolls back only workers whose previous process was
-// observably stopped. When eligible is non-nil, Ready backups outside that set
-// are still-running old workers and are restored in-place without spawning a
-// duplicate process.
 func (m *EngineModule) failTransactionScoped(operationID, primaryID string, backups map[string]*EngineInstance, started []string, cause error, blocked, eligible map[string]bool) {
 	if blocked == nil {
 		blocked = map[string]bool{}
@@ -154,9 +150,6 @@ func (m *EngineModule) restoreInstanceSnapshot(instanceID string, backup *Engine
 	m.events.publish("instance_changed", snapshot)
 }
 
-// mergeLiveWorkerRollback restores requested config/plan fields without
-// rewinding volatile accounting which may have changed while a Ready restart
-// deliberately kept the old worker routable during queue/runtime preparation.
 func mergeLiveWorkerRollback(current, backup *EngineInstance) *EngineInstance {
 	if backup == nil {
 		return nil
@@ -165,24 +158,19 @@ func mergeLiveWorkerRollback(current, backup *EngineInstance) *EngineInstance {
 		return cloneInstance(backup)
 	}
 	if current.workerGeneration != backup.workerGeneration {
-		// A newer verified worker owns all current metadata. A stale transaction
-		// must not rewrite its model/config while attempting to restore the old
-		// generation.
+
 		return cloneInstance(current)
 	}
 	routingMatches := current.WorkerSecret == backup.WorkerSecret &&
 		current.BaseURL == backup.BaseURL
 	routingCleared := current.WorkerSecret == "" && current.BaseURL == ""
 	if !routingMatches && !routingCleared {
-		// A non-empty, different endpoint/secret is another worker identity even
-		// if a buggy or legacy caller failed to advance the generation marker.
+
 		return cloneInstance(current)
 	}
 	transactionDrain := current.State == engineruntime.StateDraining && current.Phase == "draining"
 	if routingCleared || (current.State != engineruntime.StateReady && !transactionDrain) {
-		// Emergency/stop state wins absolutely. The unchanged generation proves
-		// this is still the old worker, so only requested transaction metadata may
-		// be rolled back; stale routing is never resurrected.
+
 		restored := cloneInstance(current)
 		restored.ModelID = backup.ModelID
 		restored.RequestedConfig = cloneEngineConfig(backup.RequestedConfig)
@@ -201,9 +189,7 @@ func mergeLiveWorkerRollback(current, backup *EngineInstance) *EngineInstance {
 	restored.workerGeneration = current.workerGeneration
 	restored.GuardState = current.GuardState
 	restored.UpdatedAt = current.UpdatedAt
-	// A Draining state with the generic transaction phase was set immediately
-	// before waiting and can safely reopen because the worker identity matches.
-	// Emergency/pressure phases took the non-resurrection branch above.
+
 	restored.State = engineruntime.StateReady
 	return restored
 }

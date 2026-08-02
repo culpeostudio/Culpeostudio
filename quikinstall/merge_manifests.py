@@ -43,8 +43,8 @@ def merge_manifests(manifests: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         if version is None:
             version = current
         elif current != version:
-            # Publishing a mixed-version manifest would offer users a platform
-            # build that does not match the release they are being told about.
+
+
             raise ReleaseBuildError(
                 f"Refusing to merge different versions: {version} and {current}"
             )

@@ -4,9 +4,6 @@ import 'package:myphilostudio/services/api_service.dart';
 import 'package:myphilostudio/state/app_state.dart';
 import 'package:myphilostudio/screens/chat/chat_history_panel.dart';
 
-/// Baut einen AppState mit zwei Ordnern und drei Chats (einer zugeordnet).
-/// Die API zeigt ins Leere; Fehler der Fire-and-forget-Calls werden in
-/// ApiService/AppState geschluckt.
 AppState buildTestState() {
   final api = ApiService();
   api.baseUrl = 'http://127.0.0.1:1/api';
@@ -63,20 +60,17 @@ void main() {
     final expanded = <String>{};
     await tester.pumpWidget(buildPanel(state, harness, expanded: expanded));
 
-    // Ordner und freie Chats sind sichtbar, der zugeordnete Chat nicht.
     expect(find.text('Arbeit'), findsOneWidget);
     expect(find.text('Privat'), findsOneWidget);
     expect(find.text('PROJEKTE'), findsOneWidget);
     expect(find.text('Freier Chat'), findsOneWidget);
     expect(find.text('Ordner-Chat'), findsNothing);
 
-    // Aufklappen des Ordners zeigt den Chat darin.
     await tester.tap(find.text('Arbeit'));
     await tester.pumpAndSettle();
     expect(expanded, contains('proj-1'));
     expect(find.text('Ordner-Chat'), findsOneWidget);
 
-    // Erneutes Tippen klappt wieder zu.
     await tester.tap(find.text('Arbeit'));
     await tester.pumpAndSettle();
     expect(expanded, isNot(contains('proj-1')));
@@ -99,7 +93,6 @@ void main() {
     await tester.tap(find.byKey(const Key('chat-history-panel-new-project')));
     await tester.pumpAndSettle();
 
-    // Titel steht im Dialog (die Panel-Zeile heisst ebenfalls "Neuer Ordner").
     expect(find.text('Neuer Ordner'), findsWidgets);
     expect(find.text('FARBE'), findsOneWidget);
     expect(find.text('Erstellen'), findsOneWidget);
@@ -107,7 +100,7 @@ void main() {
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();
     expect(find.text('Erstellen'), findsNothing);
-    expect(find.text('Neuer Ordner'), findsOneWidget); // nur die Panel-Zeile
+    expect(find.text('Neuer Ordner'), findsOneWidget);
   });
 
   testWidgets('Neuer Chat im Ordner meldet die Projekt-ID', (tester) async {
@@ -115,8 +108,6 @@ void main() {
     final harness = Harness();
     await tester.pumpWidget(buildPanel(state, harness));
 
-    // Der Button liegt in einer Hover-Reveal-Row und ist ohne Hover
-    // transparent; fuer den Test direkt antippen.
     await tester.tap(
       find.byTooltip('Neuer Chat im Ordner').first,
       warnIfMissed: false,
@@ -139,11 +130,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Beide Ordner werden im Menue angeboten.
     expect(find.text('Arbeit'), findsWidgets);
     expect(find.text('Privat'), findsWidgets);
 
-    // Gezielt den Menue-Eintrag (nicht die Ordner-Zeile) antippen.
     await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Privat'));
     await tester.pumpAndSettle();
 

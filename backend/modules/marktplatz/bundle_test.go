@@ -171,7 +171,7 @@ func TestValidateAndPublishBundleFailurePreservesExistingFinal(t *testing.T) {
 		t.Fatalf("mkdir final: %v", err)
 	}
 	mustWriteTestFile(t, final, "sentinel.txt", "last known good")
-	// A .part file must never become a published model bundle.
+
 	mustWriteTestFile(t, staging, "model.gguf", "complete")
 	mustWriteTestFile(t, staging, "download.tmp", "partial")
 

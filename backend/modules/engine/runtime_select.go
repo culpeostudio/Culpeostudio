@@ -32,10 +32,7 @@ func (m *EngineModule) runtimeRecipe(kind engineruntime.RuntimeKind, snapshot ha
 		}
 		recipe := engineruntime.DefaultLlamaCPPRecipe(environment)
 		if environment["CMAKE_ARGS"] != "" {
-			// pip's wheel cache is keyed by package/platform, not by CMAKE_ARGS.
-			// A CPU wheel built earlier can otherwise be reused for a Vulkan/CUDA
-			// recipe and only fail at the GPU-offload smoke test. Accelerator
-			// recipes must therefore perform a fresh native build.
+
 			recipe.Environment["FORCE_CMAKE"] = "1"
 			recipe.PipArgs = append(recipe.PipArgs,
 				"--no-cache-dir",
@@ -169,7 +166,7 @@ func (m *EngineModule) runtimeCapabilities(ctx context.Context) (hardware.Snapsh
 				case engineruntime.InstallCreating:
 					capability.Progress = 0.15
 				case engineruntime.InstallPackages:
-					// Live pip progress instead of one static phase value.
+
 					capability.Progress = job.Progress
 					if capability.Progress <= 0 {
 						capability.Progress = 0.15

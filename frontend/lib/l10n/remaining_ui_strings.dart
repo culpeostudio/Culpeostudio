@@ -1,11 +1,5 @@
 import 'app_strings.dart' show appLanguage;
 
-/// Translations for small shared surfaces and user-facing fallback messages.
-///
-/// These strings deliberately live outside the central map while the existing
-/// handwritten localization system is being migrated screen by screen. They
-/// can also be used by controllers and services that do not have a
-/// [BuildContext].
 const Map<String, String> remainingUiStringsDe = {
   'phaseLock.badge': 'PHASE {phase}',
   'phaseLock.title': 'Noch nicht verfügbar',
@@ -60,6 +54,20 @@ const Map<String, String> remainingUiStringsDe = {
   'api.newsLoadHttpFailed':
       'News konnten nicht geladen werden (HTTP {statusCode}).',
   'api.newsLoadFailed': 'News konnten nicht geladen werden: {error}',
+  'api.newsSavedLoadFailed':
+      'Gespeicherte Berichte konnten nicht geladen werden (HTTP {statusCode}).',
+  'api.newsSaveFailed':
+      'Bericht konnte nicht gespeichert werden ({statusCode}).',
+  'api.newsUnsaveFailed':
+      'Bericht konnte nicht aus der Merkliste entfernt werden ({statusCode}).',
+  'api.benchmarkUnexpectedResponse':
+      'Unerwartetes Antwortformat vom Benchmark-Backend.',
+  'api.benchmarkHttpFailed':
+      'Benchmark-Daten konnten nicht geladen werden (HTTP {statusCode}).',
+  'api.benchmarkFailed':
+      'Benchmark-Daten konnten nicht geladen werden: {error}',
+  'api.benchmarkModelUnknown':
+      'Zu {model} liegen weder Leaderboard-Werte noch Hub-Daten vor.',
 };
 
 const Map<String, String> remainingUiStringsEn = {
@@ -112,12 +120,19 @@ const Map<String, String> remainingUiStringsEn = {
   'api.newsUnexpectedResponse': 'Unexpected response format from news backend.',
   'api.newsLoadHttpFailed': 'Could not load news (HTTP {statusCode}).',
   'api.newsLoadFailed': 'Could not load news: {error}',
+  'api.newsSavedLoadFailed':
+      'Could not load saved articles (HTTP {statusCode}).',
+  'api.newsSaveFailed': 'Could not save the article ({statusCode}).',
+  'api.newsUnsaveFailed': 'Could not remove the article ({statusCode}).',
+  'api.benchmarkUnexpectedResponse':
+      'Unexpected response format from benchmark backend.',
+  'api.benchmarkHttpFailed':
+      'Could not load benchmark data (HTTP {statusCode}).',
+  'api.benchmarkFailed': 'Could not load benchmark data: {error}',
+  'api.benchmarkModelUnknown':
+      'No leaderboard scores and no hub data available for {model}.',
 };
 
-/// Looks up a remaining UI string in the active language.
-///
-/// German remains the fallback while translations are expanded incrementally.
-/// `{name}` placeholders are replaced from [params].
 String remainingUiText(String key, [Map<String, String>? params]) {
   final strings = appLanguage == 'en'
       ? remainingUiStringsEn

@@ -4,8 +4,6 @@ import '../../l10n/marketplace_detail_strings.dart';
 import 'fit_details_dialog.dart';
 import 'marketplace_format.dart';
 
-// Vollstaendiger Detail-Dialog zu einem Modell.
-
 class ModelDetailDialog extends StatelessWidget {
   final Map<String, dynamic> summary;
   final Map<String, dynamic>? detail;

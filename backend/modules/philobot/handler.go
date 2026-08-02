@@ -206,10 +206,6 @@ localModelConfigured:
 	return c.JSON(response)
 }
 
-// handleListSessions liefert die Chatverlauf-Liste des Nutzers fuer die
-// Wiederherstellung nach einem Neustart. Leere Sessions (ohne Nachrichten)
-// werden ausgeblendet, damit die Liste nicht mit angelegten, aber ungenutzten
-// Sessions zumuellt.
 func (m *PhiloBotModule) handleListSessions(c *fiber.Ctx) error {
 	userID := philoBotRequestUserID(c)
 	m.mu.Lock()
@@ -227,8 +223,6 @@ func (m *PhiloBotModule) handleListSessions(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"sessions": summaries})
 }
 
-// handleRenameSession setzt einen benutzerdefinierten Titel fuer einen
-// Chatverlauf. Ein leerer Titel setzt auf den abgeleiteten Titel zurueck.
 func (m *PhiloBotModule) handleRenameSession(c *fiber.Ctx) error {
 	var body struct {
 		Title string `json:"title"`
@@ -255,9 +249,6 @@ func (m *PhiloBotModule) handleRenameSession(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok", "session": summary})
 }
 
-// handleSetSessionModel wechselt das Modell einer bestehenden Session, ohne
-// dass dafuer ein neuer Chat angelegt werden muss. Der Verlauf bleibt
-// erhalten; die naechste Antwort laeuft ueber das neue Modell.
 func (m *PhiloBotModule) handleSetSessionModel(c *fiber.Ctx) error {
 	var body struct {
 		Provider     string `json:"provider"`
@@ -293,7 +284,6 @@ func (m *PhiloBotModule) handleSetSessionModel(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok", "session": summary})
 }
 
-// handleDeleteSession entfernt einen Chatverlauf aus Speicher und Persistenz.
 func (m *PhiloBotModule) handleDeleteSession(c *fiber.Ctx) error {
 	sessionID := strings.TrimSpace(c.Params("session_id"))
 	userID := philoBotRequestUserID(c)

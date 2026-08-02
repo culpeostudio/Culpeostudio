@@ -1,12 +1,6 @@
 import 'app_strings.dart' as base;
 
-/// Isolated translations for the reusable chat UI building blocks.
-///
-/// This overlay deliberately delegates existing keys to [base.AppStrings] so
-/// the auxiliary widgets can be migrated without changing the established
-/// localization maps in the same change.
 const Map<String, String> chatAuxStringsDe = {
-  // Markdown and code previews
   'chatAux.markdown.codePreview': '{count} Zeilen Code • Klicken zum Anzeigen',
   'chatAux.markdown.linkOpenFailed': 'Link konnte nicht geöffnet werden',
   'chatAux.markdown.linkOpenFailedWithUrl':
@@ -19,7 +13,6 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.code.defaultLanguage': 'CODE',
   'chatAux.code.view': 'Anschauen',
 
-  // Local model warm-up
   'chatAux.warmup.placementPending': 'Platzierung wird geplant',
   'chatAux.warmup.waiting': 'Bitte kurz warten – Modell läuft warm',
   'chatAux.warmup.cancelled': 'Modellstart wurde abgebrochen',
@@ -46,7 +39,6 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.warmup.phase.healthcheck': 'Healthcheck des Modellservers läuft',
   'chatAux.warmup.phase.preparing': 'Modellstart wird vorbereitet',
 
-  // Permission requests
   'chatAux.permission.title': 'Zugriffsanfrage',
   'chatAux.permission.body':
       'PhiloBot möchte außerhalb des Projektpfads arbeiten ({tool}):',
@@ -64,7 +56,6 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.permission.tool.findFiles': 'Dateien suchen',
   'chatAux.permission.tool.runCommand': 'Befehl ausführen',
 
-  // Model management and selectors
   'chatAux.modelManagement.folderNameHint': 'Ordnername...',
   'chatAux.modelManagement.chooseColor': 'Farbe auswählen:',
   'chatAux.modelManagement.catalogTitle': 'Modell-Katalog',
@@ -101,7 +92,6 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.modelPicker.title': 'Chat-Modell auswählen',
   'chatAux.modelPicker.noneAvailable': 'Noch kein Modell verfügbar',
 
-  // Miscellaneous chat components
   'chatAux.fileChange.diffSkipped': 'Diff übersprungen (Datei zu groß)',
   'chatAux.reasoning.title': 'Gedankengang',
   'chatAux.reasoning.titleWithWords': 'Gedankengang · {count} Wörter',
@@ -111,7 +101,6 @@ const Map<String, String> chatAuxStringsDe = {
 };
 
 const Map<String, String> chatAuxStringsEn = {
-  // Markdown and code previews
   'chatAux.markdown.codePreview': '{count} lines of code • Click to view',
   'chatAux.markdown.linkOpenFailed': 'Could not open link',
   'chatAux.markdown.linkOpenFailedWithUrl': 'Could not open link: {url}',
@@ -123,7 +112,6 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.code.defaultLanguage': 'CODE',
   'chatAux.code.view': 'View',
 
-  // Local model warm-up
   'chatAux.warmup.placementPending': 'Placement is being planned',
   'chatAux.warmup.waiting': 'Please wait – model is warming up',
   'chatAux.warmup.cancelled': 'Model start was cancelled',
@@ -150,7 +138,6 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.warmup.phase.healthcheck': 'Model server health check is running',
   'chatAux.warmup.phase.preparing': 'Preparing model start',
 
-  // Permission requests
   'chatAux.permission.title': 'Access request',
   'chatAux.permission.body':
       'PhiloBot wants to work outside the project path ({tool}):',
@@ -168,7 +155,6 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.permission.tool.findFiles': 'Find files',
   'chatAux.permission.tool.runCommand': 'Run command',
 
-  // Model management and selectors
   'chatAux.modelManagement.folderNameHint': 'Folder name...',
   'chatAux.modelManagement.chooseColor': 'Choose color:',
   'chatAux.modelManagement.catalogTitle': 'Model catalog',
@@ -203,7 +189,6 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.modelPicker.title': 'Select chat model',
   'chatAux.modelPicker.noneAvailable': 'No model available yet',
 
-  // Miscellaneous chat components
   'chatAux.fileChange.diffSkipped': 'Diff skipped (file too large)',
   'chatAux.reasoning.title': 'Reasoning',
   'chatAux.reasoning.titleWithWords': 'Reasoning · {count} words',
@@ -212,10 +197,6 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.visual.valueFallback': 'Value {number}',
 };
 
-/// Translates a chat auxiliary key and falls back to the established app maps.
-///
-/// Keeping this wrapper local lets the migration remain isolated while old and
-/// new chat keys can be used uniformly as `tr('…')`.
 String tr(String key, [Map<String, String>? params]) {
   final strings = base.appLanguage == 'en'
       ? chatAuxStringsEn

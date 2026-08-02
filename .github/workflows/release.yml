@@ -1,8 +1,8 @@
 name: Release
 
-# Flutter desktop bundles are host-specific: Windows needs Visual Studio on
-# Windows and macOS needs Xcode on macOS. Each platform is therefore built on a
-# native runner, and the per-platform manifests are merged before publishing.
+
+
+
 
 on:
   push:
@@ -38,9 +38,9 @@ jobs:
             target: linux-x64
           - os: macos-latest
             target: macos-arm64
-          # macos-x64 is absent on purpose: the macos-13 runner that could build
-          # an Intel bundle has been retired, so the job waits forever for a
-          # machine that no longer exists.
+
+
+
           - os: windows-latest
             target: windows-x64
     steps:
@@ -57,8 +57,8 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: backend/go.sum
 
-      # The runners ship different Python majors and Windows has no python3
-      # alias, so pin one interpreter and call it as "python" everywhere.
+
+
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -140,8 +140,8 @@ jobs:
             --output quikinstall/manifest.json
           cat quikinstall/manifest.json
 
-      # Assets must be reachable before the manifest names them, otherwise every
-      # client resolves the advertised update to a 404.
+
+
       - name: Publish assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -179,8 +179,6 @@ jobs:
         env:
           BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          # Committing under the project identity keeps the bot out of the
-          # contributor list for what is really a release artefact.
           git config user.name "MyPhiloEngine"
           git config user.email "kontakt@fillystudio.com"
           git fetch origin "$BRANCH"

@@ -156,8 +156,7 @@ func TestHardwareSamplerUsesPlannedGPUInventoryBeforeFirstFastSample(t *testing.
 	var calls atomic.Int32
 	detect := func(context.Context) hardware.Snapshot {
 		calls.Add(1)
-		// Reproduces a pressure command which always misses its deadline even
-		// though the slower full planner inventory previously found this GPU.
+
 		return hardware.Snapshot{RAMTotalBytes: 16 << 30, RAMAvailableBytes: 8 << 30, GPUs: nil}
 	}
 	sampler := newHardwareSamplerWithOptions(detect, 20*time.Millisecond, time.Second)
@@ -222,7 +221,7 @@ func waitForHardwareSamples(t *testing.T, sampler *hardwareSampler, want int32) 
 	for time.Now().Before(deadline) {
 		_, have := sampler.Latest()
 		if have {
-			// A completed sample resets inFlight before Latest becomes observable.
+
 			sampler.mu.RLock()
 			inFlight := sampler.inFlight
 			sampler.mu.RUnlock()

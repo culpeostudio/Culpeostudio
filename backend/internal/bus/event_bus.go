@@ -1,3 +1,5 @@
+// Package bus carries process-local events between modules so they do not have
+// to import one another.
 package bus
 
 import (
@@ -6,7 +8,6 @@ import (
 	"time"
 )
 
-// Event repräsentiert ein Modul-übergreifendes Event.
 type Event struct {
 	Source    string                 `json:"source"`
 	Type      string                 `json:"type"`
@@ -14,15 +15,12 @@ type Event struct {
 	Timestamp time.Time              `json:"timestamp"`
 }
 
-// Handler ist eine Callback-Funktion für Events.
 type Handler func(Event)
 
-// EventBus ermöglicht Inter-Modul-Kommunikation im Backend.
-// Module können Events publizieren und subscriben ohne sich direkt zu kennen.
 type EventBus struct {
 	mu       sync.RWMutex
-	handlers map[string][]Handler // eventType -> handlers
-	global   []Handler            // Handler die ALLE Events bekommen
+	handlers map[string][]Handler
+	global   []Handler
 }
 
 var (
@@ -30,7 +28,6 @@ var (
 	once     sync.Once
 )
 
-// Get gibt die Singleton-Instanz des EventBus zurück.
 func Get() *EventBus {
 	once.Do(func() {
 		instance = &EventBus{
@@ -40,7 +37,6 @@ func Get() *EventBus {
 	return instance
 }
 
-// Emit sendet ein Event an alle registrierten Handler.
 func (b *EventBus) Emit(source, eventType string, data map[string]interface{}) {
 	event := Event{
 		Source:    source,
@@ -52,24 +48,17 @@ func (b *EventBus) Emit(source, eventType string, data map[string]interface{}) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	// Typ-spezifische Handler
 	if handlers, ok := b.handlers[eventType]; ok {
 		for _, h := range handlers {
 			go dispatch(h, event)
 		}
 	}
 
-	// Globale Handler
 	for _, h := range b.global {
 		go dispatch(h, event)
 	}
 }
 
-// dispatch fuehrt einen Handler in seiner Goroutine aus und faengt Panics ab.
-// Ohne dieses recover wuerde ein Panic in IRGENDEINEM Event-Handler den
-// gesamten Prozess beenden (in Go killt ein nicht abgefangener Panic in einer
-// Goroutine die ganze App, nicht nur diese Goroutine) — ein fehlerhafter
-// Handler koennte so das komplette Backend mitreissen.
 func dispatch(h Handler, event Event) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -79,40 +68,31 @@ func dispatch(h Handler, event Event) {
 	h(event)
 }
 
-// On registriert einen Handler für einen bestimmten Event-Typ.
 func (b *EventBus) On(eventType string, handler Handler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.handlers[eventType] = append(b.handlers[eventType], handler)
 }
 
-// OnAll registriert einen Handler der ALLE Events bekommt.
 func (b *EventBus) OnAll(handler Handler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.global = append(b.global, handler)
 }
 
-// ── Vordefinierte Event-Typen ──────────────────────────
-
 const (
-	// Login
 	EventUserLoggedIn  = "user_logged_in"
 	EventUserLoggedOut = "user_logged_out"
 
-	// Marktplatz
 	EventModelDownloaded = "model_downloaded"
 	EventModelDeleted    = "model_deleted"
 
-	// Engine
 	EventEngineStarted = "engine_started"
 	EventEngineStopped = "engine_stopped"
 	EventModelLoaded   = "model_loaded"
 
-	// Chat (PhiloBot / Philox)
 	EventPhiloBotSessionCreated = "philobot_session_created"
 	EventPhiloBotMessageSent    = "philobot_message_sent"
 
-	// Settings
 	EventSettingsChanged = "settings_changed"
 )

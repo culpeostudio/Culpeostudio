@@ -10,9 +10,6 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// TestParseSearchParams_Success deckt die erfolgreichen Parse-Pfade ab: je
-// ein Fall pro Default, Experten-Filter und Limit-Capping.  Die Schleife
-// haelt die Tabelle klein und macht fehlgeschlagene Faelle sofort sichtbar.
 func TestParseSearchParams_Success(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -93,9 +90,7 @@ func TestParseSearchParams_Success(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			app := fiber.New()
 			req := httptest.NewRequest("GET", "/search?"+tc.query, nil)
-			// NOTE(fiber): app.AcquireCtx expects a real request; we use
-			// app.Test to run through the stack into a dummy route that just
-			// invokes parseSearchParams and stores the result.
+
 			var got searchParams
 			var gotErr error
 			app.Get("/search", func(c *fiber.Ctx) error {
@@ -144,9 +139,6 @@ func TestParseSearchParams_Success(t *testing.T) {
 	}
 }
 
-// TestParseSearchParams_Errors deckt alle Validierungsfehler-Statuscodes
-// ab. Ein Tippfehler bei page, limit, gpu_fit und der "Cloud-Provider +
-// lokaler Filter"-Vertrag sind die haeufigsten Client-Fehler.
 func TestParseSearchParams_Errors(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -211,9 +203,6 @@ func TestParseSearchParams_Errors(t *testing.T) {
 	}
 }
 
-// TestComputeSearchLimit prueft das initiale Suchfenster fuer die
-// Provider-Anfrage. Ohne lokale Filter gilt pageSize*page; mit lokalem
-// Filter gilt das 8fache (mindestens 160), begrenzt durch maxSearchWindow.
 func TestComputeSearchLimit(t *testing.T) {
 	cases := []struct {
 		name string
@@ -255,9 +244,6 @@ func TestComputeSearchLimit(t *testing.T) {
 	}
 }
 
-// TestExpandSearchLimit verlangt, dass Verdopplung noch erfolgt, solange wir
-// nicht an maxSearchWindow kratzen, und danach ok=false liefert – so endet
-// die window-Expansions-Schleife in handleSearch determiniert.
 func TestExpandSearchLimit(t *testing.T) {
 	cases := []struct {
 		current int
@@ -265,9 +251,9 @@ func TestExpandSearchLimit(t *testing.T) {
 		wantOk  bool
 	}{
 		{100, 200, true},
-		{512, 1000, true}, // begrenzt durch maxSearchWindow
+		{512, 1000, true},
 		{1000, 1000, false},
-		{2000, 2000, false}, // bereits ueber max
+		{2000, 2000, false},
 	}
 
 	for _, tc := range cases {
@@ -279,9 +265,6 @@ func TestExpandSearchLimit(t *testing.T) {
 	}
 }
 
-// TestSearchParamsResolvedProvider deckt den Verhaltensvertrag ab:
-// "all + lokaler Filter" -> HuggingFace, sonst bleibt der Provider wie
-// angefragt. isPostFilteredSearch muss entsprechend true/false liefern.
 func TestSearchParamsResolvedProvider(t *testing.T) {
 	cases := []struct {
 		name    string

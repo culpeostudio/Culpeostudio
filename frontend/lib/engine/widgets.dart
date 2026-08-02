@@ -11,17 +11,12 @@ const engineInsetColor = Color(0xFF0F0F12);
 const engineBlue = Color(0xFFC9A24A);
 const engineAccent = Color(0xFFDFC077);
 
-/// Shared accent gradient used for primary actions, icon badges and meters so
-/// the whole engine surface reads as one cohesive, modern control panel.
 const engineActionGradient = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
   colors: [engineBlue, engineAccent],
 );
 
-/// A compact, data-dense meter for the engine cockpit.  It deliberately
-/// shows consumed capacity (rather than free capacity) so it can be read as
-/// utilisation at a glance in the monitor rail.
 class EngineUsageGauge extends StatelessWidget {
   const EngineUsageGauge({
     super.key,
@@ -622,9 +617,6 @@ class EngineContextBar extends StatelessWidget {
   }
 }
 
-/// Explains the plan in user terms and keeps the technical evidence behind an
-/// ordinary dropdown. This makes the distinction between a hard model limit,
-/// GPU capacity and optional RAM explicit before any system change happens.
 class EnginePreflightCard extends StatelessWidget {
   const EnginePreflightCard({super.key, required this.plan});
 

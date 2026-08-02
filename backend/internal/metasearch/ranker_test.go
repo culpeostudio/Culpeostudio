@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// TestRelevanceRankerIgnoriertWikipediaBonus prueft, dass der Recherche-Ranker
-// nach Passung sortiert statt Wikipedia nach oben zu heben.
 func TestRelevanceRankerIgnoriertWikipediaBonus(t *testing.T) {
 	docs := []Result{
 		{Title: "Go (Spiel)", Href: "https://de.wikipedia.org/wiki/Go_(Spiel)", Body: "Brettspiel"},
@@ -19,14 +17,12 @@ func TestRelevanceRankerIgnoriertWikipediaBonus(t *testing.T) {
 		t.Fatalf("Relevanz-Ranker sollte go.dev zuerst liefern, bekam: %+v", relevance)
 	}
 
-	// Der Standard-Ranker behaelt sein bisheriges Verhalten.
 	standard := NewSimpleFilterRanker().Rank(append([]Result{}, docs...), query)
 	if len(standard) != 2 || !strings.Contains(standard[0].Href, "wikipedia.org") {
 		t.Fatalf("Standard-Ranker sollte Wikipedia zuerst liefern, bekam: %+v", standard)
 	}
 }
 
-// TestRankerFiltertWikimediaKategorien sichert die bestehende Filterregel ab.
 func TestRankerFiltertWikimediaKategorien(t *testing.T) {
 	docs := []Result{
 		{Title: "Category:Go — Wikimedia", Href: "https://commons.wikimedia.org/wiki/Category:Go"},

@@ -5,14 +5,6 @@ import (
 	"strings"
 )
 
-// DecomposePrompt liefert die Anweisung, mit der ein Modell eine Aufgabe
-// in Schritte zerlegt.
-//
-// Zwei Dinge entscheiden hier ueber die Qualitaet: Das Modell muss
-// erstens ausschliesslich JSON liefern (sonst ist die Antwort nicht
-// verwertbar), und es muss zweitens verstehen, dass jeder Schritt fuer
-// sich verstaendlich sein muss - der Subagent, der ihn spaeter abarbeitet,
-// sieht das Gespraech nicht, aus dem der Plan entstanden ist.
 func DecomposePrompt(task string, hasFileTools bool) string {
 	var b strings.Builder
 	b.WriteString("## Auftrag: Plan erstellen\n")
@@ -56,12 +48,6 @@ func DecomposePrompt(task string, hasFileTools bool) string {
 	return b.String()
 }
 
-// StepPrompt baut den Auftrag fuer den Subagenten eines Schritts.
-//
-// Der Subagent bekommt bewusst nicht die Chat-Historie, sondern nur das
-// Ziel, seinen Schritt und die Ergebnisse der Vorschritte. Das haelt
-// seinen Kontext klein und verhindert, dass er sich an einer frueheren
-// Zwischenantwort festbeisst statt seine Aufgabe zu erledigen.
 func StepPrompt(plan Plan, step Step) string {
 	var b strings.Builder
 	b.WriteString("## Dein Arbeitsschritt\n")
@@ -106,7 +92,6 @@ func StepPrompt(plan Plan, step Step) string {
 	return b.String()
 }
 
-// ReportPrompt baut den Auftrag fuer die Abschlussmeldung an den Nutzer.
 func ReportPrompt(plan Plan) string {
 	var b strings.Builder
 	b.WriteString("## Abschlussbericht\n")
@@ -132,7 +117,6 @@ func ReportPrompt(plan Plan) string {
 	return b.String()
 }
 
-// completedSteps liefert die abgeschlossenen Schritte vor number.
 func completedSteps(plan Plan, number int) []Step {
 	var out []Step
 	for _, step := range plan.Steps {
@@ -146,7 +130,6 @@ func completedSteps(plan Plan, number int) []Step {
 	return out
 }
 
-// remainingSteps liefert die Schritte nach number.
 func remainingSteps(plan Plan, number int) []Step {
 	var out []Step
 	for _, step := range plan.Steps {

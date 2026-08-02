@@ -49,10 +49,8 @@ class _EngineScreenState extends State<EngineScreen> {
   String? _planningIssue;
   final Set<String> _expandedInstances = <String>{};
 
-  /// 0 = start a local model, 1 = inspect configured model instances.
   int _workspace = 0;
 
-  /// Currently expanded wizard step (0 = model, 1 = settings, 2 = start).
   int _wizardStep = 0;
 
   @override
@@ -147,9 +145,7 @@ class _EngineScreenState extends State<EngineScreen> {
       'offload': useCpuRuntime ? 'cpu' : _offload,
       if (useCpuRuntime) 'force_cpu_runtime': true,
       'allow_ram_offload': allowRamOffload ?? _useRamOffload,
-      // Im geführten Modus wählt die 4-Bit-Policy den passenden Cache pro
-      // Runtime (TurboQuant, Quanto oder Q4_0). Ein festes Q4_0 würde bei
-      // vLLM TurboQuant überspringen.
+
       if (_expertMode) 'kv_cache_dtype': _kvCacheDtype,
     };
     return EngineConfig(
@@ -193,8 +189,6 @@ class _EngineScreenState extends State<EngineScreen> {
     if (model == null || _controller.isLoadingRecommendation) return;
     setState(() => _planningIssue = null);
 
-    // The fit test intentionally starts only after model selection, when the
-    // user continues from phase 2. First calculate against dedicated VRAM.
     var ok = await _controller.selectModel(
       model.id,
       config: _draftConfig(allowRamOffload: false),
@@ -221,8 +215,6 @@ class _EngineScreenState extends State<EngineScreen> {
       return;
     }
 
-    // Either VRAM was insufficient or the GPU runtime is not usable yet. A
-    // second dry run checks the explicit CPU/RAM fallback without starting it.
     ok = await _controller.selectModel(
       model.id,
       config: _draftConfig(
@@ -277,8 +269,7 @@ class _EngineScreenState extends State<EngineScreen> {
       _contextController.text = recommendation.effectiveContextTokens
           .toString();
     }
-    // The successful automatic calculation completes phase 2 and unlocks the
-    // actual start in phase 3.
+
     setState(() {
       _useRamOffload = useRamOffload;
       _forceCpuRuntime = forceCpuRuntime;
@@ -728,7 +719,6 @@ class _EngineScreenState extends State<EngineScreen> {
     );
   }
 
-  /// Executes the backend-suggested one-click remediation for a failed start.
   Future<void> _applySuggestedFix(
     EngineInstance instance,
     SuggestedFix fix,
@@ -1136,9 +1126,6 @@ class _EngineScreenState extends State<EngineScreen> {
           }
           return LayoutBuilder(
             builder: (context, constraints) {
-              // On desktop the monitor is a true slide-in side rail. On
-              // smaller screens the same information opens as a bottom sheet
-              // so the setup wizard keeps its full usable width.
               if (constraints.maxWidth < 980) {
                 return Stack(
                   children: [
@@ -1250,9 +1237,6 @@ class _EngineScreenState extends State<EngineScreen> {
       width: _showTelemetryPanel ? 352 : 46,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Do not lay out the dense panel while the rail is still narrower
-          // than the panel itself. This keeps the slide-in animation free of
-          // transient RenderFlex overflows.
           if (_showTelemetryPanel && constraints.maxWidth >= 280) {
             return _buildTelemetryPanel(onClose: _openTelemetry);
           }
@@ -1647,16 +1631,8 @@ class _EngineScreenState extends State<EngineScreen> {
   String _percentUsed(int total, int available) =>
       '${(_usedFraction(total, available) * 100).round()} %';
 
-  // ---------------------------------------------------------------------
-  // Guided flow: Modell → Einstellungen → Start, one step at a time.
-  // ---------------------------------------------------------------------
-
-  /// A broken or currently installing runtime affects every start, so it
-  /// gets one prominent banner above the flow — the single place this state
-  /// is shown.
   List<Widget> _buildRuntimeIssueBanner() {
     if (_activeSetupOperation() != null || _setupInstance() != null) {
-      // The start flow already shows its own progress; no second banner.
       return const [];
     }
     final installingRuntime = _activeSetupRuntime();
@@ -2216,7 +2192,6 @@ class _EngineScreenState extends State<EngineScreen> {
     );
   }
 
-  /// The one non-terminal engine operation currently running, if any.
   EngineOperation? _activeSetupOperation() {
     return _controller.operations.values
         .where((operation) => !operation.isTerminal)

@@ -23,7 +23,7 @@ func TestRunCommandAllowlistRunsWithoutAsker(t *testing.T) {
 
 func TestRunCommandGitRestriction(t *testing.T) {
 	exec, _ := newTestExecutor(t)
-	// "git push" ist nicht in der Subcommand-Allowlist und ohne Asker verboten.
+
 	result := exec.Execute("run_command", map[string]interface{}{
 		"command": "git", "args": []interface{}{"push"},
 	})
@@ -47,7 +47,6 @@ func TestRunCommandPermissionFlow(t *testing.T) {
 		t.Fatalf("newFileToolExecutorWithPermissions: %v", err)
 	}
 
-	// Nicht-Allowlisted-Programm: einmal fragen, dann fuer die Sitzung frei.
 	first := exec.Execute("run_command", map[string]interface{}{
 		"command": "chmod", "args": []interface{}{"--version"},
 	})
@@ -60,7 +59,6 @@ func TestRunCommandPermissionFlow(t *testing.T) {
 		t.Fatalf("Asker sollte nur einmal gefragt werden, war %d", asker.calls)
 	}
 
-	// Deny: kein Programmaufruf, Fehler mit permission_denied.
 	denyAsker := &fakePermissionAsker{decisions: []string{permissionDeny}}
 	exec2, _ := newFileToolExecutorWithPermissions(context.Background(), []string{root}, denyAsker, nil, "")
 	denied := exec2.Execute("run_command", map[string]interface{}{
@@ -74,7 +72,7 @@ func TestRunCommandPermissionFlow(t *testing.T) {
 
 func TestRunCommandTimeout(t *testing.T) {
 	exec, _ := newTestExecutor(t)
-	// python3 ist allowlisted; der Sleep schlaegt ueber dem Zeitlimit fehl.
+
 	result := exec.Execute("run_command", map[string]interface{}{
 		"command":         "python3",
 		"args":            []interface{}{"-c", "import time; time.sleep(5)"},
@@ -88,7 +86,7 @@ func TestRunCommandTimeout(t *testing.T) {
 
 func TestRunCommandOutputCap(t *testing.T) {
 	exec, _ := newTestExecutor(t)
-	// Erzeugt deutlich mehr als maxCommandOutputRunes Zeichen.
+
 	result := exec.Execute("run_command", map[string]interface{}{
 		"command": "python3",
 		"args":    []interface{}{"-c", "print('x' * 100000)"},

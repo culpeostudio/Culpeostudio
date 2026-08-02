@@ -40,16 +40,16 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
   }
 
   final List<Color> _folderColors = [
-    const Color(0xFFC9A24A), // Blue
-    const Color(0xFFC9A24A), // Orange
-    const Color(0xFF4CAF50), // Green
-    const Color(0xFFF44336), // Red
-    const Color(0xFF9C27B0), // Purple
-    const Color(0xFFE91E63), // Pink
-    const Color(0xFF009688), // Teal
-    const Color(0xFFFFC107), // Amber
-    const Color(0xFF00BCD4), // Cyan
-    const Color(0xFF9E9E9E), // Grey
+    const Color(0xFFC9A24A),
+    const Color(0xFFC9A24A),
+    const Color(0xFF4CAF50),
+    const Color(0xFFF44336),
+    const Color(0xFF9C27B0),
+    const Color(0xFFE91E63),
+    const Color(0xFF009688),
+    const Color(0xFFFFC107),
+    const Color(0xFF00BCD4),
+    const Color(0xFF9E9E9E),
   ];
 
   void _showFolderFormDialog({ModelFolder? existingFolder}) {

@@ -11,15 +11,11 @@ import (
 	"time"
 )
 
-// Summarizer is the pluggable compression step: it turns a slice of
-// observations into the compressed memory content. The rule-based engine is
-// the default; an LLM-based engine can be switched on via config.
 type Summarizer interface {
 	Name() string
 	Summarize(observations []Observation) (summary string, learned []string, openTasks []string, err error)
 }
 
-// RuleBasedSummarizer is the deterministic, dependency-free default.
 type RuleBasedSummarizer struct{}
 
 func (RuleBasedSummarizer) Name() string { return "rules" }
@@ -31,14 +27,6 @@ func (RuleBasedSummarizer) Summarize(observations []Observation) (string, []stri
 		nil
 }
 
-// LLMSummarizer calls an OpenAI-compatible chat endpoint. It runs outside the
-// compression write transaction (preventing database lock blockages during
-// network I/O), so every failure falls back to the rule-based engine — compression
-// never breaks because an LLM endpoint is down.
-//
-// Where the surrounding system already runs LLM DAG roles, prefer feeding
-// their outputs in via the capture API (extracted metadata) instead of
-// paying an extra call here.
 type LLMSummarizer struct {
 	url      string
 	model    string
@@ -145,7 +133,6 @@ func (l *LLMSummarizer) summarizeViaLLM(observations []Observation) (string, []s
 	return strings.TrimSpace(result.Summary), normalizeList(result.Learned), normalizeList(result.OpenTasks), nil
 }
 
-// extractJSONObject tolerates markdown fences and prose around the JSON.
 func extractJSONObject(content string) string {
 	start := strings.Index(content, "{")
 	end := strings.LastIndex(content, "}")

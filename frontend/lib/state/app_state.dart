@@ -128,9 +128,6 @@ class PhiloBotChoice {
   }
 }
 
-/// Ein Projektordner, in dem der Nutzer Chatverlaeufe buendeln kann. Wird
-/// backend-seitig pro Nutzer persistiert; die Zuordnung Chat -> Projekt liegt
-/// auf der Session (project_id in der Session-Summary).
 class ChatProject {
   ChatProject({
     required this.id,
@@ -144,12 +141,8 @@ class ChatProject {
   String name;
   String? color;
 
-  /// Optionaler Dateisystem-Pfad, der dem Projekt zugeordnet ist (z. B. fuer
-  /// agentischen Dateizugriff im Chat). Null, wenn keiner hinterlegt ist.
   String? path;
 
-  /// Optionaler Icon-Schluessel (siehe kChatProjectIcons im Chat-Panel).
-  /// Null/leer = Standard-Ordner-Icon.
   String? icon;
 
   factory ChatProject.fromJson(Map<String, dynamic> json) {
@@ -166,11 +159,6 @@ class ChatProject {
   }
 }
 
-/// The UI preferences stored for one authenticated account.
-///
-/// The backend owns this record in its data directory. Keeping the wire model
-/// here makes it explicit that display values are validated before they affect
-/// the application shell.
 class UserPreferences {
   const UserPreferences({
     required this.configured,
@@ -216,13 +204,6 @@ class AppState extends ChangeNotifier {
 
   final ApiService api;
 
-  /// Meldet das Ende einer Sitzung sauber an die Oberflaeche: lehnt das Backend
-  /// eine gespeicherte Anmeldung ab (abgelaufen oder mit einem anderen
-  /// Server-Geheimnis signiert), wird ausgeloggt und die Anmeldemaske gezeigt.
-  ///
-  /// Vorher blieb die Anwendung scheinbar angemeldet, waehrend jede Anfrage
-  /// still mit 401 scheiterte — sichtbar war nur ein leeres Dashboard, das wie
-  /// Datenverlust aussah.
   void _wireSessionExpiry() {
     api.onSessionExpired = () {
       if (_sessionExpiryHandled) return;
@@ -233,42 +214,24 @@ class AppState extends ChangeNotifier {
     };
   }
 
-  /// Verhindert, dass mehrere parallel scheiternde Anfragen den Abmeldevorgang
-  /// mehrfach ausloesen. Wird beim naechsten erfolgreichen Login zurueckgesetzt.
   bool _sessionExpiryHandled = false;
 
-  /// UI-Sprache ('de' oder 'en') und Frontend-Version ('lite' oder
-  /// 'classic'). The authenticated backend profile is the source of truth;
-  /// SharedPreferences is intentionally not used for these account settings.
   String language = UserPreferences.defaultLanguage;
   String frontendVersion = UserPreferences.defaultFrontendVersion;
 
-  /// The profile is deliberately considered configured only after a successful
-  /// authenticated GET confirms that both choices have been saved. Starting at
-  /// `true` avoids showing onboarding in widget tests that inject a token
-  /// without going through the login flow; production login always loads first.
   bool _hasUserPrefs = true;
   bool _userPreferencesLoaded = false;
   bool _isSavingUserPreferences = false;
   String? _userPreferencesError;
   UserPreferences? _pendingUserPreferences;
 
-  /// True, once the profile endpoint has answered for the current account.
   bool get userPreferencesLoaded => _userPreferencesLoaded;
 
-  /// True while a PUT request is in flight. Both settings controls and the
-  /// onboarding confirmation disable their inputs during this period, so a
-  /// slower earlier response can never overwrite a newer selection.
   bool get isSavingUserPreferences => _isSavingUserPreferences;
 
-  /// Last profile read/write failure. The UI displays a localized explanation
-  /// and offers [retryUserPreferencesSave] when a pending choice exists.
   String? get userPreferencesError => _userPreferencesError;
   bool get canRetryUserPreferencesSave => _pendingUserPreferences != null;
 
-  /// True as long as a logged-in account still needs to choose language and
-  /// frontend version. A failed profile read intentionally keeps onboarding
-  /// open rather than silently treating local defaults as a completed choice.
   bool get needsOnboarding =>
       isLoggedIn && _userPreferencesLoaded && !_hasUserPrefs;
 
@@ -283,10 +246,6 @@ class AppState extends ChangeNotifier {
     return saveUserPreferences(language: language, frontendVersion: version);
   }
 
-  /// Loads the account profile after login or remembered-session restoration.
-  ///
-  /// Defaults are reset before every load so a first-time second user cannot
-  /// inherit the preceding user's language or Lite/Classic choice.
   Future<bool> loadUserPrefs() async {
     _resetUserPreferencesForUnknownUser();
     if (!isLoggedIn) {
@@ -319,9 +278,6 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  /// Saves both choices in one authenticated PUT request. The local UI changes
-  /// only after the server returns its normalized record, preserving the
-  /// backend JSON as the single source of truth.
   Future<bool> saveUserPreferences({
     required String language,
     required String frontendVersion,
@@ -388,10 +344,6 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  /// Re-reads the account profile after an interrupted initial load. This is
-  /// intentionally separate from retrying a failed PUT so an existing user's
-  /// stored choices are never overwritten with client defaults after a
-  /// temporary GET failure.
   Future<bool> retryUserPreferencesLoad() => loadUserPrefs();
 
   void _applyUserPreferences(UserPreferences preferences) {
@@ -454,8 +406,8 @@ class AppState extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {
-      // ignore
+    } catch (_) {
+      return;
     }
   }
 
@@ -464,11 +416,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Model management state
   final List<ActiveApiModel> activeApiModels = [];
   final List<String> availableModelIds = [];
 
-  // Bots state
   final List<dynamic> philoBots = [];
 
   final List<ModelFolder> modelFolders = [
@@ -556,8 +506,6 @@ class AppState extends ChangeNotifier {
   String? _selectedModelId;
   String? get selectedModelId => _selectedModelId;
 
-  // The bot selected in Settings is used when creating a new chat session.
-  // An existing session keeps the bot it was created with.
   String? _preferredBotId;
   String? get preferredBotId => _preferredBotId;
 
@@ -587,10 +535,9 @@ class AppState extends ChangeNotifier {
       ? '2FAS Authenticator'
       : 'Google Authenticator';
 
-  // Chat History session lists
   final List<String> chatSessions = [];
   final Map<String, String> sessionTitles = {};
-  // Projektordner und die Zuordnung Session-ID -> Projekt-ID.
+
   final List<ChatProject> chatProjects = [];
   final Map<String, String> sessionProjects = {};
   String? currentChatSessionId;
@@ -621,8 +568,7 @@ class AppState extends ChangeNotifier {
     if (result.containsKey('session_id')) {
       final sId = result['session_id'] as String;
       chatSessions.add(sId);
-      sessionTitles[sId] =
-          'Sitzung ${chatSessions.length}'; // Default readable title
+      sessionTitles[sId] = 'Sitzung ${chatSessions.length}';
       if (projectId != null && projectId.isNotEmpty) {
         sessionProjects[sId] = projectId;
       }
@@ -643,7 +589,7 @@ class AppState extends ChangeNotifier {
       final trimmed = newTitle.trim();
       sessionTitles[sId] = trimmed.isEmpty ? sId : trimmed;
       notifyListeners();
-      // Persist the custom title so it survives a restart.
+
       unawaited(api.renamePhiloBotSession(sId, trimmed));
     }
   }
@@ -660,12 +606,10 @@ class AppState extends ChangeNotifier {
         unawaited(_persistLastChatSession());
       }
       notifyListeners();
-      // Remove the persisted transcript so a restart does not resurrect it.
+
       unawaited(api.deletePhiloBotSession(sId));
     }
   }
-
-  // --- Chat-Projekte ---
 
   String? projectIdForSession(String sId) => sessionProjects[sId];
 
@@ -676,7 +620,6 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  /// Alle Sessions eines Projekts in der Reihenfolge der Verlaufsliste.
   List<String> sessionsInProject(String projectId) {
     return chatSessions
         .where((sId) => sessionProjects[sId] == projectId)
@@ -703,7 +646,7 @@ class AppState extends ChangeNotifier {
         Map<String, dynamic>.from(rawProject),
       );
       if (project.id.isNotEmpty) {
-        chatProjects.insert(0, project); // neueste zuerst
+        chatProjects.insert(0, project);
         notifyListeners();
         return project;
       }
@@ -729,10 +672,9 @@ class AppState extends ChangeNotifier {
     if (color != null && color.isNotEmpty) {
       project.color = color;
     }
-    // Anders als bei der Farbe darf der Pfad hier bewusst auch wieder
-    // geleert werden, da die UI ihn ueber eine Checkbox (an/aus) steuert.
+
     project.path = (path != null && path.isNotEmpty) ? path : null;
-    // Das Icon wird wie der Pfad behandelt: leer = Standard-Icon.
+
     project.icon = (icon != null && icon.isNotEmpty) ? icon : null;
     notifyListeners();
     unawaited(
@@ -750,7 +692,7 @@ class AppState extends ChangeNotifier {
     final index = chatProjects.indexWhere((p) => p.id == projectId);
     if (index == -1) return;
     chatProjects.removeAt(index);
-    // Zugeordnete Chats bleiben erhalten und wandern in die allgemeine Liste.
+
     sessionProjects.removeWhere((_, pId) => pId == projectId);
     notifyListeners();
     unawaited(api.deletePhiloBotProject(projectId));
@@ -767,8 +709,6 @@ class AppState extends ChangeNotifier {
     unawaited(api.setPhiloBotSessionProject(sId, projectId));
   }
 
-  /// Laedt die Projektordner des Nutzers. Best effort: ein Ausfall darf den
-  /// Login genauso wenig blockieren wie ein fehlender Chatverlauf.
   Future<void> restoreChatProjects() async {
     try {
       final result = await api.listPhiloBotProjects();
@@ -786,9 +726,7 @@ class AppState extends ChangeNotifier {
         ..clear()
         ..addAll(loaded);
       notifyListeners();
-    } catch (_) {
-      // Projekte sind optional; die App laeuft ohne sie weiter.
-    }
+    } catch (_) {}
   }
 
   String getSessionTitle(String sId) {
@@ -801,21 +739,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Leave the current conversation selected in history, but require the chat
-  // UI to create a fresh session before another message is sent. This is used
-  // when recovering from an unavailable fixed bot binding so the old
-  // locked_bot_id can never be reused behind an "Automatisch" label.
   void clearCurrentChatSessionSelection() {
     currentChatSessionId = null;
     notifyListeners();
   }
 
-  /// Loads the persisted PhiloBot chat history from the backend so past
-  /// conversations survive an app restart. Sessions come back most-recent
-  /// first; we keep the app's newest-last convention. The last chat the user
-  /// had open (if it still exists) is reselected, otherwise the most recent
-  /// one, so reopening the app drops the user back into their conversation.
-  /// Failures are swallowed: a missing history must never block sign-in.
   Future<void> restoreChatSessions() async {
     await restoreChatProjects();
     try {
@@ -841,7 +769,7 @@ class AppState extends ChangeNotifier {
 
       chatSessions
         ..clear()
-        ..addAll(ordered.reversed); // newest ends up last
+        ..addAll(ordered.reversed);
       sessionTitles
         ..clear()
         ..addAll(titles);
@@ -855,21 +783,17 @@ class AppState extends ChangeNotifier {
         return;
       }
 
-      var preferred = chatSessions.last; // most recently updated
+      var preferred = chatSessions.last;
       try {
         final preferences = await SharedPreferences.getInstance();
         final saved = preferences.getString(_lastChatSessionKey);
         if (saved != null && chatSessions.contains(saved)) {
           preferred = saved;
         }
-      } catch (_) {
-        // Preferences may be unavailable (e.g. tests); the recency default wins.
-      }
+      } catch (_) {}
       currentChatSessionId = preferred;
       notifyListeners();
-    } catch (_) {
-      // Restoring history is best-effort; the chat simply starts fresh.
-    }
+    } catch (_) {}
   }
 
   Future<void> _persistLastChatSession() async {
@@ -881,9 +805,7 @@ class AppState extends ChangeNotifier {
       } else {
         await preferences.setString(_lastChatSessionKey, sId);
       }
-    } catch (_) {
-      // Best-effort: losing the last-open pointer only costs one reselect.
-    }
+    } catch (_) {}
   }
 
   void setScreen(String screen) {
@@ -1036,8 +958,6 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return false;
     } else if (api.token != null) {
-      // Frische Anmeldung: der Hinweis auf die abgelaufene Sitzung gilt nicht
-      // mehr, und ein spaeteres Sitzungsende soll wieder gemeldet werden.
       _sessionExpiryHandled = false;
       _lastChatError = null;
       if (rememberSession) {
@@ -1056,8 +976,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Restores a locally opted-in session. Tokens are still limited by the
-  /// expiry the server assigned when the user signed in.
   Future<bool> restoreRememberedSession() async {
     try {
       final preferences = await SharedPreferences.getInstance();
@@ -1074,8 +992,6 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (_) {
-      // The app remains usable on platforms where local preferences are not
-      // available (for example, an isolated widget test environment).
       return false;
     }
   }
@@ -1088,9 +1004,7 @@ class AppState extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(_rememberedTokenKey, token);
       await preferences.setString(_rememberedUsernameKey, user);
-    } catch (_) {
-      // A successful login must not fail just because local persistence does.
-    }
+    } catch (_) {}
   }
 
   Future<void> _clearRememberedSession() async {
@@ -1098,9 +1012,7 @@ class AppState extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       await preferences.remove(_rememberedTokenKey);
       await preferences.remove(_rememberedUsernameKey);
-    } catch (_) {
-      // Nothing else is required when no local preference store is present.
-    }
+    } catch (_) {}
   }
 
   bool _tokenCanBeRestored(String token) {
@@ -1245,15 +1157,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Code Assistant Shared State
   String? selectedCode;
   String? selectedCodeLanguage;
   List<Map<String, String>> allCodeBlocks = [];
   double codeDrawerWidth = 450.0;
 
-  // File Previewer Shared State
   String? selectedFilePath;
-  String? selectedFileType; // 'text', 'image', 'pdf', 'unknown'
+  String? selectedFileType;
 
   void showCodeAssistant(
     String code,
@@ -1282,7 +1192,6 @@ class AppState extends ChangeNotifier {
 
     final ext = path.split('.').last.toLowerCase();
 
-    // Define text file extensions
     const textExtensions = {
       'txt',
       'html',
@@ -1307,7 +1216,6 @@ class AppState extends ChangeNotifier {
       'log',
     };
 
-    // Define image file extensions
     const imageExtensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico'};
 
     if (textExtensions.contains(ext)) {
@@ -1340,7 +1248,6 @@ class AppState extends ChangeNotifier {
       selectedCode = path;
       selectedCodeLanguage = 'pdf';
 
-      // Auto open externally
       try {
         if (Platform.isWindows) {
           Process.run('explorer.exe', [path]);
@@ -1351,7 +1258,6 @@ class AppState extends ChangeNotifier {
       selectedCode = path;
       selectedCodeLanguage = ext;
 
-      // Auto open externally
       try {
         if (Platform.isWindows) {
           Process.run('explorer.exe', [path]);
@@ -1376,9 +1282,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // newIndex kommt bereits korrigiert vom ReorderableListView.onReorderItem-
-  // Callback (das die frühere manuelle `if (newIndex > oldIndex) newIndex -= 1`
-  // Anpassung automatisch übernimmt) — daher hier keine eigene Korrektur mehr.
   void reorderModelFolders(int oldIndex, int newIndex) {
     final folder = modelFolders.removeAt(oldIndex);
     modelFolders.insert(newIndex, folder);
@@ -1407,10 +1310,10 @@ class AppState extends ChangeNotifier {
     sessionTitles.clear();
     chatProjects.clear();
     sessionProjects.clear();
-    // Drop the last-open pointer so a different user does not inherit it.
+
     unawaited(_persistLastChatSession());
     _lastChatError = null;
-    // Clear code assistant state on logout
+
     selectedCode = null;
     selectedCodeLanguage = null;
     allCodeBlocks = [];

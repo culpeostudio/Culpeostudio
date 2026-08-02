@@ -5,21 +5,8 @@ import (
 	"strings"
 )
 
-// HashModel is the persisted model identifier for hash embeddings. Bump the
-// version suffix if the hashing scheme ever changes, so old vectors get
-// reindexed instead of silently compared against incompatible ones.
-//
-// v2 adds character trigrams on top of whole-word buckets: morphological
-// variants ("heisse"/"heisst"/"heissen") and small typos now share most of
-// their features, so the offline hash path degrades far more gracefully than
-// pure whole-word matching. This is not semantic embedding (that needs a real
-// model via the sidecar/Ollama/API backend), but it makes the dependency-free
-// fallback noticeably fuzzier.
 const HashModel = "hash-v2"
 
-// HashBackend is token-bucket hashing, not a semantic embedding model. It is
-// deterministic, dependency-free and instant, which makes it the fallback and
-// the compatibility scorer for vectors written before a model switch.
 type HashBackend struct {
 	dims int
 }
@@ -42,9 +29,9 @@ func (h *HashBackend) Embed(text string) ([]float32, error) {
 		if token == "" {
 			continue
 		}
-		// Whole word weighted higher so exact matches stay dominant.
+
 		vector[hashToken(token)%uint64(h.dims)] += 2
-		// Character trigrams add fuzzy overlap for morphology and typos.
+
 		for _, gram := range charTrigrams(token) {
 			vector[hashToken(gram)%uint64(h.dims)]++
 		}
@@ -52,9 +39,6 @@ func (h *HashBackend) Embed(text string) ([]float32, error) {
 	return normalize(vector), nil
 }
 
-// charTrigrams splits a token into boundary-anchored 3-grams. The ^/$ markers
-// keep prefixes and suffixes distinguishable, so "^he" (word start) does not
-// collide with a mid-word "he".
 func charTrigrams(token string) []string {
 	runes := []rune("^" + token + "$")
 	if len(runes) < 3 {
@@ -91,7 +75,6 @@ func normalize(values []float32) []float32 {
 	return values
 }
 
-// CosineSimilarity compares two vectors of the same model and dimensionality.
 func CosineSimilarity(left, right []float32) float64 {
 	if len(left) == 0 || len(left) != len(right) {
 		return 0

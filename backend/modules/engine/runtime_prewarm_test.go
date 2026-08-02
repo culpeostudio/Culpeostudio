@@ -200,8 +200,6 @@ func TestHealthyVulkanRuntimeRemainsUsableWithoutBuildTools(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The exact GPU environment is now verified. Removing the build-tool
-	// override must not make runtime planning reject that installed artifact.
 	t.Setenv("ENGINE_LLAMA_VULKAN_BUILD", "disabled")
 	config := defaultEngineConfig()
 	config.RuntimeOptions["allow_ram_offload"] = false

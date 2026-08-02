@@ -188,8 +188,7 @@ func scanSafeTensorsDirectory(root, dir string, discovered []discoveredFile) Mod
 
 	inspectionFiles := weightFiles
 	if len(inspectionFiles) == 0 {
-		// An invalid or empty index must keep the bundle non-startable, but the
-		// files already on disk remain useful for size display and repair hints.
+
 		inspectionFiles = discovered
 	}
 	var parameterCount int64

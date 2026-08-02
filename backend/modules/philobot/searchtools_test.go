@@ -37,7 +37,7 @@ func TestGrepSearchFindsLiteral(t *testing.T) {
 	result := exec.Execute("grep_search", map[string]interface{}{"pattern": "handleRequest"})
 	mustOK(t, result, "grep_search literal")
 	matches, _ := result["matches"].([]map[string]interface{})
-	// node_modules und Binaerdateien muessen uebersprungen werden.
+
 	if len(matches) != 1 {
 		t.Fatalf("erwartete genau 1 Treffer (Skip-Liste), bekam: %v", result)
 	}
@@ -110,7 +110,7 @@ func TestFindFilesPatterns(t *testing.T) {
 	all := exec.Execute("find_files", map[string]interface{}{"pattern": "*"})
 	mustOK(t, all, "find_files *")
 	files, _ = all["files"].([]string)
-	// node_modules bleibt draussen.
+
 	for _, f := range files {
 		if strings.Contains(f, "node_modules") {
 			t.Fatalf("Skip-Liste verletzt: %v", files)

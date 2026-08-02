@@ -1,9 +1,7 @@
 // Portions adapted from whichllm v0.5.15.
 // Copyright (c) 2026 Andyyyy64; original portions are MIT-licensed.
 // PhiloEngine modifications are AGPL-3.0-only. See NOTICE.
-//
-// Package recommender contains pure, dependency-free local-LLM fit logic.
-// It deliberately has no HTTP, filesystem, or hardware probing concerns.
+
 package recommender
 
 const GiB int64 = 1024 * 1024 * 1024
@@ -47,11 +45,7 @@ const (
 	FitFullGPU        FitType = "full_gpu"
 	FitPartialOffload FitType = "partial_offload"
 	FitCPUOnly        FitType = "cpu_only"
-	// FitUnsupported means neither the GPU+RAM combination nor RAM alone is
-	// enough to hold the model. Check used to leave the zero-value Fit
-	// (FitCPUOnly, set before the switch below runs) in place for this case,
-	// which made an unrunnable model report the exact same "cpu_only" label
-	// as one that genuinely runs (slowly) on the CPU.
+
 	FitUnsupported FitType = "unsupported"
 )
 

@@ -8,9 +8,6 @@ import (
 	"sync"
 )
 
-// Platforms without the Linux/macOS kernel-pipe wrapper retain their native
-// post-start binding. This file keeps the package buildable without weakening
-// the explicitly supported Linux, macOS, and Windows paths.
 type fallbackCommandLifetime struct {
 	cleanup func()
 	once    sync.Once

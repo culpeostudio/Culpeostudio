@@ -1,3 +1,5 @@
+// Package settings serves the settings screen, system information and provider
+// connection tests.
 package settings
 
 import (
@@ -63,8 +65,6 @@ func (m *SettingsModule) handleUpdate(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Ungueltige Anfrage"})
 	}
 
-	// Reserves larger than the physical memory would permanently block every
-	// model start; reject those and warn about implausibly large values.
 	reserveWarnings, err := validateEngineReserves(c.UserContext(), body.EngineRAMReserveBytes, body.EngineGPUReserveBytes)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -96,10 +96,6 @@ func (m *SettingsModule) handleUpdate(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// validateEngineReserves checks requested engine memory reserves against the
-// physically installed RAM and VRAM. A reserve at or above the physical size
-// is rejected outright; a reserve above 80% returns a warning because barely
-// any budget would remain for models.
 func validateEngineReserves(ctx context.Context, ramReserve, gpuReserve *int64) ([]string, error) {
 	if ramReserve == nil && gpuReserve == nil {
 		return nil, nil

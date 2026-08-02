@@ -13,10 +13,6 @@ func (s *Service) publish(eventType string, payload interface{}) {
 	}
 }
 
-// renderInjectionPrompt assembles the context injection within an
-// approximate token budget. Sections are added whole; observations that no
-// longer fit are folded into one compact summary line instead of cutting a
-// sentence in half (soft truncation).
 func renderInjectionPrompt(query string, goals []string, summary *SessionSummary, memories []CompressedMemory, observations []Observation, budgetTokens int) string {
 	toolsLine := "Available memory tools: memory_search, memory_timeline, memory_get_observations"
 	remaining := budgetTokens - memorytoken.Estimate(toolsLine)
@@ -77,8 +73,6 @@ func renderInjectionPrompt(query string, goals []string, summary *SessionSummary
 	return strings.TrimSpace(strings.Join(sections, "\n"))
 }
 
-// summarizeOverflowObservation reduces an observation to its most compact
-// searchable hint (title or topic) for the condensed overflow line.
 func summarizeOverflowObservation(observation Observation) string {
 	if strings.TrimSpace(observation.Topic) != "" {
 		return previewText(observation.Topic, 60)
@@ -86,8 +80,6 @@ func summarizeOverflowObservation(observation Observation) string {
 	return previewText(fallbackTitle(observation.Title, observation.Type), 60)
 }
 
-// softTrim cuts text at a sentence boundary within the token budget instead
-// of mid-sentence; only if no boundary fits does it fall back to a word cut.
 func softTrim(text string, maxTokens int) string {
 	if memorytoken.Estimate(text) <= maxTokens {
 		return text

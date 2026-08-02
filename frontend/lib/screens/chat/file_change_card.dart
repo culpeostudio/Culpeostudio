@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/chat_aux_strings.dart';
 
-/// Aufklappbare Karte fuer eine Datei-Aenderung (file_changed): Kopf mit Pfad
-/// und Aktions-Badge, aufgeklappt der Unified-Diff mit Zeilen-Einfaerbung.
 class FileChangeCard extends StatefulWidget {
   const FileChangeCard({
     super.key,
@@ -146,7 +144,6 @@ class _FileChangeCardState extends State<FileChangeCard> {
     );
   }
 
-  /// Eine Zeile des Unified-Diffs mit Farbe je nach +/-/@-Prefix.
   Widget _buildDiffLine(String line) {
     Color color = Colors.white54;
     Color? background;

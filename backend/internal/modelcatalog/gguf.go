@@ -131,8 +131,7 @@ func parseGGUF(path string) (ggufResult, error) {
 				parameters *= int64(length)
 			}
 		}
-		// ggml type and data offset are required even though the catalog does
-		// not need to inspect tensor payloads.
+
 		var tensorType uint32
 		var offset uint64
 		if err := reader.read(&tensorType); err != nil {

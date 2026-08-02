@@ -11,14 +11,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// TestMarktplatzAPI_DownloadRejectsOversize stellt sicher, dass ein Download-
-// Request, der ein zu grosses Modell fuer den freien Speicherplatz
-// deklariert, mit 400 + Klartext abgewiesen wird. Frueher waere der Job als
-// "queued" angenommen worden und erst nach Schaeden einer halbherigen
-// Download-Datei gescheitert.
 func TestMarktplatzAPI_DownloadRejectsOversize(t *testing.T) {
 	restore := cacheHardwareProfileForTest(HardwareProfile{
-		DiskFreeBytes: 5 * 1024 * 1024 * 1024, // 5 GB frei
+		DiskFreeBytes: 5 * 1024 * 1024 * 1024,
 		Detected:      true,
 	})
 	defer restore()
@@ -36,7 +31,6 @@ func TestMarktplatzAPI_DownloadRejectsOversize(t *testing.T) {
 	api := app.Group("/api")
 	module.RegisterRoutes(api)
 
-	// 20 GB beantragt, nur 5 GB frei -> 400.
 	body := `{"provider":"huggingface","model_id":"org/big","size_bytes":21474836480}`
 	req := httptest.NewRequest("POST", "/api/marktplatz/download", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -60,12 +54,9 @@ func TestMarktplatzAPI_DownloadRejectsOversize(t *testing.T) {
 	}
 }
 
-// TestMarktplatzAPI_DownloadAcceptsUnknownSize ignoriert size_bytes == 0
-// (z.B. API-Modelle ohne echte Datei), so dass Backwards-Kompatibilität
-// fuer aeltere Clients gewaehrleistet bleibt.
 func TestMarktplatzAPI_DownloadAcceptsUnknownSize(t *testing.T) {
 	restore := cacheHardwareProfileForTest(HardwareProfile{
-		DiskFreeBytes: 1024, // winzig – wuerde jeden echten Download ablehnen
+		DiskFreeBytes: 1024,
 		Detected:      true,
 	})
 	defer restore()
@@ -86,7 +77,6 @@ func TestMarktplatzAPI_DownloadAcceptsUnknownSize(t *testing.T) {
 	api := app.Group("/api")
 	module.RegisterRoutes(api)
 
-	// OpenRouter-API-Deskriptor – kein size_bytes -> Pre-Check skipped.
 	body := `{"provider":"openrouter","model_id":"openai/gpt-4o"}`
 	req := httptest.NewRequest("POST", "/api/marktplatz/download", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -98,8 +88,6 @@ func TestMarktplatzAPI_DownloadAcceptsUnknownSize(t *testing.T) {
 		t.Fatalf("expected 200 for size-less download, got %d", resp.StatusCode)
 	}
 
-	// Aufräumen: wartet bis Job complete, so dass TempDir cleanup nicht
-	// an einer noch laufenden Goroutine haengt.
 	out := decodeJSONBody(t, resp.Body)
 	jobID, _ := out["job_id"].(string)
 	waitForJobCompletion(t, app, jobID, 2*time.Second)

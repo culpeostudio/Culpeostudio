@@ -13,9 +13,6 @@ import (
 	"github.com/fillyengine/backend/internal/hardware"
 )
 
-// inferenceSample captures one completed streaming request. Token counts are
-// approximated by emitted stream chunks, which matches OpenAI-style deltas
-// closely enough for a live throughput display.
 type inferenceSample struct {
 	CompletedAt     time.Time `json:"completed_at"`
 	DurationSeconds float64   `json:"duration_seconds"`
@@ -43,8 +40,6 @@ func (s *instanceInferenceStats) record(sample inferenceSample) {
 	s.totalTokens += int64(sample.OutputTokens)
 }
 
-// summary aggregates the retained samples into the JSON shape served by the
-// metrics endpoint.
 func (s *instanceInferenceStats) summary() map[string]interface{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -95,8 +90,7 @@ func (m *EngineModule) recordInferenceSample(instanceID string, start, firstToke
 	}
 	if !firstToken.IsZero() {
 		sample.TTFTSeconds = firstToken.Sub(start).Seconds()
-		// Throughput is more meaningful over the generation window (after the
-		// first token) than over the full request including prompt processing.
+
 		if generation := end.Sub(firstToken).Seconds(); generation > 0 {
 			sample.DurationSeconds = generation
 		}
@@ -120,9 +114,6 @@ func (m *EngineModule) inferenceStatsFor(instanceID string) *instanceInferenceSt
 	return m.inferenceStats[instanceID]
 }
 
-// instanceMetrics builds the live monitoring payload for one instance:
-// throughput from recent requests, process memory, the planned budget, and
-// the current host headroom.
 func (m *EngineModule) instanceMetrics(ctx context.Context, instance *EngineInstance) map[string]interface{} {
 	metrics := map[string]interface{}{
 		"instance_id":     instance.ID,
@@ -178,8 +169,6 @@ func (m *EngineModule) instanceMetrics(ctx context.Context, instance *EngineInst
 	return metrics
 }
 
-// instanceProcessRAM reports the resident memory of one worker process
-// (Linux only; other platforms return 0 and the field is omitted).
 func (m *EngineModule) instanceProcessRAM(instanceID string) int64 {
 	if m.supervisor == nil || runtime.GOOS != "linux" {
 		return 0

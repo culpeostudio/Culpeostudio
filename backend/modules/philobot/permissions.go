@@ -10,35 +10,24 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// Erlaubte Entscheidungen des Nutzers auf eine Permission-Anfrage.
 const (
-	permissionOnce    = "once"    // nur diesen einen Zugriff erlauben
-	permissionSession = "session" // Pfad/Ordner fuer den Rest des Tool-Loops freigeben
-	permissionDeny    = "deny"    // ablehnen (auch Timeout/Abbruch)
+	permissionOnce    = "once"
+	permissionSession = "session"
+	permissionDeny    = "deny"
 )
 
-// permissionAskTimeout begrenzt das Warten auf die Nutzer-Entscheidung, damit
-// ein verlassener Stream nicht ewig blockiert. Danach gilt automatisch "deny".
 const permissionAskTimeout = 3 * time.Minute
 
-// permissionRequest beschreibt eine ausstehende Erlaubnis-Anfrage: welches Tool
-// will auf welchen Pfad ausserhalb der freigegebenen Roots zugreifen.
 type permissionRequest struct {
 	ID   string
 	Tool string
 	Path string
 }
 
-// permissionAsker fragt den Nutzer um Erlaubnis. Als Interface, damit Tests
-// einen Fake einsetzen koennen; produktiv ist der permissionBroker dahinter.
 type permissionAsker interface {
 	Ask(ctx context.Context, req permissionRequest) string
 }
 
-// permissionBroker vermittelt zwischen dem blockierend wartenden Tool-Loop und
-// dem HTTP-Endpunkt, ueber den das Frontend die Entscheidung liefert. Ein
-// Broker gehoert zu genau einem laufenden Stream (Session) und wird danach
-// ueber Close() aufgeloest.
 type permissionBroker struct {
 	mu      sync.Mutex
 	pending map[string]chan string
@@ -49,8 +38,6 @@ func newPermissionBroker() *permissionBroker {
 	return &permissionBroker{pending: map[string]chan string{}}
 }
 
-// Ask registriert die Anfrage und blockiert, bis das Frontend antwortet, der
-// Kontext abbricht oder das Timeout zuschlaegt — in beiden Faellen gilt "deny".
 func (b *permissionBroker) Ask(ctx context.Context, req permissionRequest) string {
 	ch := make(chan string, 1)
 	b.mu.Lock()
@@ -80,8 +67,6 @@ func (b *permissionBroker) Ask(ctx context.Context, req permissionRequest) strin
 	}
 }
 
-// Respond loest eine wartende Anfrage aus. Liefert false, wenn die ID
-// unbekannt ist oder die Entscheidung ungueltig.
 func (b *permissionBroker) Respond(requestID, decision string) bool {
 	switch decision {
 	case permissionOnce, permissionSession, permissionDeny:
@@ -94,7 +79,7 @@ func (b *permissionBroker) Respond(requestID, decision string) bool {
 	if !ok {
 		return false
 	}
-	// Puffer 1: blockiert nie, auch wenn Ask schon per Timeout aufgegeben hat.
+
 	select {
 	case ch <- decision:
 	default:
@@ -102,8 +87,6 @@ func (b *permissionBroker) Respond(requestID, decision string) bool {
 	return true
 }
 
-// Close loest alle wartenden Anfragen mit "deny" auf und nimmt keine neuen
-// mehr an. Wird aufgerufen, wenn der zugehoerige Stream endet.
 func (b *permissionBroker) Close() {
 	b.mu.Lock()
 	if b.closed {
@@ -122,10 +105,6 @@ func (b *permissionBroker) Close() {
 	}
 }
 
-// handlePermissionResponse nimmt die Nutzer-Entscheidung entgegen und reicht
-// sie an den wartenden Tool-Loop weiter. Nutzt bewusst KEIN
-// acquireSessionMutation: der wartende Stream haelt diesen Lock bereits, ein
-// erneutes Erwerben wuerde deadlocken — die Broker-Map hat ihr eigenes Mutex.
 func (m *PhiloBotModule) handlePermissionResponse(c *fiber.Ctx) error {
 	var body struct {
 		SessionID string `json:"session_id"`

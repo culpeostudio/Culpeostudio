@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-// sessionStorage persistiert PhiloBot-Chatverlaeufe als JSON-Dateien, damit sie
-// einen Neustart ueberleben. Pro Session eine Datei <baseDir>/<id>.json. Die
-// Storage-Ebene ist zustandslos; die Serialisierung des Zugriffs uebernimmt die
-// Modul-Mutex. Ist baseDir leer, ist die Persistenz deaktiviert (z. B. Tests),
-// und PhiloBot arbeitet rein im Speicher weiter.
 type sessionStorage struct {
 	baseDir string
 }
@@ -37,9 +32,6 @@ func (s *sessionStorage) sessionPath(id string) string {
 	return filepath.Join(s.baseDir, id+".json")
 }
 
-// writeRaw schreibt eine bereits serialisierte Session atomar (temp + rename).
-// Das Marshalling passiert bewusst ausserhalb dieser Funktion unter der
-// Modul-Mutex, das eigentliche Schreiben ohne Lock.
 func (s *sessionStorage) writeRaw(id string, payload []byte) error {
 	if !s.enabled() {
 		return nil
@@ -62,8 +54,6 @@ func (s *sessionStorage) writeRaw(id string, payload []byte) error {
 	return nil
 }
 
-// LoadAll liest alle persistierten Sessions. Kaputte Einzeldateien werden
-// uebersprungen statt den Start zu blockieren.
 func (s *sessionStorage) LoadAll() ([]*philoBotSession, error) {
 	if !s.enabled() {
 		return nil, nil
@@ -90,7 +80,7 @@ func (s *sessionStorage) LoadAll() ([]*philoBotSession, error) {
 		if strings.TrimSpace(session.ID) == "" {
 			continue
 		}
-		session.MutationInFlight = false // transient, nie aus Persistenz uebernehmen
+		session.MutationInFlight = false
 		sessions = append(sessions, &session)
 	}
 	return sessions, nil
@@ -106,10 +96,6 @@ func (s *sessionStorage) Delete(id string) error {
 	return nil
 }
 
-// persistSession serialisiert eine Session unter der Mutex und schreibt sie
-// danach ohne Lock auf Platte. Aufrufer sind alle Mutationsstellen (Session
-// anlegen, Nachricht anhaengen). Fehler werden nur geloggt und blockieren den
-// Chat nie.
 func (m *PhiloBotModule) persistSession(sessionID string) {
 	if !m.storage.enabled() {
 		return
@@ -137,8 +123,6 @@ func (m *PhiloBotModule) persistSession(sessionID string) {
 	}
 }
 
-// philoBotSessionSummary ist die kompakte Ansicht eines Chatverlaufs fuer die
-// Verlauf-Liste im Frontend.
 type philoBotSessionSummary struct {
 	SessionID    string    `json:"session_id"`
 	Title        string    `json:"title"`
@@ -183,8 +167,6 @@ func summarizeSession(session *philoBotSession) philoBotSessionSummary {
 	}
 }
 
-// chatSessionTitle nimmt die erste Zeile eines Textes und kuerzt sie
-// runensicher auf max Zeichen.
 func chatSessionTitle(text string, max int) string {
 	line := strings.TrimSpace(text)
 	if idx := strings.IndexAny(line, "\r\n"); idx >= 0 {

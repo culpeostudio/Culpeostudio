@@ -21,12 +21,6 @@ import (
 	"github.com/fillyengine/backend/internal/thinking"
 )
 
-// streamProviderChat fuehrt eine Chat-Runde beim Provider aus. emit bekommt den
-// sichtbaren Antworttext. emitReasoning (optional) bekommt OpenRouters natives
-// "reasoning" Feld, sofern der Provider/das Modell es liefert; lokale Modelle
-// und Modelle ohne natives Reasoning-Feld schreiben einen Denkprozess (falls
-// vorhanden) stattdessen als <think> Block direkt in den Content-Strom — dafuer
-// muss der Aufrufer emit selbst mit einem thinkTagFilter umwickeln.
 func (m *PhiloBotModule) streamProviderChat(ctx context.Context, provider, modelID string, messages []chatMessage, systemPrompt, thinkingLevel string, emit func(string) error, emitReasoning func(string) error) (string, error) {
 	reasoning := thinking.ReasoningFor(thinking.Normalize(thinkingLevel))
 	if apimodels.NormalizeProvider(provider) == localinference.ProviderLocal {
@@ -83,10 +77,7 @@ func (m *PhiloBotModule) streamProviderChat(ctx context.Context, provider, model
 		"temperature": reasoning.Temperature,
 		"top_p":       reasoning.TopP,
 	}
-	// Native reasoning depth via OpenRouter's unified `reasoning` control. Only
-	// sent to OpenRouter and only when the level requests it; other providers
-	// (and non-reasoning models) fall back to the prompt instruction. OpenRouter
-	// tolerates the field for models that do not support it.
+
 	if apimodels.NormalizeProvider(provider) == apimodels.ProviderOpenRouter && reasoning.Effort != "" {
 		payload["reasoning"] = map[string]interface{}{"effort": reasoning.Effort}
 	}
@@ -152,10 +143,6 @@ func formatProviderError(provider string, statusCode int, body []byte) string {
 	return raw
 }
 
-// readOpenAIStream liest einen OpenAI-kompatiblen SSE-Stream. emit bekommt den
-// sichtbaren Antworttext, emitReasoning (optional) OpenRouters natives
-// "reasoning" Feld — getrennt vom Rueckgabewert, der weiterhin nur den
-// sichtbaren Text enthaelt (Denkprozess wird nicht persistiert).
 func readOpenAIStream(r io.Reader, emit func(string) error, emitReasoning func(string) error) (string, error) {
 	reader := bufio.NewReader(r)
 	var reply strings.Builder
@@ -203,7 +190,7 @@ func readOpenAIStream(r io.Reader, emit func(string) error, emitReasoning func(s
 				}
 			case bytes.HasPrefix(trimmedLine, []byte(":")),
 				bytes.HasPrefix(trimmedLine, []byte("event:")):
-				// Ignore comments and explicit event labels; we only need the data payload.
+
 			case bytes.HasPrefix(trimmedLine, []byte("data:")):
 				dataLine := bytes.TrimSpace(bytes.TrimPrefix(trimmedLine, []byte("data:")))
 				if len(dataLine) == 0 {
@@ -238,10 +225,6 @@ streamDone:
 	return reply.String(), nil
 }
 
-// openAIChunk trennt den sichtbaren Antworttext von OpenRouters nativem
-// "reasoning" Feld (strukturierter Denkprozess, getrennt vom Content-Feld
-// geliefert — im Gegensatz zu Modellen, die ihn als <think> Block direkt in
-// content schreiben).
 type openAIChunk struct {
 	Content   string
 	Reasoning string

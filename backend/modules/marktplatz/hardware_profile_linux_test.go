@@ -21,8 +21,7 @@ func TestDetectLinuxGPUFromSysfsReadsAMDNameAndVRAM(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Connector entries look similar to cards in a broad glob. They must not
-	// be treated as a second GPU.
+
 	if err := os.MkdirAll(filepath.Join(drm, "card1-DP-1"), 0o755); err != nil {
 		t.Fatal(err)
 	}

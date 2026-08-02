@@ -10,10 +10,6 @@ import (
 	"github.com/fillyengine/backend/internal/modelcatalog"
 )
 
-// TestDiagnosePlannerWithRealModels is a manual diagnosis helper: it runs the
-// real catalog scan + planner against the machine's actual hardware and model
-// directory and dumps every intermediate number. Enable with
-// ENGINE_DIAGNOSE_DIR=/path/to/models.
 func TestDiagnosePlannerWithRealModels(t *testing.T) {
 	dir := os.Getenv("ENGINE_DIAGNOSE_DIR")
 	if dir == "" {

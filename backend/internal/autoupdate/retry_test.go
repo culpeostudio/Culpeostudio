@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-// countingAssetServer serves payload but fails the first failures requests, so
-// tests can distinguish a retried download from an abandoned one.
 func countingAssetServer(t *testing.T, payload []byte, failures int32) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var requests atomic.Int32
@@ -78,8 +76,7 @@ func TestDownloadAssetGivesUpAfterRepeatedFailures(t *testing.T) {
 
 func TestDownloadAssetDoesNotRetryContentMismatch(t *testing.T) {
 	t.Parallel()
-	// A checksum mismatch means the server served something other than what the
-	// manifest promised. Retrying would only re-download the same wrong bytes.
+
 	server, requests := countingAssetServer(t, []byte("wrong payload"), 0)
 	client := testClient(t, server.URL)
 

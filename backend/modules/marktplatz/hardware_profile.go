@@ -31,25 +31,19 @@ type HardwareProfile struct {
 	CPUCores               int           `json:"cpu_cores,omitempty"`
 	HasAVX2                bool          `json:"has_avx2,omitempty"`
 	HasAVX512              bool          `json:"has_avx512,omitempty"`
-	// DiskFree ist eine menschenlesbare Form ("50 GB") fuer die UI.
+
 	DiskFree string `json:"disk_free,omitempty"`
-	// DiskFreeBytes ist die numerische Entsprechung in Bytes, so dass
-	// handleDownload ohne String-Parsing entscheiden kann, ob das Modell
-	// ueberhaupt auf das freie Volume passt (Pre-Check, der einen
-	// restlosen "queued" Job verhindert).
+
 	DiskFreeBytes   int64  `json:"disk_free_bytes,omitempty"`
 	Detected        bool   `json:"detected"`
 	DetectionSource string `json:"detection_source,omitempty"`
-	// Byte-genaue Felder werden von Marketplace, Settings und Engine gemeinsam
-	// genutzt. Die gerundeten GB-Felder bleiben fuer bestehende Clients erhalten.
+
 	RAMTotalBytes     int64                `json:"ram_total_bytes,omitempty"`
 	RAMAvailableBytes int64                `json:"ram_available_bytes,omitempty"`
 	CapturedAt        time.Time            `json:"captured_at,omitempty"`
 	EngineGPUs        []enginehardware.GPU `json:"engine_gpus,omitempty"`
 }
 
-// DetectedGPU exposes detailed detection for advanced users while the
-// marketplace itself continues to show only the one clear, best-fit summary.
 type DetectedGPU struct {
 	ID                  string  `json:"id,omitempty"`
 	Index               int     `json:"index,omitempty"`
@@ -88,15 +82,10 @@ func detectHardwareProfile() HardwareProfile {
 	return profile
 }
 
-// CurrentHardwareProfile is shared with settings so hardware appears where
-// users configure their installation, not in the marketplace workflow.
 func CurrentHardwareProfile() HardwareProfile { return detectHardwareProfile() }
 
 func detectHardwareProfileFresh() HardwareProfile {
-	// Die PhiloEngine-Systemerkennung liefert CPU-Feature- und
-	// Bandbreiten-Metadaten. Die Live-Speicherwerte stammen immer aus dem
-	// gemeinsamen Dienst, damit Marketplace, Settings und Engine dieselben IDs
-	// und Bytewerte sehen.
+
 	profile, philoEngineErr := detectHardwareProfileWithPhiloEngine()
 	if philoEngineErr != nil {
 		profile = HardwareProfile{}
@@ -412,9 +401,6 @@ func detectLinuxGPU() (string, int64) {
 	return "", 0
 }
 
-// detectLinuxGPUFromSysfs reads the kernel's DRM device information.  It is
-// preferred over lspci because the latter often reports recent AMD cards only
-// as a PCI device number and has no VRAM value at all (for example 1002:7550).
 func detectLinuxGPUFromSysfs(drmPath string) (string, int64) {
 	cards, err := filepath.Glob(filepath.Join(drmPath, "card[0-9]*"))
 	if err != nil {
@@ -472,10 +458,7 @@ func readIntFile(path string) int64 {
 }
 
 func linuxGPUName(vendor, deviceID string) string {
-	// PCI IDs are stable even while lspci databases lag behind new hardware.
-	// Keep named mappings only where the device ID identifies one marketed GPU;
-	// unknown cards still retain their vendor/device identity instead of being
-	// mislabelled as a similar model.
+
 	switch vendor {
 	case "0x1002":
 		switch deviceID {
@@ -628,10 +611,6 @@ func bytesToGiB(bytes int64) int {
 	return int((bytes + gib - 1) / gib)
 }
 
-// detectDiskFree ist die menschenlesbare Rueckgabe (compatibel mit
-// HardwareProfile.DiskFree).  Der byte-grosse Wert laeuft parallel ueber
-// detectDiskFreeBytes; auf Plattformen ohne df kann letzterer 0 liefern,
-// der String ist stabil fuer die UI.
 func detectDiskFree() string {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -648,7 +627,7 @@ func detectDiskFree() string {
 		if out, err := runCommand(2*time.Second, "powershell", "-NoProfile", "-Command", cmdText); err == nil {
 			val := strings.TrimSpace(out)
 			if val != "" {
-				// Replace comma with dot if present for standard decimal display
+
 				val = strings.ReplaceAll(val, ",", ".")
 				return val + " GB"
 			}
@@ -667,13 +646,6 @@ func detectDiskFree() string {
 	return "N/A"
 }
 
-// detectDiskFreeBytes liefert den freien Speicherplatz des Volumes des
-// Arbeits-Verzeichnisses in Bytes. Genutzt fuer den Pre-Check in
-// handleDownload, so dass ein zu grosser Download gar nicht erst als
-// "queued" Job landet (den der User spaeter nur abfeuern laesst). Wir
-// nutzen `golang.org/x/sys` nicht, so dass diePlattformpfle hier rein
-// sub-process-basiert laufen. Auf Plattformen ohne df/powershell
-// liefern wir 0 (= Check wird effektiv deaktiviert) statt zu schlagen.
 func detectDiskFreeBytes() int64 {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -686,16 +658,15 @@ func detectDiskFreeBytes() int64 {
 		if len(cwd) >= 2 && cwd[1] == ':' {
 			drive = string(cwd[0:2])
 		}
-		// FreeSpace ist in Bytes von CIM; keine 1GB-Konvertierung.
+
 		cmdText := fmt.Sprintf("(Get-CimInstance Win32_LogicalDisk -Filter 'DeviceID=''%s''').FreeSpace", drive)
 		out, err := runCommand(2*time.Second, "powershell", "-NoProfile", "-Command", cmdText)
 		if err != nil {
 			return 0
 		}
-		// stutze moegliche Dezimal-Kommata ab, dann parseInt64.
+
 		val := strings.ReplaceAll(strings.TrimSpace(out), ",", ".")
-		// Frei; bei floatalprefix geht ParseInt schief -> wir fangen durch
-		// strconv.ParseFloat anschliessend ab.
+
 		if val == "" {
 			return 0
 		}
@@ -707,8 +678,7 @@ func detectDiskFreeBytes() int64 {
 		}
 		return 0
 	case "linux", "darwin":
-		// df -k ist portabel (kilobyte-blocks) und leicht interpretierbar;
-		// expliziter als -h-String-Parsing. 4. Spalte = Available, 1KB.
+
 		out, err := runCommand(2*time.Second, "df", "-k", cwd)
 		if err != nil {
 			return 0
@@ -718,13 +688,12 @@ func detectDiskFreeBytes() int64 {
 			return 0
 		}
 		fields := strings.Fields(lines[1])
-		// Für df(1) sind die Spalten: Filesystem, 1K-blocks, Used, Available,
-		// Use%, Mounted-on.  Getriggern wir Available (Index 3).
+
 		if len(fields) < 4 {
 			return 0
 		}
 		if n, err := strconv.ParseInt(fields[3], 10, 64); err == nil && n > 0 {
-			return n * 1024 // 1K-Spalte -> Bytes
+			return n * 1024
 		}
 		return 0
 	default:

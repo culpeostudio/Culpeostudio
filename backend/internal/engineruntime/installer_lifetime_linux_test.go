@@ -19,9 +19,6 @@ const (
 	installerLifetimeHelperPIDFile = "PHILOENGINE_INSTALLER_LIFETIME_TEST_PID_FILE"
 )
 
-// TestInstallerLifetimeProcessTreeHelper is re-executed as the command behind
-// the shell-free lifetime wrapper. The child creates a grandchild in the same
-// process group so the parent test can prove pipe EOF kills the entire tree.
 func TestInstallerLifetimeProcessTreeHelper(t *testing.T) {
 	role := os.Getenv(installerLifetimeHelperRole)
 	if role == "" {
@@ -76,8 +73,7 @@ func TestInstallerLifetimeBarrierPreventsExecutionBeforeBind(t *testing.T) {
 		_ = cmd.Wait()
 		t.Fatalf("installer command crossed its pre-Bind barrier: %v", err)
 	}
-	// Ending the backend lifetime before Bind must fail closed without ever
-	// starting the serialized command.
+
 	lifetime.Cleanup()
 	waitDone := make(chan error, 1)
 	go func() { waitDone <- cmd.Wait() }()
@@ -131,8 +127,7 @@ func TestInstallerLifetimePipeEOFKillsChildAndGrandchild(t *testing.T) {
 	if !ok {
 		t.Fatalf("prepared lifetime type = %T", lifetime)
 	}
-	// Closing the backend-owned writer is the kernel-visible effect of abrupt
-	// backend termination. No explicit signal is sent from this test process.
+
 	if err := posixLifetime.writer.Close(); err != nil {
 		t.Fatal(err)
 	}

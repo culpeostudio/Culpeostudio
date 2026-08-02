@@ -1,5 +1,3 @@
-// Package engineplanner contains deterministic, side-effect-free memory and
-// context planning for one or more local model instances.
 package engineplanner
 
 import "fmt"
@@ -9,8 +7,6 @@ const (
 	GiB int64 = 1024 * MiB
 )
 
-// Confidence states whether a byte value came from a live measurement or an
-// architecture-based estimate.
 type Confidence string
 
 const (
@@ -18,8 +14,6 @@ const (
 	ConfidenceEstimated Confidence = "estimated"
 )
 
-// Priority controls weighted fair sharing after every instance received its
-// minimum viable context.
 type Priority string
 
 const (
@@ -28,8 +22,6 @@ const (
 	PriorityHigh   Priority = "high"
 )
 
-// PriorityWeight is intentionally small and stable because it is part of the
-// scheduler's externally visible behavior.
 func PriorityWeight(priority Priority) int {
 	switch priority {
 	case PriorityLow:
@@ -43,8 +35,6 @@ func PriorityWeight(priority Priority) int {
 	}
 }
 
-// KVCacheDType is a storage policy for the KV cache only. It never changes
-// the model's weight representation.
 type KVCacheDType string
 
 const (
@@ -55,10 +45,6 @@ const (
 	KVCacheFP32 KVCacheDType = "fp32"
 )
 
-// GPU describes a live device snapshot. AvailableBytes=nil means unavailable
-// measurement and falls back to TotalBytes; a non-nil zero means truly full.
-// UnifiedMemory devices are not added to the dedicated GPU budget, preventing
-// their memory from also being counted as system RAM.
 type GPU struct {
 	ID              string     `json:"id"`
 	Name            string     `json:"name,omitempty"`
@@ -70,7 +56,6 @@ type GPU struct {
 	Confidence      Confidence `json:"confidence,omitempty"`
 }
 
-// Hardware is the live planning snapshot. Swap is deliberately absent.
 type Hardware struct {
 	RAMTotalBytes      int64      `json:"ram_total_bytes"`
 	RAMAvailableBytes  *int64     `json:"ram_available_bytes,omitempty"`
@@ -79,19 +64,12 @@ type Hardware struct {
 	GPUs               []GPU      `json:"gpus,omitempty"`
 }
 
-// ReservePolicy overrides safety reserves. nil selects max(4 GiB, 15%) for
-// RAM and max(512 MiB, 10%) for every dedicated GPU. A pointer to zero is an
-// explicit expert choice and is not interpreted as auto.
 type ReservePolicy struct {
 	RAMBytes     *int64           `json:"ram_bytes,omitempty"`
 	GPUBytes     *int64           `json:"gpu_bytes,omitempty"`
 	GPUBytesByID map[string]int64 `json:"gpu_bytes_by_id,omitempty"`
 }
 
-// Model contains only the information needed for byte-exact KV calculation.
-// GlobalAttentionLayers is used for hybrid sliding-window architectures; the
-// remaining layers use SlidingWindow. With SlidingWindow=0 every layer is
-// global. WeightBytes always describes the unchanged on-disk weight format.
 type Model struct {
 	ID                    string     `json:"id"`
 	WeightBytes           int64      `json:"weight_bytes"`
@@ -105,9 +83,6 @@ type Model struct {
 	GlobalAttentionLayers int        `json:"global_attention_layers,omitempty"`
 }
 
-// Request describes one instance. nil RequestedContext means automatic up to
-// the model limit. CurrentContext is used only to detect restart changes and,
-// when Pinned, to reserve the current context unchanged.
 type Request struct {
 	InstanceID       string       `json:"instance_id"`
 	Model            Model        `json:"model"`
@@ -120,15 +95,12 @@ type Request struct {
 	Pinned           bool         `json:"pinned,omitempty"`
 	SelectedGPUIDs   []string     `json:"selected_gpu_ids,omitempty"`
 	ForceCPU         bool         `json:"force_cpu,omitempty"`
-	// WeightGPUBytes pins an expert GPU-layer split. nil lets the scheduler
-	// place unchanged weights automatically; zero deliberately keeps all
-	// weights in RAM.
+
 	WeightGPUBytes       *int64 `json:"weight_gpu_bytes,omitempty"`
 	AllowRAMOffload      *bool  `json:"allow_ram_offload,omitempty"`
 	RuntimeOverheadBytes *int64 `json:"runtime_overhead_bytes,omitempty"`
 }
 
-// MemoryAllocation is an exact placement for one component.
 type MemoryAllocation struct {
 	TotalBytes int64            `json:"total_bytes"`
 	GPUBytes   map[string]int64 `json:"gpu_bytes,omitempty"`
@@ -136,7 +108,6 @@ type MemoryAllocation struct {
 	Confidence Confidence       `json:"confidence"`
 }
 
-// ResourceBreakdown is designed for both an advanced UI and conflict logs.
 type ResourceBreakdown struct {
 	Weights MemoryAllocation `json:"weights"`
 	KVCache MemoryAllocation `json:"kv_cache"`
@@ -145,9 +116,6 @@ type ResourceBreakdown struct {
 	Total   MemoryAllocation `json:"total"`
 }
 
-// ContextPlan distinguishes hard, independent-capacity and globally allocated
-// context limits. RAMRequiredFromContext=nil means the model limit remains
-// GPU-only; zero means RAM is required before the first token can be cached.
 type ContextPlan struct {
 	InstanceID             string            `json:"instance_id"`
 	ModelLimit             int               `json:"model_limit"`
@@ -165,7 +133,6 @@ type ContextPlan struct {
 	Breakdown              ResourceBreakdown `json:"breakdown"`
 }
 
-// ConflictError reports a rejected plan before any external mutation occurs.
 type ConflictError struct {
 	InstanceID     string `json:"instance_id,omitempty"`
 	Resource       string `json:"resource"`

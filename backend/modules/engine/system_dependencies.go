@@ -59,9 +59,6 @@ type systemDependencyError struct {
 
 func (e *systemDependencyError) Error() string { return e.Message }
 
-// privilegedCommandRunner deliberately has no password or environment input.
-// Authentication belongs exclusively to the PolicyKit agent launched by
-// pkexec. Tests replace this boundary without running a package manager.
 type privilegedCommandRunner interface {
 	Run(context.Context, []string, io.Writer) error
 }
@@ -77,9 +74,7 @@ func (r *execPrivilegedCommandRunner) Run(ctx context.Context, argv []string, ou
 	if r.runner == nil {
 		r.runner = &engineruntime.ExecCommandRunner{}
 	}
-	// Do not accept or forward an app-controlled environment. The executable
-	// paths are absolute and PolicyKit exclusively owns authorization; no
-	// credential is accepted, stored, or forwarded by PhiloEngine.
+
 	return r.runner.Run(ctx, append([]string(nil), argv...), nil, output)
 }
 
@@ -130,8 +125,7 @@ func (m *EngineModule) handleVulkanDependencyInstall(c *fiber.Ctx) error {
 	if err := m.consumeSystemDependencyConsent(strings.TrimSpace(request.ConsentToken), engineRequestUserID(c)); err != nil {
 		return writeSystemDependencyError(c, err)
 	}
-	// The token has already been consumed at this point. Every validation or
-	// execution failure below therefore requires fresh, visible user consent.
+
 	if request.Acknowledgement != vulkanConsentAcknowledgement {
 		return writeSystemDependencyError(c, &systemDependencyError{
 			Code: "dependency_consent_acknowledgement_required", Message: "Die ausdrueckliche Zustimmung zur Installation der Vulkan-Build-Abhaengigkeiten fehlt.", HTTPStatus: fiber.StatusBadRequest,
@@ -175,8 +169,7 @@ func (m *EngineModule) consumeSystemDependencyConsent(token, userID string) erro
 	m.dependencyConsentMu.Lock()
 	consent, exists := m.dependencyConsents[token]
 	if exists {
-		// Delete before any comparison or command start: the token can never be
-		// replayed, including after cancellation, expiry, or a failed prompt.
+
 		delete(m.dependencyConsents, token)
 	}
 	m.dependencyConsentMu.Unlock()

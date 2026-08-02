@@ -11,11 +11,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// TestMarktplatzAPI_DownloadDedupReturnsExistingJob stellt sicher, dass ein
-// zweiter Download-Request fuer dasselbe (provider, model_id) nicht einen
-// zweiten Job anlegt, sondern den aktiven existierenden referenziert.
-// Frueher starteten beide Res anfragen eigene Goroutinen; jetzt bekommt der
-// Client denselben job_id und das Flag `existing: true`.
 func TestMarktplatzAPI_DownloadDedupReturnsExistingJob(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.json")
@@ -71,10 +66,5 @@ func TestMarktplatzAPI_DownloadDedupReturnsExistingJob(t *testing.T) {
 		t.Fatalf("expected explanatory message on dedup response")
 	}
 
-	// Backend-Race-Vermeidung: die im Hintergrund gestartete
-	// runDownloadJob-Goroutine wuerde nach Test-Ende noch in
-	// download_jobs.json schreiben und t.TempDir cleanup blockieren
-	// ("directory not empty"). Wir warten explizit, bis der Job done/failed
-	// ist, so dass die Goroutine sauber terminiert.
 	waitForJobCompletion(t, app, jobID1, 2*time.Second)
 }

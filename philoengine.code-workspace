@@ -3,9 +3,7 @@
     { "name": "Backend", "path": "backend" },
     { "name": "Frontend", "path": "frontend" }
   ],
-  "settings": {
-    "//": "SDK-Pfade bewusst nicht gesetzt: VS Code findet Go und Flutter ueber PATH. Wer eigene Installationspfade braucht, traegt sie lokal in .vscode/settings.json ein (git-ignoriert)."
-  },
+  "settings": {},
   "extensions": {
     "recommendations": ["golang.go", "dart-code.dart-code", "dart-code.flutter"]
   },

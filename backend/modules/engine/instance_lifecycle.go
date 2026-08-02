@@ -144,10 +144,7 @@ func (m *EngineModule) scheduleStartForModel(instanceID, targetModelID string, c
 		m.mu.RUnlock()
 		return nil, os.ErrNotExist
 	}
-	// ensure-ready must make its ready check under the same scheduling mutex as
-	// operation deduplication. Otherwise a worker can become ready between the
-	// caller's optimistic read and this critical section, causing an unnecessary
-	// restart immediately after a successful warmup.
+
 	if operationType == "ensure_ready" && instance.State == engineruntime.StateReady && strings.TrimSpace(instance.BaseURL) != "" && strings.TrimSpace(instance.WorkerSecret) != "" {
 		m.mu.RUnlock()
 		return nil, nil

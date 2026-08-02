@@ -31,18 +31,10 @@ const (
 	InstallCanceled InstallStatus = "canceled"
 )
 
-// CommandRunner exists both for tests and for alternative process isolation.
-// Argv always contains executable at index zero; implementations must not join
-// it into a shell command.
 type CommandRunner interface {
 	Run(ctx context.Context, argv []string, environment []string, output io.Writer) error
 }
 
-// SpawnAdmission serializes the last instant before a process is released with
-// host-pressure and shutdown transitions. The returned release function is
-// called after the process has been attached to its lifetime supervisor (or on
-// every failure path). Platform launch barriers ensure installer code cannot
-// run before that attachment is complete.
 type SpawnAdmission func(context.Context) (func(), error)
 
 type ExecCommandRunner struct {
@@ -70,8 +62,7 @@ func (r *ExecCommandRunner) Run(ctx context.Context, argv []string, environment 
 	cmd.Env = append([]string(nil), environment...)
 	cmd.Stdout = output
 	cmd.Stderr = output
-	// A compiler/pip child can inherit these pipes and outlive its launcher.
-	// Bound Wait so an abnormal launcher exit cannot strand the installer.
+
 	cmd.WaitDelay = 500 * time.Millisecond
 	configureProcessGroup(cmd)
 	lifetime, err := prepareCommandLifetime(cmd)
@@ -102,25 +93,20 @@ func (r *ExecCommandRunner) Run(ctx context.Context, argv []string, environment 
 		return err
 	}
 	if err := lifetime.Bind(cmd); err != nil {
-		// Closing the prepared lifetime first is important on Windows: the
-		// process is still suspended and the Job Object is the fail-closed way
-		// to terminate it when assignment or resume fails.
+
 		lifetime.Cleanup()
 		_ = signalProcessGroup(cmd, true)
 		_ = cmd.Wait()
 		releaseSpawn()
 		return fmt.Errorf("bind installer process lifetime: %w", err)
 	}
-	// POSIX Bind releases the wrapper's one-byte start barrier. Windows Bind
-	// assigns the suspended process to its kill-on-close Job Object and only
-	// then resumes it. Admission remains held through that exact boundary.
+
 	releaseSpawn()
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 	select {
 	case err := <-done:
-		// The monitored command is complete. Kill any background descendants
-		// which retained installer pipes or allocations before returning.
+
 		_ = signalProcessGroup(cmd, true)
 		return err
 	case <-ctx.Done():
@@ -145,9 +131,7 @@ type InstallJobSnapshot struct {
 	EnvironmentPath string        `json:"environment_path"`
 	Status          InstallStatus `json:"status"`
 	Phase           InstallStatus `json:"phase"`
-	// Progress is a best-effort 0..1 value across the whole install. During
-	// package installation it advances with parsed pip output so long builds
-	// are visibly alive instead of sitting at one static value.
+
 	Progress      float64    `json:"progress"`
 	Message       string     `json:"message,omitempty"`
 	DetailMessage string     `json:"detail_message,omitempty"`
@@ -178,15 +162,11 @@ type InstallJob struct {
 	cancel          context.CancelFunc
 	done            chan struct{}
 	doneOnce        sync.Once
-	// pipCollected counts pip "Collecting <pkg>" lines; pipProgress is the
-	// derived 0..1 progress within the package-install phase.
+
 	pipCollected int
 	pipProgress  float64
 }
 
-// observePipLine updates the in-phase progress estimate from one line of pip
-// output. Dependency counts are unknown up front, so collected packages feed
-// an asymptotic estimate; the explicit install/finish markers pin the end.
 func (j *InstallJob) observePipLine(line string) {
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" {
@@ -215,8 +195,6 @@ func (j *InstallJob) observePipLine(line string) {
 	}
 }
 
-// progressLocked maps the install status plus in-phase pip progress onto one
-// 0..1 scale. Callers must hold j.mu.
 func (j *InstallJob) progressLocked() float64 {
 	switch j.status {
 	case InstallQueued:
@@ -233,8 +211,6 @@ func (j *InstallJob) progressLocked() float64 {
 	return 0
 }
 
-// lineSplittingWriter tees process output into the job log while feeding
-// complete lines (\n or \r separated) to a parser callback.
 type lineSplittingWriter struct {
 	output  io.Writer
 	observe func(string)
@@ -259,8 +235,7 @@ func (w *lineSplittingWriter) Write(p []byte) (int, error) {
 		w.buffer = w.buffer[index+1:]
 		w.observe(line)
 	}
-	// A pathological process writing one endless line must not grow the
-	// buffer without bound; the log RingBuffer keeps the raw output anyway.
+
 	if len(w.buffer) > 8192 {
 		w.buffer = w.buffer[len(w.buffer)-8192:]
 	}
@@ -367,8 +342,6 @@ type Installer struct {
 	closed      bool
 }
 
-// NewInstaller stores every runtime/version/digest in a separate virtual
-// environment below root. python should be an absolute path in production.
 func NewInstaller(root, python string, runner CommandRunner) (*Installer, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, errors.New("runtime environment root is required")
@@ -388,16 +361,11 @@ func NewInstaller(root, python string, runner CommandRunner) (*Installer, error)
 		jobsByKey:   make(map[string]*InstallJob),
 		installSlot: make(chan struct{}, 1),
 	}
-	// A crashed server can leave multi-gigabyte staging or backup directories
-	// behind. No jobs exist yet on this installer, so sweeping is safe here.
+
 	installer.SweepStaleArtifacts()
 	return installer, nil
 }
 
-// SweepStaleArtifacts removes leftover ".staging-*" build directories and
-// ".previous" quarantine copies below the environment root. Normal shutdowns
-// clean these via defer; this handles hard crashes and power loss. Returns the
-// number of removed directories.
 func (i *Installer) SweepStaleArtifacts() int {
 	removed := 0
 	kinds, err := os.ReadDir(i.root)
@@ -438,18 +406,12 @@ func (i *Installer) SweepStaleArtifacts() int {
 	return removed
 }
 
-// minimumInstallFreeBytes is the proactive lower bound checked before a
-// runtime installation starts. Large runtimes (PyTorch with CUDA) exceed 4 GB
-// on disk, and running out of space mid-install leaves a broken venv behind.
 const minimumInstallFreeBytes int64 = 5 << 30
 
 func formatGiB(bytes int64) string {
 	return fmt.Sprintf("%.1f GB", float64(bytes)/float64(1<<30))
 }
 
-// SetSpawnAdmission wires the engine's atomic pressure/shutdown gate into the
-// production command runner. Custom test/isolation runners may implement the
-// same setter when they create operating-system processes themselves.
 func (i *Installer) SetSpawnAdmission(admission SpawnAdmission) {
 	i.mu.RLock()
 	runner := i.runner
@@ -459,8 +421,6 @@ func (i *Installer) SetSpawnAdmission(admission SpawnAdmission) {
 	}
 }
 
-// Start is non-blocking and deduplicates active and successful jobs by the full
-// recipe digest. Failed or canceled recipes may be retried with a new job.
 func (i *Installer) Start(recipe Recipe) (*InstallJob, error) {
 	digest, err := recipe.Digest()
 	if err != nil {
@@ -531,9 +491,6 @@ func (i *Installer) Jobs() []InstallJobSnapshot {
 	return result
 }
 
-// Latest returns the newest known job for the exact content-addressed recipe.
-// Callers can use this to avoid repeating a known-expensive failed GPU build
-// automatically while still allowing an explicit Start call to retry it.
 func (i *Installer) Latest(recipe Recipe) (InstallJobSnapshot, bool) {
 	digest, err := recipe.Digest()
 	if err != nil {
@@ -563,10 +520,6 @@ func (i *Installer) Cancel(id string) error {
 	return nil
 }
 
-// CancelContext cancels an installer process group and does not return until
-// the runner has acknowledged termination (or the caller's confirmation
-// deadline expires). This is used by the resource guard before it considers a
-// memory-consuming runtime build paused.
 func (i *Installer) CancelContext(ctx context.Context, id string) (InstallJobSnapshot, error) {
 	i.mu.RLock()
 	job := i.jobs[id]
@@ -586,9 +539,6 @@ func (i *Installer) Close() {
 	_ = i.CloseContext(ctx)
 }
 
-// CloseContext cancels every queued/running build and waits for its process
-// group to exit. This keeps pip, CMake, and compiler children from surviving
-// backend shutdown while allowing the caller to impose its global deadline.
 func (i *Installer) CloseContext(ctx context.Context) error {
 	i.mu.Lock()
 	i.closed = true
@@ -616,8 +566,7 @@ func (i *Installer) run(ctx context.Context, job *InstallJob) {
 		job.setStatus(InstallReady, nil, true)
 		return
 	}
-	// Python build/install jobs are intentionally serialized. Native wheel builds
-	// can otherwise consume all RAM/CPU and race over shared pip caches.
+
 	select {
 	case i.installSlot <- struct{}{}:
 		defer func() { <-i.installSlot }()
@@ -631,8 +580,7 @@ func (i *Installer) run(ctx context.Context, job *InstallJob) {
 		job.setStatus(InstallFailed, err, true)
 		return
 	}
-	// Fail fast on low disk space: running out mid-download leaves a broken
-	// venv behind and wastes many minutes of the user's time.
+
 	if free, err := freeDiskBytes(parent); err == nil && free >= 0 && free < minimumInstallFreeBytes {
 		job.failCommand(InstallCreating, "disk_full", fmt.Sprintf(
 			"Mindestens %s freier Speicherplatz sind fuer die Runtime-Installation erforderlich. Aktuell verfuegbar: %s. Bitte Speicherplatz freigeben und erneut versuchen.",
@@ -644,8 +592,7 @@ func (i *Installer) run(ctx context.Context, job *InstallJob) {
 		job.setStatus(InstallFailed, err, true)
 		return
 	}
-	// Cleanup must run under all circumstances (error, cancel, panic) so no
-	// multi-gigabyte staging directory outlives its job within this process.
+
 	defer func() { _ = os.RemoveAll(staging) }()
 
 	env := mergeEnvironment(sanitizedInstallerEnvironment(), job.recipe.Environment)
@@ -655,11 +602,6 @@ func (i *Installer) run(ctx context.Context, job *InstallJob) {
 		return
 	}
 
-	// llama-cpp-python ships no prebuilt wheels on PyPI, so pip always compiles
-	// it. Without CMake or a compiler that build dies after many minutes with a
-	// cryptic log; checking up front turns that into an immediate, actionable
-	// message. Only real subprocess runners build anything, so fake runners in
-	// tests are exempt.
 	if _, isExec := i.runner.(*ExecCommandRunner); isExec && job.recipe.Runtime == RuntimeLlamaCPP {
 		if err := checkNativeBuildTools(); err != nil {
 			job.failCommand(InstallPackages, "compiler_missing", err.Error())
@@ -853,8 +795,6 @@ func installDetailMessage(phase InstallStatus, logText string) string {
 	}
 }
 
-// pipDownloadPattern extracts package name and size from pip's
-// "Downloading torch-2.13.0-cp312-...whl (899.1 MB)" lines.
 var pipDownloadPattern = regexp.MustCompile(`(?i)downloading\s+([a-zA-Z0-9_.]+?)-\d[^\s]*\s*\(([^)]+)\)`)
 
 func friendlyInstallLogDetail(detail string) string {

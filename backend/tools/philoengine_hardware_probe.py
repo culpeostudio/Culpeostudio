@@ -42,7 +42,7 @@ def main() -> int:
                 for gpu in hardware.gpus
             ],
         }
-    except Exception as exc:  # The Go caller falls back to its local probe.
+    except Exception as exc:
         payload = {"error": f"{type(exc).__name__}: {exc}"}
 
     json.dump(payload, sys.stdout, separators=(",", ":"))

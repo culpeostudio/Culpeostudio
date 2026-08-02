@@ -45,9 +45,7 @@ func (m *EngineModule) scheduleStop(instanceID string) (*EngineOperation, error)
 		m.setInstanceState(instanceID, engineruntime.StateDraining, 0.2, "")
 		stopCtx, cancel := context.WithTimeout(ctx, 32*time.Second)
 		err = m.waitForInstanceDrain(stopCtx, instanceID)
-		// Even when draining consumed the deadline, an expired context makes
-		// Supervisor.Stop force-kill immediately and wait for its watcher. The
-		// instance is released only after that terminal snapshot is confirmed.
+
 		if err == nil || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			err = m.stopSupervisorConfirmed(stopCtx, instanceID)
 		}

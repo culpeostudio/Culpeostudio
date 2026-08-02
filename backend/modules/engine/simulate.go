@@ -10,16 +10,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// simulateModelEntry is one requested model in a parallel-load simulation.
 type simulateModelEntry struct {
 	ModelID string        `json:"model_id"`
 	Config  *EngineConfig `json:"config,omitempty"`
 }
 
-// handleSimulateParallelLoad answers "would these models fit together?"
-// without starting anything: the same byte-exact planner used for real starts
-// runs against the live hardware snapshot and reports per-model plans,
-// totals, and actionable recommendations.
 func (m *EngineModule) handleSimulateParallelLoad(c *fiber.Ctx) error {
 	var body struct {
 		Models         []simulateModelEntry `json:"models"`
@@ -45,7 +40,6 @@ func (m *EngineModule) simulateParallelLoad(ctx context.Context, entries []simul
 	warningsByID := map[string][]string{}
 	nameByID := map[string]string{}
 
-	// Running instances keep holding their budget unless explicitly excluded.
 	if includeRunning {
 		m.mu.RLock()
 		for _, existing := range m.instances {
@@ -183,7 +177,6 @@ func (m *EngineModule) simulateParallelLoad(ctx context.Context, entries []simul
 		modelResults = append(modelResults, entry)
 	}
 
-	// Running instances whose context the simulation would shrink.
 	affected := []string{}
 	if includeRunning {
 		m.mu.RLock()

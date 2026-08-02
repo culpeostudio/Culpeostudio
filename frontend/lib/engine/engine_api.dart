@@ -37,7 +37,6 @@ abstract interface class EngineApi {
 
   Future<List<ModelRecord>> rescanEngineModels();
 
-  /// Deletes the selected local model and its catalogued files.
   Future<List<ModelRecord>> deleteEngineModel(String modelId);
 
   Future<EngineCapabilities> getEngineCapabilities();
@@ -71,7 +70,6 @@ abstract interface class EngineApi {
 
   Future<EngineEnsureReadyResult> ensureEngineInstanceReady(String instanceId);
 
-  /// Authenticated server-sent events for immediate engine state changes.
   Stream<EngineStreamEvent> streamEngineEvents();
 
   Future<EngineMutationResult> updateEngineInstance(

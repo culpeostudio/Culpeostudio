@@ -4,13 +4,13 @@ package fillyengine;
 
 option go_package = "github.com/fillyengine/backend/proto";
 
-// ══════════════════════════════════════════════════════════
-// FillyEngine gRPC Service
-// Wird parallel zum REST/Fiber Server betrieben.
-// Geeignet für Streaming (Chat, Training-Progress, Downloads).
-// ══════════════════════════════════════════════════════════
 
-// ── Engine Service ──────────────────────────────────────
+
+
+
+
+
+
 
 service EngineService {
   rpc StartEngine(StartEngineRequest) returns (EngineStatus);
@@ -49,12 +49,12 @@ message ModelInfo {
   int64 size_bytes = 4;
 }
 
-// ── Chat Service ────────────────────────────────────────
+
 
 service ChatService {
   rpc CreateSession(CreateSessionRequest) returns (SessionInfo);
   rpc SendMessage(ChatMessageRequest) returns (ChatMessageResponse);
-  // Server-Streaming für Token-für-Token Antworten
+
   rpc StreamMessage(ChatMessageRequest) returns (stream ChatToken);
   rpc GetHistory(SessionRequest) returns (ChatHistory);
 }
@@ -100,14 +100,14 @@ message ChatEntry {
   int64 timestamp = 3;
 }
 
-// ── Training Service ────────────────────────────────────
+
 
 service TrainingService {
   rpc StartTraining(TrainingRequest) returns (JobInfo);
   rpc GetJobStatus(JobRequest) returns (JobStatus);
   rpc ListJobs(Empty) returns (JobList);
   rpc CancelJob(JobRequest) returns (JobStatus);
-  // Server-Streaming für Live-Training-Metriken
+
   rpc StreamProgress(JobRequest) returns (stream TrainingMetrics);
 }
 
@@ -145,14 +145,14 @@ message TrainingMetrics {
   int32 progress_percent = 5;
 }
 
-// ── Quantization Service ────────────────────────────────
+
 
 service QuantizationService {
   rpc StartQuantization(QuantRequest) returns (JobInfo);
   rpc GetJobStatus(JobRequest) returns (JobStatus);
   rpc ListJobs(Empty) returns (JobList);
   rpc GetAvailableTypes(Empty) returns (QuantTypes);
-  // Streaming Progress
+
   rpc StreamProgress(JobRequest) returns (stream QuantProgress);
 }
 
@@ -172,13 +172,13 @@ message QuantProgress {
   string current_step = 3;
 }
 
-// ── Marktplatz Service ──────────────────────────────────
+
 
 service MarktplatzService {
   rpc Search(SearchRequest) returns (SearchResponse);
   rpc GetModelDetail(ModelDetailRequest) returns (ModelDetail);
   rpc Download(DownloadRequest) returns (JobInfo);
-  // Streaming Download-Progress
+
   rpc StreamDownloadProgress(JobRequest) returns (stream DownloadProgress);
 }
 
@@ -221,7 +221,7 @@ message DownloadProgress {
   string status = 5;
 }
 
-// ── Skills Service ─────────────────────────────────────
+
 
 service SkillsService {
   rpc ListSkills(Empty) returns (SkillListResponse);
@@ -285,66 +285,66 @@ message SkillFileSummary {
   bool has_assets = 5;
 }
 
-// ── Shared ──────────────────────────────────────────────
+
 
 message Empty {}
 
-// ════════════════════════════════════════════════════════════════════════════
-// Philox Agentic Service (für PhiloBot gRPC Calls)
-// ═══════════════════════════════════════════════════════════════════════════
+
+
+
 
 service PhiloxAgenticService {
-  // Agentic Execution mit Streaming (Tools, Planning, File-Ops)
+
   rpc ExecuteAgentic(AgenticRequest) returns (stream AgenticResponse);
 
-  // Planning Phase nur (für Approval-Flow)
+
   rpc PlanAgentic(AgenticRequest) returns (stream AgenticResponse);
 
-  // Verfügbare Tools für Frontend
+
   rpc ListTools(Empty) returns (ToolList);
 }
 
 message AgenticRequest {
-  string session_id = 1;              // Format: "chat-{uuid}"
+  string session_id = 1;
   string user_message = 2;
-  string thinking_level = 3;          // "agentic"
-  string mode = 4;                    // "planning" | "execute"
-  repeated string allowed_roots = 5;  // z.B. ["data/workspace"]
-  map<string, string> context = 6;    // Memory-Context, Bot-Config, etc.
+  string thinking_level = 3;
+  string mode = 4;
+  repeated string allowed_roots = 5;
+  map<string, string> context = 6;
 }
 
 message AgenticResponse {
   enum Type {
-    TEXT_DELTA = 0;           // Streaming Text-Chunk
-    TOOL_START = 1;           // Tool wird aufgerufen
-    TOOL_RESULT = 2;          // Tool-Ergebnis
-    PLANNING_QUESTIONS = 3;   // Rückfragen vom Planner
-    PLAN_READY = 4;           // Plan zur Genehmigung fertig
-    APPROVAL_NEEDED = 5;      // User-Approval erforderlich
-    COMPRESSION_EVENT = 6;    // Memory komprimiert
-    ERROR = 7;                // Fehler
-    DONE = 8;                 // Stream Ende
+    TEXT_DELTA = 0;
+    TOOL_START = 1;
+    TOOL_RESULT = 2;
+    PLANNING_QUESTIONS = 3;
+    PLAN_READY = 4;
+    APPROVAL_NEEDED = 5;
+    COMPRESSION_EVENT = 6;
+    ERROR = 7;
+    DONE = 8;
   }
   Type type = 1;
-  string text = 2;                    // Für TEXT_DELTA
-  ToolCall tool_call = 3;             // Für TOOL_START/RESULT
-  PlanningState planning = 4;         // Für PLANNING_*
-  CompressionEvent compression = 5;   // Für COMPRESSION_EVENT
-  string error = 6;                   // Für ERROR
-  bool done = 7;                      // Für DONE
+  string text = 2;
+  ToolCall tool_call = 3;
+  PlanningState planning = 4;
+  CompressionEvent compression = 5;
+  string error = 6;
+  bool done = 7;
 }
 
 message ToolCall {
   string id = 1;
   string name = 2;
-  string arguments = 3;               // JSON String
+  string arguments = 3;
   string result_preview = 4;
   bool success = 5;
   string error = 6;
 }
 
 message PlanningState {
-  string status = 1;                  // "needs_answers" | "ready" | "approved"
+  string status = 1;
   repeated PlanningQuestion questions = 2;
   string plan_summary = 3;
   repeated string steps = 4;

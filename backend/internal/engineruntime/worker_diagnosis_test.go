@@ -135,13 +135,11 @@ func TestSummarizeWorkerExitEmbedsMarker(t *testing.T) {
 }
 
 func TestLlamaBufferAllocationIsNotMisreadAsOOM(t *testing.T) {
-	// llama.cpp emits "failed to allocate buffer" for KV-cache type
-	// incompatibilities too. Misreading it as OOM skipped the q4_0->f16
-	// fallback and made previously working models unstartable.
+
 	if diagnosis, ok := DiagnoseWorkerOutput("llama_kv_cache_init: failed to allocate buffer for kv cache"); ok {
 		t.Fatalf("ambiguous llama.cpp alloc line must stay undiagnosed, got %+v", diagnosis)
 	}
-	// Real OOM markers still match.
+
 	if diagnosis, ok := DiagnoseWorkerOutput("ggml_aligned_malloc: insufficient memory (attempted to allocate 24576 MB)"); !ok || diagnosis.Code != "ram_out_of_memory" {
 		t.Fatalf("insufficient memory must map to ram_out_of_memory, got %+v ok=%v", diagnosis, ok)
 	}

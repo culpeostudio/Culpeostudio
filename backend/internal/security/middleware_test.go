@@ -101,7 +101,6 @@ func TestVerifyUserTokenHMAC(t *testing.T) {
 	masterLong := "a-very-long-master-api-token-that-is-secure"
 	userID := "bob"
 
-	// 1. Short key (plaintext fallback)
 	if !VerifyUserToken(masterShort, "secret-key", userID) {
 		t.Errorf("expected short key plaintext match to succeed")
 	}
@@ -109,7 +108,6 @@ func TestVerifyUserTokenHMAC(t *testing.T) {
 		t.Errorf("expected short key wrong plaintext to fail")
 	}
 
-	// 2. Long key (HMAC enforced)
 	if VerifyUserToken(masterLong, masterLong, userID) {
 		t.Errorf("expected long key plaintext to be rejected")
 	}
@@ -135,7 +133,6 @@ func TestBearerAuthEnforcesHMAC(t *testing.T) {
 		return c.SendString(userID)
 	})
 
-	// Plaintext query should be rejected
 	req1 := httptest.NewRequest("GET", "/", nil)
 	req1.Header.Set("Authorization", "Bearer "+masterLong+":bob")
 	resp1, err := app.Test(req1)
@@ -146,7 +143,6 @@ func TestBearerAuthEnforcesHMAC(t *testing.T) {
 		t.Errorf("expected plaintext token with long key to be rejected, got %d", resp1.StatusCode)
 	}
 
-	// HMAC query should be accepted
 	mac := hmac.New(sha256.New, []byte(masterLong))
 	mac.Write([]byte("bob"))
 	correctHMAC := hex.EncodeToString(mac.Sum(nil))
@@ -197,7 +193,6 @@ func TestRateLimiterJanitorPruning(t *testing.T) {
 		t.Fatalf("expected bucket to be populated, found none")
 	}
 
-	// Wait for janitor to run (tick is 20ms)
 	time.Sleep(50 * time.Millisecond)
 
 	rl.mu.Lock()

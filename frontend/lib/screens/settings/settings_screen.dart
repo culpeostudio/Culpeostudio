@@ -30,13 +30,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, String> _shortcuts = {};
   int _selectedSectionIndex = 0;
 
-  // Settings Controllers
   final _modelDirController = TextEditingController();
   final _hfTokenController = TextEditingController();
   final _openRouterTokenController = TextEditingController();
   final _featherlessTokenController = TextEditingController();
 
-  // API Url Config
   final _apiUrlController = TextEditingController();
 
   bool _isLoading = false;
@@ -50,10 +48,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isSkillsLoading = false;
   List<Map<String, dynamic>> _skills = [];
 
-  // System Info
   Map<String, dynamic> _systemInfo = {};
 
-  // Provider health check states
   final Map<String, String> _providerHealthStatus = {
     'huggingface': 'checking',
     'openrouter': 'checking',
@@ -67,7 +63,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'backend': '',
   };
 
-  // Custom user API nodes
   List<Map<String, dynamic>> _customNodes = [];
 
   Future<void> _loadCustomNodes() async {
@@ -84,9 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           });
         }
       }
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
   }
 
   Future<void> _saveCustomNodes() async {
@@ -96,9 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await file.parent.create(recursive: true);
       }
       await file.writeAsString(jsonEncode(_customNodes));
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
   }
 
   Future<void> _checkAllProviders() async {
@@ -212,9 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
   }
 
   @override
@@ -371,10 +360,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSettings() async {
     setState(() => _isSaving = true);
 
-    // Update API Endpoint URL
     _api.baseUrl = _apiUrlController.text.trim();
 
-    // Update settings in database
     final res = await _api.updateSettings(
       modelDir: _modelDirController.text.trim().isNotEmpty
           ? _modelDirController.text.trim()
@@ -406,7 +393,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _openRouterTokenController.clear();
         _featherlessTokenController.clear();
 
-        // Sync to AppState
         final appState = AppState();
         appState.updateShortcutsMap(_shortcuts);
 
@@ -422,14 +408,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left side: Active Settings Section
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _buildActiveSection(),
           ),
           const SizedBox(width: 24),
-          // Right side: Vertical selection menu
+
           _buildRightNavigationMenu(),
         ],
       ),
@@ -875,9 +860,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Sprach- und Frontend-Versionswahl. The authenticated profile is the
-  /// source of truth; AppState updates the controls only after a successful
-  /// server response and exposes a retry path on failure.
   Widget _buildAppearanceSettings() {
     InputDecoration dropdownDecoration() => InputDecoration(
       filled: true,
@@ -1024,8 +1006,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Expanded/Flexible, damit die Ueberschrift bei schmalem Fenster
-              // schrumpfen kann, statt die Zeile ueber den Rand zu schieben.
               Expanded(
                 child: Row(
                   children: [
@@ -1193,7 +1173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _featherlessTokenSet,
                     ),
                   ),
-                  // Render Custom Nodes
+
                   ..._customNodes.asMap().entries.map((entry) {
                     final idx = entry.key;
                     final node = entry.value;
@@ -1299,7 +1279,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(emoji, style: const TextStyle(fontSize: 18)),
       );
     } else {
-      // Custom Node logo: rounded block with the first character of the title
       return Container(
         alignment: Alignment.center,
         child: Text(
@@ -1341,7 +1320,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Header
                         Row(
                           children: [
                             const Icon(
@@ -1442,7 +1420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // Actions row
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -1541,7 +1519,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Header
                         Row(
                           children: [
                             const Icon(
@@ -1642,7 +1619,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        // Actions row
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -1760,7 +1737,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Header
                       Row(
                         children: [
                           Icon(
@@ -1809,7 +1785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Link section to get keys (premium click tile)
+
                       Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -1887,7 +1863,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Actions row
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [

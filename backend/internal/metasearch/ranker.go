@@ -5,26 +5,14 @@ import (
 	"strings"
 )
 
-// SimpleFilterRanker implementiert das ranking aus ddgs/similarity.py:
-//  1. Wikipedia-Treffer landen ganz oben.
-//  2. Der Rest wird bucketaet: beide (Titel+Treffer), nur Titel, nur Body, nichts.
-//  3. Wikimedia-"Category:"-Seiten werden komplett entfernt.
 type SimpleFilterRanker struct {
 	MinTokenLength int
 
-	// PreferWikipedia hebt Wikipedia-Treffer unabhaengig von ihrer
-	// Passung an die Spitze. Das ist fuer eine Nachschlage-Suche
-	// sinnvoll, schadet aber der Recherche zu konkreten technischen
-	// Fragen: bei "go 1.25 release notes" landet dann der Artikel
-	// "Go (Spiel)" vor go.dev. Aufrufer, die Relevanz brauchen,
-	// setzen das Feld auf false.
 	PreferWikipedia bool
 
 	splitter *regexp.Regexp
 }
 
-// NewSimpleFilterRanker erzeugt einen Ranker mit der Standardkonfiguration
-// (minTokenLength = 3, Wikipedia-Treffer bevorzugt).
 func NewSimpleFilterRanker() *SimpleFilterRanker {
 	return &SimpleFilterRanker{
 		MinTokenLength:  3,
@@ -33,16 +21,12 @@ func NewSimpleFilterRanker() *SimpleFilterRanker {
 	}
 }
 
-// NewRelevanceRanker erzeugt einen Ranker, der ausschliesslich nach der
-// Passung zur Suchanfrage sortiert - ohne Sonderrolle fuer Wikipedia.
 func NewRelevanceRanker() *SimpleFilterRanker {
 	r := NewSimpleFilterRanker()
 	r.PreferWikipedia = false
 	return r
 }
 
-// extractTokens zerlegt die Query am non-word-Splitter und behaelt nur
-// Tokens mit Mindestlaenge.
 func (r *SimpleFilterRanker) extractTokens(query string) map[string]struct{} {
 	tokens := map[string]struct{}{}
 	for _, tok := range r.splitter.Split(strings.ToLower(query), -1) {
@@ -53,7 +37,6 @@ func (r *SimpleFilterRanker) extractTokens(query string) map[string]struct{} {
 	return tokens
 }
 
-// hasAnyToken prueft, ob einer der Tokens als Substring in text vorkommt.
 func (r *SimpleFilterRanker) hasAnyToken(text string, tokens map[string]struct{}) bool {
 	if len(tokens) == 0 {
 		return false
@@ -67,8 +50,6 @@ func (r *SimpleFilterRanker) hasAnyToken(text string, tokens map[string]struct{}
 	return false
 }
 
-// Rank sortiert die Treffer-Liste nach dem beschriebenen Schema und
-// filtert Wikimedia-Category-Seiten heraus.
 func (r *SimpleFilterRanker) Rank(docs []Result, query string) []Result {
 	tokens := r.extractTokens(query)
 
@@ -80,7 +61,6 @@ func (r *SimpleFilterRanker) Rank(docs []Result, query string) []Result {
 			body = doc.Description
 		}
 
-		// Wikimedia Category-Skip
 		if strings.Contains(title, "Category:") && strings.Contains(title, "Wikimedia") {
 			continue
 		}

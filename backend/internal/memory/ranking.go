@@ -9,9 +9,7 @@ func (s *Service) routeIntent(query string, filters SearchFilters) SearchFilters
 	if filters.Layer != "" || strings.TrimSpace(query) == "" {
 		return filters
 	}
-	// First-stage intent routing is deliberately cheap: keyword hints only. If
-	// no hint is strong enough, the search stays cross-layer and user_data is
-	// favored through the normal type/source boost functions.
+
 	lower := strings.ToLower(query)
 	userHints := []string{"ich ", "mein ", "meine ", "meinen ", "user data", "praeferenz", "präferenz", "vorliebe", "persoenlich", "persönlich"}
 	changeHints := []string{"aenderungsantrag", "änderungsantrag", "change request", "vorschlag", "angenommen", "verworfen"}

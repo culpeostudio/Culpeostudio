@@ -11,10 +11,6 @@ import (
 const watchdogHardwareSampleTimeout = 400 * time.Millisecond
 const watchdogHardwareSampleMaxAge = 2500 * time.Millisecond
 
-// hardwareSampler keeps slow platform probes off the pressure-watchdog loop.
-// Sample is non-blocking and coalesces any number of refresh requests into at
-// most one detector goroutine. Until the first result is available callers get
-// an unknown snapshot, which the guard treats fail-closed.
 type hardwareSampler struct {
 	detect  func(context.Context) hardware.Snapshot
 	timeout time.Duration
@@ -29,8 +25,7 @@ type hardwareSampler struct {
 	have        bool
 	latest      hardware.Snapshot
 	completedAt time.Time
-	// expectedDedicatedGPUs is learned only from live, measurable dedicated
-	// records. Inventory-only CIM adapters are intentionally excluded.
+
 	expectedDedicatedGPUs map[string]bool
 }
 
@@ -55,9 +50,6 @@ func newHardwareSamplerWithOptions(detect func(context.Context) hardware.Snapsho
 	}
 }
 
-// Sample requests a refresh and immediately returns the last completed
-// snapshot. The boolean is false before the first probe and once the cache is
-// too old to be trusted.
 func (s *hardwareSampler) Sample() (hardware.Snapshot, bool) {
 	s.mu.Lock()
 	latest := s.latest
@@ -73,9 +65,6 @@ func (s *hardwareSampler) Sample() (hardware.Snapshot, bool) {
 	return latest, have
 }
 
-// ExpectDedicatedGPUs seeds inventory learned by the slower full detector or
-// persisted engine plans. This closes the first-sample gap when a pressure
-// command consistently exceeds the 400 ms watchdog budget.
 func (s *hardwareSampler) ExpectDedicatedGPUs(ids []string) {
 	s.mu.Lock()
 	for _, id := range ids {
@@ -83,18 +72,13 @@ func (s *hardwareSampler) ExpectDedicatedGPUs(ids []string) {
 			s.expectedDedicatedGPUs[id] = true
 		}
 	}
-	// A valid cached pressure sample may predate a plan which first exposed a
-	// dedicated GPU. Mark that cache incomplete immediately; waiting for the
-	// next asynchronous refresh would briefly reopen admission on stale
-	// GPU-less telemetry.
+
 	if s.have && missingExpectedDedicatedGPU(s.latest, s.expectedDedicatedGPUs) {
 		s.latest.GPUTelemetryIncomplete = true
 	}
 	s.mu.Unlock()
 }
 
-// Latest reads the cache without scheduling another platform probe. It is
-// mainly useful to observe an asynchronously completed sample in tests.
 func (s *hardwareSampler) Latest() (hardware.Snapshot, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

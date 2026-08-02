@@ -6,39 +6,27 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// TestDownloadJobStoreDedupActiveJob verlangt, dass der Store den ersten
-// aktiven (queued/running) Job fuer ein provider:modelID-Paar findet. So
-// kann handleDownload verhindern, dass fuer denselben Modellaufruf 5
-// parallel laufende Jobs die Platte/Disk vollstopfen.
 func TestDownloadJobStoreDedupActiveJob(t *testing.T) {
 	store := NewDownloadJobStore()
 
 	first := store.Create(types.ProviderHuggingFace, "org/model", "weights.gguf", "data/models")
 	store.SetRunning(first.ID)
 
-	// Zweiter Create fuer dasselbe Modell waere ohne Dedup ein neuer Job;
-	// der Store muss ActiveJobForModel finden, damit der Handler den
-	// Client an den existierenden Job verweisen kann.
 	if got, ok := store.ActiveJobForModel(types.ProviderHuggingFace, "org/model"); !ok {
 		t.Fatalf("expected to find active job for org/model")
 	} else if got.ID != first.ID {
 		t.Fatalf("expected active job %s, got %s", first.ID, got.ID)
 	}
 
-	// Anderer Provider gleicher ModelID – unterschiedlicher Job, Dedup
-	// greift nicht (Modell x auf HuggingFace ist ein anderes Asset als
-	// Modell x via OpenRouter-API-Descriptor).
 	if _, ok := store.ActiveJobForModel(types.ProviderOpenRouter, "org/model"); ok {
 		t.Fatalf("dedup should only match same provider")
 	}
 
-	// Nach done kein aktiver Job mehr – erneuter Download muss erlaubt sein.
 	store.SetDone(first.ID, "data/models/weights.gguf")
 	if _, ok := store.ActiveJobForModel(types.ProviderHuggingFace, "org/model"); ok {
 		t.Fatalf("dedup should not match a finished job")
 	}
 
-	// Nach failed ebenfalls frei.
 	fail := store.Create(types.ProviderHuggingFace, "org/model", "weights.gguf", "data/models")
 	store.SetFailed(fail.ID, dummyErr("netz"))
 	if _, ok := store.ActiveJobForModel(types.ProviderHuggingFace, "org/model"); ok {

@@ -119,10 +119,10 @@ TARGETS: dict[str, TargetSpec] = {
         flutter_output="build/macos/Build/Products/Release/myphilostudio.app",
     ),
 }
-# Each entry lists the accepted names of one required backend runtime file. The
-# hardware probe has two: it was renamed from whichllm_ to philoengine_, and the
-# launcher looks for either name, so a release can be built from a checkout on
-# either side of that rename.
+
+
+
+
 BACKEND_RUNTIME_FILES = (
     ("engineworker/transformers_worker.py",),
     (
@@ -490,9 +490,9 @@ def create_archive(
 
 def _run(command: Sequence[str], cwd: Path, env: Mapping[str, str] | None = None) -> None:
     print(f"+ {shlex.join(command)}", file=sys.stderr)
-    # Windows ships flutter as flutter.bat, and the bare name never resolves
-    # because CreateProcess does not search PATHEXT. shutil.which does, and
-    # CreateProcess runs a .bat once it is given the full name.
+
+
+
     executable = shutil.which(
         command[0], path=None if env is None else env.get("PATH")
     )

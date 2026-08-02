@@ -21,9 +21,6 @@ var (
 	errInvalidUserFrontendVersion = errors.New("frontend_version muss 'lite' oder 'classic' sein")
 )
 
-// UserPreferences contains the UI choices that belong to one authenticated
-// login. An entry is written only after the user confirms both choices, so a
-// missing entry remains the durable signal for the first-login flow.
 type UserPreferences struct {
 	Language        string `json:"language"`
 	FrontendVersion string `json:"frontend_version"`
@@ -34,9 +31,6 @@ type persistedUserPreferences struct {
 	Users         map[string]UserPreferences `json:"users"`
 }
 
-// UserPreferencesStore persists the per-login UI profile separately from
-// login_accounts.json. Keeping it separate avoids rewriting password hashes
-// whenever a user changes a visual preference.
 type UserPreferencesStore struct {
 	path  string
 	mu    sync.RWMutex
@@ -101,8 +95,6 @@ func (s *UserPreferencesStore) Load() error {
 	return nil
 }
 
-// Get returns stable defaults together with configured=false when the login
-// has not completed onboarding yet.
 func (s *UserPreferencesStore) Get(username string) (UserPreferences, bool) {
 	if s == nil {
 		return defaultUserPreferences(), false
@@ -121,9 +113,6 @@ func (s *UserPreferencesStore) Get(username string) (UserPreferences, bool) {
 	return preferences, true
 }
 
-// Set validates and atomically persists the complete profile. A full profile
-// is required so an interrupted onboarding flow never becomes configured with
-// only one of its two choices.
 func (s *UserPreferencesStore) Set(username, language, frontendVersion string) (UserPreferences, error) {
 	if s == nil {
 		return UserPreferences{}, errors.New("Benutzerpraeferenzen sind nicht initialisiert")
@@ -190,9 +179,6 @@ func (s *UserPreferencesStore) writeLocked(users map[string]UserPreferences) err
 	return atomicPrivateWriteUserPreferences(s.path, append(payload, '\n'))
 }
 
-// atomicPrivateWriteUserPreferences makes a complete profile replacement
-// visible in one rename and keeps user data private on disk. The temporary
-// file is created beside the target so os.Rename stays atomic on one volume.
 func atomicPrivateWriteUserPreferences(path string, payload []byte) (err error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o700); err != nil {

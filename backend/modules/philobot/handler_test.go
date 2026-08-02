@@ -905,7 +905,6 @@ func TestPhiloBotAPI_BotsManagementAndKeywordRouting(t *testing.T) {
 	api := app.Group("/api")
 	module.RegisterRoutes(api)
 
-	// 1. Get bots list (should contain at least default philobot)
 	getReq := httptest.NewRequest("GET", "/api/philobot/bots", nil)
 	getResp, err := app.Test(getReq)
 	if err != nil {
@@ -923,7 +922,6 @@ func TestPhiloBotAPI_BotsManagementAndKeywordRouting(t *testing.T) {
 		t.Fatalf("expected bots list to be non-empty")
 	}
 
-	// 2. Create a new custom bot
 	customBotJSON := `{"id":"mathbot","name":"MathBot","system_prompt":"Du bist ein Mathe-Experte.","keywords":["mathe","rechnen"]}`
 	postReq := httptest.NewRequest("POST", "/api/philobot/bots", strings.NewReader(customBotJSON))
 	postReq.Header.Set("Content-Type", "application/json")
@@ -935,7 +933,6 @@ func TestPhiloBotAPI_BotsManagementAndKeywordRouting(t *testing.T) {
 		t.Fatalf("expected save bot 200, got %d", postResp.StatusCode)
 	}
 
-	// 3. Create session and test message keyword routing (non-streaming)
 	createReq := httptest.NewRequest("POST", "/api/philobot/session", strings.NewReader(`{"model_id":"mock"}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createResp, err := app.Test(createReq)
@@ -946,7 +943,6 @@ func TestPhiloBotAPI_BotsManagementAndKeywordRouting(t *testing.T) {
 	_ = json.NewDecoder(createResp.Body).Decode(&createBody)
 	sessionID := createBody["session_id"].(string)
 
-	// Message with keyword "mathe" should trigger "mathbot"
 	messageReq := httptest.NewRequest(
 		"POST",
 		"/api/philobot/message",
@@ -966,7 +962,6 @@ func TestPhiloBotAPI_BotsManagementAndKeywordRouting(t *testing.T) {
 		t.Errorf("expected bot_name to be 'MathBot', got %v", messageBody["bot_name"])
 	}
 
-	// 4. Delete the custom bot
 	deleteReq := httptest.NewRequest("DELETE", "/api/philobot/bots/mathbot", nil)
 	deleteResp, err := app.Test(deleteReq)
 	if err != nil {
@@ -1636,9 +1631,6 @@ func TestReadOpenAIStreamParsesMultilineSSEDataBlocks(t *testing.T) {
 	}
 }
 
-// TestReadOpenAIStreamRoutesNativeReasoningSeparately stellt sicher, dass
-// OpenRouters natives "reasoning" Delta-Feld ueber emitReasoning geht und NICHT
-// im zurueckgegebenen (sichtbaren/persistierten) Antworttext landet.
 func TestReadOpenAIStreamRoutesNativeReasoningSeparately(t *testing.T) {
 	stream := strings.NewReader(
 		"data: {\"choices\":[{\"delta\":{\"reasoning\":\"Ich ueberlege...\"}}]}\n\n" +
@@ -1779,12 +1771,10 @@ func TestAppendMemoryRecall(t *testing.T) {
 	module := New(filepath.Join(t.TempDir(), "settings.json"))
 	base := "SYSTEM-PROMPT"
 
-	// Ohne angebundenes Gedaechtnis bleibt der Prompt unveraendert.
 	if got := module.appendMemoryRecall("local", "", "wie heisse ich", base); got != base {
 		t.Fatalf("ohne Memory sollte der Prompt unveraendert bleiben, bekam %q", got)
 	}
 
-	// Mit Treffer wird der Recall angehaengt und User/Projekt/Query durchgereicht.
 	fake := &fakeMemoryProvider{recall: "- Der Nutzer heisst David."}
 	module.SetMemory(fake)
 	got := module.appendMemoryRecall("david", "proj-42", "wie heisse ich", base)
@@ -1798,15 +1788,12 @@ func TestAppendMemoryRecall(t *testing.T) {
 		t.Fatalf("User/Projekt/Query nicht durchgereicht: user=%q project=%q query=%q", fake.lastUser, fake.lastProject, fake.lastQuery)
 	}
 
-	// Leerer Recall haengt nichts an.
 	fake.recall = "   "
 	if got := module.appendMemoryRecall("david", "", "hi", base); got != base {
 		t.Fatalf("leerer Recall sollte nichts anhaengen, bekam %q", got)
 	}
 }
 
-// TestPhiloBotInjectsMemoryRecallIntoLocalModel beweist, dass ein LOKALER Bot
-// den nutzerweiten Recall im System-Prompt erhaelt (End-to-End ueber HTTP).
 func TestPhiloBotInjectsMemoryRecallIntoLocalModel(t *testing.T) {
 	module := New(filepath.Join(t.TempDir(), "settings.json"))
 	local := &fakeLocalModels{model: localinference.Model{
@@ -1844,8 +1831,6 @@ func TestPhiloBotInjectsMemoryRecallIntoLocalModel(t *testing.T) {
 	}
 }
 
-// TestPhiloBotInjectsMemoryRecallIntoAPIModel beweist dasselbe fuer einen
-// API-Bot (OpenRouter): der Recall landet in der System-Message der Anfrage.
 func TestPhiloBotInjectsMemoryRecallIntoAPIModel(t *testing.T) {
 	var capturedBody string
 	providerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1903,11 +1888,11 @@ func TestWindowMessagesKeepsMostRecent(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		msgs = append(msgs, chatMessage{Role: "user", Content: fmt.Sprintf("m%d", i)})
 	}
-	// Unterhalb des Fensters: alles bleibt.
+
 	if got := windowMessages(msgs[:10], maxModelHistoryMessages); len(got) != 10 {
 		t.Fatalf("erwartete 10 Nachrichten, bekam %d", len(got))
 	}
-	// Oberhalb des Fensters: nur die letzten N, in Reihenfolge.
+
 	got := windowMessages(msgs, maxModelHistoryMessages)
 	if len(got) != maxModelHistoryMessages {
 		t.Fatalf("erwartete %d Nachrichten, bekam %d", maxModelHistoryMessages, len(got))
@@ -1932,12 +1917,10 @@ func TestPhiloBotSessionCustomTitlePersists(t *testing.T) {
 	module.sessions[session.ID] = session
 	module.mu.Unlock()
 
-	// Ohne Custom-Titel wird er aus der ersten Nachricht abgeleitet.
 	if got := summarizeSession(session).Title; got != "Hallo Welt" {
 		t.Fatalf("abgeleiteter Titel falsch: %q", got)
 	}
 
-	// Custom-Titel gewinnt und ueberlebt einen Neustart.
 	session.Title = "Mein Projekt"
 	module.persistSession(session.ID)
 	if got := summarizeSession(session).Title; got != "Mein Projekt" {
@@ -1968,14 +1951,13 @@ func TestPhiloBotSessionPersistenceRoundTrip(t *testing.T) {
 			{Role: "user", Content: "Mein Name ist David"},
 			{Role: "assistant", Content: "Hallo David"},
 		},
-		MutationInFlight: true, // transient – darf nicht persistiert werden
+		MutationInFlight: true,
 	}
 	first.mu.Lock()
 	first.sessions[session.ID] = session
 	first.mu.Unlock()
 	first.persistSession(session.ID)
 
-	// Neustart simulieren: neues Modul, gleicher Ordner.
 	second := New(settings)
 	second.loadPersistedSessions()
 	second.mu.Lock()
@@ -2003,7 +1985,6 @@ func TestPhiloBotSessionPersistenceRoundTrip(t *testing.T) {
 		t.Fatalf("MessageCount falsch: %d", summary.MessageCount)
 	}
 
-	// Loeschen entfernt die Datei; ein weiterer Neustart findet nichts mehr.
 	if err := second.storage.Delete(session.ID); err != nil {
 		t.Fatalf("delete fehlgeschlagen: %v", err)
 	}

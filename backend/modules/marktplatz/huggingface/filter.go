@@ -1,3 +1,5 @@
+// Package huggingface adapts the Hugging Face Hub to the marketplace provider
+// interface, including the filters its search API expects.
 package huggingface
 
 import (
@@ -23,17 +25,9 @@ var hfIgnoredExtensions = map[string]struct{}{
 	"webp": {},
 	"csv":  {},
 	"tsv":  {},
-	// gitattributes is a tiny (few-KB) LFS config file present in almost
-	// every HuggingFace repo. It has no penalty token in its name (unlike
-	// tokenizer.model/config.json) and no recognized extension score, so it
-	// used to survive as a real, "known-size" download option. Whenever the
-	// recommender picked the smallest artifact across all options, this
-	// near-zero-byte file won every time -- reporting a fixed ~7GB overhead
-	// estimate (KV-cache/activation only, no real weights) as if it were the
-	// full model, so even a 70B checkpoint looked like it fit any GPU.
+
 	"gitattributes": {},
-	// imatrix files are quantization calibration data (a few MB), not a
-	// loadable model checkpoint. Same failure mode as gitattributes above.
+
 	"imatrix": {},
 }
 
@@ -65,20 +59,6 @@ type hfOptionCandidate struct {
 	score  int
 }
 
-// shardPattern matches sharded checkpoints regardless of extension.  GGUF
-// repositories use the exact same "-00001-of-00002" convention as
-// safetensors once a quantized weight file exceeds HuggingFace's per-file
-// limit (common from ~70B parameters up). Grouping only safetensors here
-// silently left every GGUF shard as its own download option, so the
-// recommender picked one shard's size as if it were the whole model's
-// weight file -- understating a sharded 70B GGUF's VRAM need by roughly
-// half and reporting it as fitting a GPU it does not fit on.
-//
-// The index and total are matched with \d+, not a fixed \d{5}: repos with
-// hundreds of shards (e.g. DeepSeek-V3's "-00012-of-000163.safetensors")
-// pad the total to more digits than the index, and a fixed width silently
-// failed to match, leaving those shards ungrouped -- the exact same
-// understated-size bug this pattern exists to prevent.
 var shardPattern = regexp.MustCompile(`(?i)^(.*)-\d+-of-\d+\.(safetensors|gguf)$`)
 
 func BuildHuggfaceFilteredOptions(siblings []HuggingFaceSibling) []types.DownloadOption {
@@ -162,11 +142,6 @@ func BuildHuggfaceFilteredOptions(siblings []HuggingFaceSibling) []types.Downloa
 	return trimHFOptions(groupShards(options), 40)
 }
 
-// groupShards turns model-00001-of-00008.safetensors / .gguf … into one
-// logical option. The API exposes all AssetIDs, the total size and a friendly
-// label so the UI can explain that every fragment will be downloaded, and so
-// size-based VRAM estimates see the complete weight size instead of one
-// shard.
 func groupShards(options []types.DownloadOption) []types.DownloadOption {
 	type shardGroup struct {
 		first int

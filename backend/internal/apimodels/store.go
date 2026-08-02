@@ -1,3 +1,4 @@
+// Package apimodels tracks which hosted provider models a user has activated.
 package apimodels
 
 import (
@@ -17,19 +18,9 @@ const (
 	ProviderOpenRouter  = "openrouter"
 	ProviderFeatherless = "featherless"
 
-	// MaxActiveModels ist das Limit fuer gleichzeitig aktive API-Modelle
-	// pro Backend-Instanz. Wird per Store/Start geprueft – ein Client kann
-	// so nicht beliebig viele Model registrieren und so Credit-Limits
-	// ueberziehen. Der Wert ist absichtlich eine Konstante (Konfiguration
-	// ueber eine settings.json kann in einer spaeteren Iteration ergaenzt
-	// werden).
 	MaxActiveModels = 8
 )
 
-// ErrActiveModelsLimitReached signalisiert, dass MaxActiveModels erreicht
-// ist und ein weiteres Modell nicht registriert werden kann. Der Handler
-// gibt diesen als 400/limit aus, so dass der Client einen verstaendlichen
-// Hinweis statt eines 500er Internal-Error sieht.
 var ErrActiveModelsLimitReached = errors.New("limit fuer aktive api-modelle erreicht")
 
 type ActiveModel struct {
@@ -104,9 +95,7 @@ func (s *Store) Start(provider, modelID, displayName string) (ActiveModel, error
 	ref := ModelRef(cleanProvider, cleanModel)
 	model, exists := s.models[ref]
 	if !exists {
-		// Limit-Check: nur beim ersten Start eines neuen Modells relevant.
-		// Ein erneuter Start desselben Modells (Touch) zaehlt nicht doppelt
-		// und aktualisiert bloss LastUsedAt.
+
 		if len(s.models) >= MaxActiveModels {
 			return ActiveModel{}, ErrActiveModelsLimitReached
 		}

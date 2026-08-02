@@ -133,11 +133,6 @@ func (s *SQLiteStore) GetObservationsByIDs(userID string, ids []string) ([]memor
 	return result, rows.Err()
 }
 
-// DeleteObservation removes an observation together with its search index
-// row, vector document (embedding + ANN buckets), links and dedupe bucket in
-// a single write transaction. Change requests are tombstoned instead of hard
-// deleted: the row keeps deleted_at for traceability, drops out of every
-// query, and frees its dedupe bucket so identical content can be re-added.
 func (s *SQLiteStore) DeleteObservation(userID, observationID string) (*memory.Observation, bool, error) {
 	var deleted *memory.Observation
 	tombstoned := false
@@ -190,11 +185,6 @@ func (s *SQLiteStore) DeleteObservation(userID, observationID string) (*memory.O
 	return deleted, tombstoned, nil
 }
 
-// PurgeSoftDeleted permanently removes observations tombstoned (deleted_at
-// set) before the given cutoff. Their search index / vector / ANN rows were
-// already removed at tombstone time in DeleteObservation, so only the
-// observations row itself and any observation_links accrued afterwards need
-// cleanup here.
 func (s *SQLiteStore) PurgeSoftDeleted(before time.Time) (int, error) {
 	cutoff := before.UTC().Format(time.RFC3339Nano)
 	var purged int64
@@ -219,26 +209,17 @@ func (s *SQLiteStore) PurgeSoftDeleted(before time.Time) (int, error) {
 	return int(purged), nil
 }
 
-// MaintenanceConfig tunes the background hygiene ticker started by
-// RunMaintenance. Zero values fall back to sensible defaults.
 type MaintenanceConfig struct {
-	// SoftDeleteRetention is how long a tombstoned observation is kept before
-	// PurgeSoftDeleted removes it for good. Defaults to 90 days.
 	SoftDeleteRetention time.Duration
 }
 
 const (
-	// VACUUM rewrites the whole file and briefly holds an exclusive lock, so
-	// it runs far less often than the cheap FTS5 segment merge.
 	maintenanceVacuumInterval  = 30 * 24 * time.Hour
 	maintenanceFTSInterval     = 7 * 24 * time.Hour
 	maintenancePurgeInterval   = 24 * time.Hour
 	defaultSoftDeleteRetention = 90 * 24 * time.Hour
 )
 
-// RunMaintenance periodically VACUUMs the database file, merges FTS5 search
-// segments and purges expired soft-deletes, until stop closes. One goroutine
-// with three tickers keeps shutdown simple (a single stop channel).
 func (s *SQLiteStore) RunMaintenance(stop <-chan struct{}, cfg MaintenanceConfig) {
 	retention := cfg.SoftDeleteRetention
 	if retention <= 0 {
@@ -257,9 +238,7 @@ func (s *SQLiteStore) RunMaintenance(stop <-chan struct{}, cfg MaintenanceConfig
 		case <-stop:
 			return
 		case <-vacuumTicker.C:
-			// Runs on the read pool, never inside a transaction: VACUUM
-			// rejects an open transaction and would deadlock against the
-			// pinned write connection otherwise.
+
 			if _, err := s.db.Exec(`VACUUM`); err != nil {
 				log.Printf("[memory-maintenance] VACUUM fehlgeschlagen: %v", err)
 			}

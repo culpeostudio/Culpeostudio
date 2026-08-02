@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/marketplace_detail_strings.dart';
 
-// Dialog mit der Detail-Aufschluesselung, ob ein Modell auf die Hardware passt.
-
-// Gemeinsamer Tap-Dialog fuer die GPU/RAM-Aufschluesselung eines Modells.
-// Wird sowohl von der Karten-Ansicht (_MarketplaceScreenState) als auch vom
-// ModelDetailDialog aufgerufen, damit "auf das Fit-Badge tippen" ueberall
-// dieselbe Erweiterung mit RAM-Info zeigt.
 void showFitDetailsDialog(
   BuildContext context, {
   required String modelName,
@@ -159,11 +153,6 @@ void showFitDetailsDialog(
   );
 }
 
-// runtimeFitLabel/Icon/Color sind bewusst top-level statt Methoden auf
-// _MarketplaceScreenState: sowohl die Karten-Ansicht als auch der separate
-// ModelDetailDialog (StatelessWidget ohne Zugriff auf den State) brauchen
-// dieselbe Zuordnung von runtime_fit -> Text/Icon/Farbe, u.a. fuer den
-// Tap-Dialog mit der GPU/RAM-Aufschluesselung.
 String runtimeFitLabel(String fit) {
   switch (fit) {
     case 'full_gpu':
@@ -198,10 +187,6 @@ IconData runtimeFitIcon(String fit) {
   }
 }
 
-// partial_offload (GPU+RAM) ist ein bewusst waermerer, aber nicht
-// warnungsfarbener Ton: es ist eine funktionierende Konfiguration, kein
-// Problemzustand -- vorher teilte es sich orangeAccent mit "passt nicht
-// vollstaendig", was wie ein Fehler statt einer echten Option aussah.
 Color runtimeFitColor(String fit) {
   switch (fit) {
     case 'full_gpu':

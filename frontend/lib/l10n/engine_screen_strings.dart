@@ -1,11 +1,5 @@
 import 'app_strings.dart' show appLanguage;
 
-/// Übersetzungen, die ausschließlich zum Engine-Hauptbildschirm gehören.
-///
-/// Die Engine liefert einige technische Status- und Diagnosemeldungen direkt
-/// vom Backend. Diese Datei übersetzt nur die von der Oberfläche selbst
-/// formulierten Texte; unveränderte Diagnosen bleiben dadurch weiterhin
-/// präzise und kopierbar.
 const Map<String, String> engineScreenStringsDe = {
   'engineScreen.notification.modelsStarted':
       '{count} Modelle wurden gestartet und sind bereit.',
@@ -268,7 +262,7 @@ const Map<String, String> engineScreenStringsDe = {
   'engineScreen.operation.runtimeVllm': 'beschleunigte SafeTensors-Ausführung',
   'engineScreen.operation.runtimeVllmSource': 'Runtime vllm',
   'engineScreen.operation.isWarmingUp': 'wird vorbereitet',
-  // Backend source text, deliberately language-independent for matching.
+
   'engineScreen.operation.warmingUpSource': 'wird vorgewärmt',
   'engineScreen.runtimeError.compilerMissing':
       'Für den nativen Runtime-Build fehlen Compiler oder CMake. Bitte die Build-Werkzeuge installieren und erneut versuchen.',
@@ -550,7 +544,7 @@ const Map<String, String> engineScreenStringsEn = {
   'engineScreen.operation.runtimeVllm': 'accelerated SafeTensors execution',
   'engineScreen.operation.runtimeVllmSource': 'Runtime vllm',
   'engineScreen.operation.isWarmingUp': 'is being prepared',
-  // Backend source text, deliberately language-independent for matching.
+
   'engineScreen.operation.warmingUpSource': 'wird vorgewärmt',
   'engineScreen.runtimeError.compilerMissing':
       'Compilers or CMake are missing for the native runtime build. Install the build tools and try again.',
@@ -570,10 +564,6 @@ const Map<String, String> engineScreenStringsEn = {
       'A required component could not be set up. Please try again.',
 };
 
-/// Translates an Engine-screen text key for the current application language.
-///
-/// The German map is a deliberate fallback so an incomplete English package
-/// never exposes a raw localization key to a user.
 String tr(String key, [Map<String, String>? params]) {
   final strings = appLanguage == 'en'
       ? engineScreenStringsEn
@@ -585,9 +575,4 @@ String tr(String key, [Map<String, String>? params]) {
   return value;
 }
 
-/// Returns a language-independent backend source marker.
-///
-/// Backend operation messages can use these legacy German fragments even when
-/// the application UI is English. They must therefore be matched against the
-/// canonical German source before the visible replacement is translated.
 String sourceText(String key) => engineScreenStringsDe[key] ?? key;

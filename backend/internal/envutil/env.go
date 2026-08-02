@@ -1,5 +1,4 @@
-// Package envutil buendelt das Lesen von Umgebungsvariablen mit Fallbacks,
-// damit nicht jedes Paket eigene getEnv-Helfer dupliziert.
+// Package envutil reads environment variables with defaults and type conversion.
 package envutil
 
 import (

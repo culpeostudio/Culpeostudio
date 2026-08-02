@@ -5,15 +5,9 @@ import '../../l10n/user_preferences_strings.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 
-/// Dialog fuer den ersten Login eines Users: Sprache (Deutsch/English) und
-/// Frontend-Version (Lite/Classic) waehlen. Nicht dismissbar; die Wahl wird
-/// ueber [AppState] im authentifizierten Benutzerprofil persistiert und ist spaeter in den
-/// Einstellungen aenderbar.
 class OnboardingDialog extends StatefulWidget {
   const OnboardingDialog({super.key, this.appState});
 
-  /// Optional injection keeps the dialog independently testable while the app
-  /// continues to use its shared [AppState] instance by default.
   final AppState? appState;
 
   @override
@@ -84,16 +78,12 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
 
   void _closeAfterSuccessfulSave() {
     setState(() => _canPop = true);
-    // PopScope updates its route entry on the next frame. Deferring the pop
-    // makes the dialog genuinely non-dismissible until the server has
-    // confirmed the choice, while still allowing this successful completion.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Navigator.of(context).pop();
     });
   }
 
-  /// Adaptive two-column card matrix following the PhiloGrid spacing. The
-  /// cards collapse to one column before text would become cramped.
   Widget _optionGrid(List<Widget> cards) {
     return LayoutBuilder(
       builder: (context, constraints) {

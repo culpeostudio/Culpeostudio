@@ -82,8 +82,6 @@ func defaultInstanceDetail(state engineruntime.InstanceState) string {
 	}
 }
 
-// notStartableError explains exactly why a model cannot start by listing the
-// catalog validation issues instead of a bare "not startable".
 func notStartableError(record modelcatalog.ModelRecord) error {
 	name := strings.TrimSpace(record.Name)
 	if name == "" {
@@ -110,9 +108,6 @@ func notStartableError(record modelcatalog.ModelRecord) error {
 	return fmt.Errorf("Modell %q ist nicht startbar: %s", name, strings.Join(details, "; "))
 }
 
-// isPortConflictError reports whether a worker start failed because its
-// loopback port was already bound (stolen in the allocation race or held by an
-// orphaned process from a previous run).
 func isPortConflictError(err error) bool {
 	if err == nil {
 		return false
@@ -152,13 +147,11 @@ func classifyEngineError(err error) (string, string) {
 		return "resource_conflict", "Der GPU-Speicher reicht auch nach der Kontextanpassung nicht aus. Mit deiner Zustimmung kann die Engine GPU und System-RAM neu aufteilen."
 	}
 	text := strings.TrimSpace(err.Error())
-	// Worker exits carry a structured diagnosis marker from the supervisor
-	// ("[gpu_out_of_memory] ..."). Recover code and clean summary directly.
+
 	if code, rest, ok := engineruntime.ParseDiagnosisMarker(text); ok {
 		return code, rest
 	}
-	// Raw worker output can also reach this layer through health checks and
-	// mini-inference probes; match known Python/CUDA failure patterns there too.
+
 	if diagnosis, ok := engineruntime.DiagnoseWorkerOutput(text); ok {
 		return diagnosis.Code, diagnosis.Message
 	}

@@ -34,7 +34,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = AppState();
 
-    // Listen at the top so profile and language changes update the app shell.
     return AnimatedBuilder(
       animation: appState,
       builder: (context, _) => _buildApp(appState),
@@ -58,9 +57,7 @@ class MyApp extends StatelessWidget {
         colorScheme: const ColorScheme.dark(
           primary: AppColors.gold,
           secondary: AppColors.gold,
-          // In Material 3 ist die frühere `background`-Rolle mit `surface`
-          // verschmolzen (deprecated); der Fenster-Hintergrund wird ohnehin
-          // separat über scaffoldBackgroundColor gesetzt.
+
           surface: AppColors.obsidianSurface,
           error: Colors.redAccent,
         ),

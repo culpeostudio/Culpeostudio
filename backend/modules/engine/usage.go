@@ -66,9 +66,7 @@ func (m *EngineModule) acquireInference(ctx context.Context, instanceID string) 
 		releaseGate()
 		return nil, localinference.ErrNotReady
 	}
-	// The request may have waited behind another inference while the watchdog
-	// entered Emergency. Revalidate after admission so queued work cannot begin
-	// consuming memory based on the stale pre-queue guard observation.
+
 	if m.guardState == GuardEmergency {
 		m.mu.Unlock()
 		releaseGate()

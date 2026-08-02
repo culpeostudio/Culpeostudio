@@ -84,8 +84,6 @@ func TestSettingsAPI_TestProvider(t *testing.T) {
 	api := app.Group("/api")
 	module.RegisterRoutes(api)
 
-	// Since we mock or don't actually test the real live outgoing request,
-	// checking the endpoint for invalid input and invalid provider first is good.
 	invalidReq := httptest.NewRequest("GET", "/api/settings/test-provider/invalid", nil)
 	invalidResp, err := app.Test(invalidReq)
 	if err != nil {
@@ -95,14 +93,12 @@ func TestSettingsAPI_TestProvider(t *testing.T) {
 		t.Fatalf("expected 400 for invalid provider, got %d", invalidResp.StatusCode)
 	}
 
-	// We can check with empty/no token, which makes it perform public checks
-	// (Note: internet is required for public check, but let's see if it handles it or we can just test the route dispatching)
 	testReq := httptest.NewRequest("GET", "/api/settings/test-provider/huggingface", nil)
 	testResp, err := app.Test(testReq)
 	if err != nil {
 		t.Fatalf("GET test provider huggingface failed: %v", err)
 	}
-	// Let's check status code. Since it attempts an HTTP request, if there's no internet in build container it might return false but status code should be 200 JSON
+
 	if testResp.StatusCode != 200 {
 		t.Fatalf("expected 200, got %d", testResp.StatusCode)
 	}

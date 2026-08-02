@@ -5,12 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/chat_aux_strings.dart';
 
-/// A small, native chart surface rendered from a `visual` Markdown fence.
-///
-/// Example:
-/// ```visual
-/// {"type":"bar","title":"Umsatz","labels":["Jan","Feb"],"values":[12,19]}
-/// ```
 class ChatVisualBlock extends StatelessWidget {
   const ChatVisualBlock({
     super.key,

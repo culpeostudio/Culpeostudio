@@ -37,10 +37,6 @@ type activeRuntimePrewarm struct {
 	done        chan struct{}
 }
 
-// startRuntimeInstall atomically acquires one waiter lease. A job selected for
-// cancellation is never handed to a new foreground/prewarm consumer; callers
-// wait for its terminal state and retry through Installer's content-addressed
-// replacement instead.
 func (m *EngineModule) startRuntimeInstall(ctx context.Context, recipe engineruntime.Recipe) (*engineruntime.InstallJob, error) {
 	for {
 		m.spawnGateMu.Lock()
@@ -186,10 +182,6 @@ func runtimePrewarmEnabled() bool {
 	}
 }
 
-// scheduleRuntimePrewarm starts after catalog discovery and never blocks app
-// startup. Only runtimes useful to a complete local model are considered. The
-// installer itself serializes native builds, and its content digest lets a
-// model start attach to an already-running prewarm instead of duplicating it.
 func (m *EngineModule) scheduleRuntimePrewarm(reason string) {
 	if !runtimePrewarmEnabled() || m.installer == nil {
 		return
@@ -252,8 +244,7 @@ func (m *EngineModule) prewarmCandidates(snapshot hardware.Snapshot, hasGGUF, ha
 		}
 	}
 	if hasSafeTensors {
-		// vLLM is deliberately omitted unless the existing compatibility probe
-		// confirmed Linux plus a dedicated CUDA/ROCm device.
+
 		if vllmCompatible(snapshot) {
 			if recipe, err := m.runtimeRecipe(engineruntime.RuntimeVLLM, snapshot); err == nil {
 				add(recipe, "vLLM GPU-Runtime wird vorbereitet")
@@ -273,12 +264,6 @@ func (m *EngineModule) prewarmCandidates(snapshot hardware.Snapshot, hasGGUF, ha
 	return result
 }
 
-// usableLlamaBuildSnapshot removes accelerator build targets whose development
-// files are demonstrably absent. In particular, a Vulkan loader visible to the
-// hardware detector is not enough to compile llama.cpp; headers and a shader
-// compiler are required.
-// Privileged repair is intentionally separate from background prewarming and
-// is only entered through a short-lived, one-use user-consent token.
 func usableLlamaBuildSnapshot(snapshot hardware.Snapshot) (hardware.Snapshot, []string) {
 	filtered := snapshot
 	filtered.GPUs = nil
@@ -497,9 +482,6 @@ func (m *EngineModule) runtimePrewarmLoop() {
 			continue
 		}
 
-		// prewarmMu is the spawn gate. setGuardState and foreground runtime
-		// admission take the same lock, so a process cannot slip in after either
-		// has announced pressure or foreground work.
 		m.prewarmMu.Lock()
 		m.mu.RLock()
 		guard = m.guardState
@@ -629,9 +611,6 @@ func (m *EngineModule) signalRuntimePrewarm() {
 	}
 }
 
-// pauseRuntimePrewarm is synchronous: when it returns, the installer job has
-// acknowledged cancellation. The candidate remains queued and is restarted at
-// the first normal/resource-safe admission point.
 func (m *EngineModule) pauseRuntimePrewarm() {
 	m.prewarmMu.Lock()
 	active := m.prewarmActive
@@ -649,9 +628,7 @@ func (m *EngineModule) pauseRuntimePrewarm() {
 	select {
 	case <-active.done:
 	case <-time.After(6 * time.Second):
-		// The real command runner force-kills its process group before returning.
-		// Retaining the candidate and canceled operation is fail-closed; no new
-		// prewarm can start while prewarmActive remains set.
+
 	}
 	m.signalRuntimePrewarm()
 }
@@ -672,9 +649,6 @@ func (m *EngineModule) requestRuntimePrewarmPause() {
 	}()
 }
 
-// beginForegroundRuntime gives an explicit model/runtime request precedence
-// over background builds. An active prewarm is canceled and made retryable;
-// no further prewarm is admitted until the returned release function runs.
 func (m *EngineModule) beginForegroundRuntime(ctx context.Context) (func(), error) {
 	m.prewarmMu.Lock()
 	m.prewarmForeground++
@@ -739,9 +713,7 @@ func (m *EngineModule) waitRuntimeInstall(ctx context.Context, operationID, inst
 		lastProgress = snapshot.Progress
 		progress := runtimeInstallProgress(snapshot.Status)
 		if snapshot.Progress > 0 {
-			// Prefer the installer's live estimate (pip line parsing) so long
-			// package installations visibly advance instead of idling at one
-			// static phase value.
+
 			progress = snapshot.Progress
 		}
 		message := prefix + " – " + snapshot.Message

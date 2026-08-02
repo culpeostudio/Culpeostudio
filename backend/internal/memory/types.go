@@ -74,8 +74,7 @@ type Observation struct {
 	ContentHash   string              `json:"content_hash"`
 	Archived      bool                `json:"archived"`
 	MemoryID      string              `json:"memory_id,omitempty"`
-	// DeletedAt is set on soft-deleted (tombstoned) change requests. The row
-	// stays in the store for traceability but drops out of every query.
+
 	DeletedAt string    `json:"deleted_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -90,8 +89,7 @@ type CompressedMemory struct {
 	Learned        []string       `json:"learned,omitempty"`
 	OpenTasks      []string       `json:"open_tasks,omitempty"`
 	ObservationIDs []string       `json:"observation_ids,omitempty"`
-	// CorrectedByUser marks manual edits; automatic re-compression must not
-	// overwrite such memories.
+
 	CorrectedByUser bool      `json:"corrected_by_user,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 }
@@ -149,9 +147,7 @@ type SearchResult struct {
 type ContextEnvelope struct {
 	SessionID string `json:"session_id"`
 	Query     string `json:"query,omitempty"`
-	// Budget and usage are approximate token counts (see memorytoken): a
-	// conservative heuristic with safety margin, not the exact tokenizer of
-	// Gemma/SentencePiece models.
+
 	BudgetTokens    int                `json:"budget_tokens"`
 	UsedTokens      int                `json:"used_tokens"`
 	InjectionPrompt string             `json:"injection_prompt"`
@@ -268,22 +264,14 @@ type UpdateChangeRequestInput struct {
 	ReasonShort string              `json:"begruendung_kurz"`
 }
 
-// MemoryPatch updates single fields of a compressed memory; nil fields stay
-// untouched.
 type MemoryPatch struct {
 	Summary   *string   `json:"summary"`
 	Learned   *[]string `json:"learned"`
 	OpenTasks *[]string `json:"open_tasks"`
 }
 
-// ErrCorrectedByUser is returned when an automatic rewrite hits a memory that
-// carries a manual correction.
 var ErrCorrectedByUser = errors.New("compressed memory wurde manuell korrigiert und wird nicht automatisch ueberschrieben")
 
-// CompressionPlan is the outcome of one compression decision: the memory to
-// write, its search document, and the usage estimates around the cycle. It is
-// produced inside the store's write transaction so read, threshold check and
-// write commit together.
 type CompressionPlan struct {
 	Memory      *CompressedMemory
 	Document    SearchDocument
@@ -291,18 +279,12 @@ type CompressionPlan struct {
 	UsageAfter  float64
 }
 
-// VectorHit is one similarity match from the vector index. ScoredBy reports
-// whether the real embedding backend or the hash fallback produced the score,
-// which feeds the recall-loss metric.
 type VectorHit struct {
 	DocID    string  `json:"doc_id"`
 	Score    float64 `json:"score"`
 	ScoredBy string  `json:"scored_by"`
 }
 
-// VectorIndex abstracts the vector search layer so the service does not
-// depend on a concrete implementation (avoids import cycles and makes the
-// backend swappable in tests).
 type VectorIndex interface {
 	Initialize() error
 	Upsert(document SearchDocument) error
@@ -310,7 +292,6 @@ type VectorIndex interface {
 	Search(query string, filters SearchFilters, limit int) ([]VectorHit, error)
 }
 
-// VectorMetrics is exposed via the metrics endpoint.
 type VectorMetrics struct {
 	Backend          string         `json:"backend"`
 	Model            string         `json:"model"`
@@ -338,8 +319,7 @@ func DefaultCompressionPolicy() CompressionPolicy {
 }
 
 func newID(prefix string) string {
-	// crypto/rand.Read never fails (guaranteed since Go 1.24); 64 random bits
-	// make collisions practically impossible, unlike timestamp-based IDs.
+
 	bytes := make([]byte, 8)
 	_, _ = rand.Read(bytes)
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(bytes))
@@ -392,8 +372,7 @@ func previewText(text string, max int) string {
 	if len(trimmed) <= max {
 		return trimmed
 	}
-	// Cut on rune boundaries so multi-byte characters (umlauts etc.) are
-	// never split into invalid UTF-8.
+
 	runes := []rune(trimmed)
 	if len(runes) <= max {
 		return trimmed

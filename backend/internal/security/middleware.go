@@ -1,3 +1,4 @@
+// Package security holds the HTTP hardening middleware applied to every route.
 package security
 
 import (
@@ -14,10 +15,6 @@ import (
 
 const UserIDLocalKey = "memory_user_id"
 
-// VerifyUserToken checks whether userToken is authorized to act as userID.
-// In production (when masterToken is > 18 characters), userToken must be
-// the hex-encoded HMAC-SHA256 of the userID.
-// In dev/testing (when masterToken <= 18 characters), we also accept userToken == masterToken.
 func VerifyUserToken(masterToken, userToken, userID string) bool {
 	masterToken = strings.TrimSpace(masterToken)
 	userToken = strings.TrimSpace(userToken)

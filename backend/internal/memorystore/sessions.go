@@ -114,10 +114,6 @@ func (s *SQLiteStore) ListSessions(userID string) ([]*memory.Session, error) {
 	return result, nil
 }
 
-// DeleteSession removes the session with all rows that belong to it —
-// prompts, observations, memories, summaries, links, search index rows,
-// vector documents including embeddings and ANN buckets — in one write
-// transaction.
 func (s *SQLiteStore) DeleteSession(userID, id string) error {
 	return s.withImmediateTx(func(tx *writeTx) error {
 		for _, statement := range []string{

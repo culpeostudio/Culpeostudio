@@ -17,15 +17,8 @@ import (
 	"github.com/fillyengine/backend/internal/pathmention"
 )
 
-// maxModelHistoryMessages caps how much conversation history is replayed to the
-// model each turn. Without it, every message resends the full transcript, so
-// answers get progressively slower (and eventually blow the context window) as
-// a chat grows. Older facts are not lost: they are recalled from the memory
-// module and injected via appendMemoryRecall. 24 messages ≈ 12 turns of verbatim
-// context, which keeps recent coherence while staying fast.
 const maxModelHistoryMessages = 24
 
-// windowMessages returns at most max most-recent messages, preserving order.
 func windowMessages(messages []chatMessage, max int) []chatMessage {
 	if max <= 0 || len(messages) <= max {
 		return append([]chatMessage{}, messages...)
@@ -33,10 +26,6 @@ func windowMessages(messages []chatMessage, max int) []chatMessage {
 	return append([]chatMessage{}, messages[len(messages)-max:]...)
 }
 
-// projectPathForSessionLocked liefert den (getrimmten) Dateisystem-Pfad des
-// Projekts, dem die Session zugeordnet ist, oder "" wenn keins/ohne Pfad. Aktiv
-// gesetzt schaltet er die Datei-Tools frei. Muss mit gehaltenem m.mu aufgerufen
-// werden (liest m.projects).
 func (m *PhiloBotModule) projectPathForSessionLocked(userID string, session *philoBotSession) string {
 	if session == nil {
 		return ""
@@ -52,14 +41,6 @@ func (m *PhiloBotModule) projectPathForSessionLocked(userID string, session *phi
 	return strings.TrimSpace(project.Path)
 }
 
-// resolveToolRoots bestimmt, in welchen Ordnern die Datei-Werkzeuge dieser
-// Anfrage arbeiten duerfen: im Projekt-Ordner der Session und zusaetzlich in
-// jedem Ordner, den der Nutzer in seiner Nachricht ausdruecklich genannt hat.
-//
-// Wer "schau mal in /home/nutzer/projekt" schreibt, hat den Zugriff damit
-// erkennbar gemeint; ohne das muesste er denselben Pfad noch einmal ueber die
-// Erlaubnis-Abfrage bestaetigen. Ist gar kein Ordner bekannt, bleibt die Liste
-// leer und der Bot arbeitet ohne Dateizugriff.
 func resolveToolRoots(projectPath, message string) []string {
 	var roots []string
 	if strings.TrimSpace(projectPath) != "" {
@@ -114,18 +95,13 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 	}
 	thinking := session.Thinking
 	style := session.Style
-	// project bindet Recall und Capture an das Projekt-Grid dieser Session (leer =
-	// nutzerweit). Unter dem Lock lesen, weil die Session danach freigegeben wird.
+
 	project := session.ProjectID
-	// projectPath aktiviert die Datei-Tools: ist er gesetzt, arbeitet JEDER Bot im
-	// Projekt-Ordner (Tool-Loop statt Single-Shot), strikt auf diesen Pfad begrenzt.
+
 	projectPath := m.projectPathForSessionLocked(userID, session)
 	history := windowMessages(session.Messages, maxModelHistoryMessages)
 	m.mu.Unlock()
 
-	// Announce the selected bot before validating its binding. The recovery UI
-	// needs this identity even when a persisted binding is invalid, otherwise it
-	// cannot offer the user a direct "Bindung aendern" action.
 	if onBotSelected != nil {
 		onBotSelected(finalBot.ID, finalBot.Name)
 	}
@@ -183,8 +159,7 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 			contextLimit = localModel.ContextLimit
 			m.updateSessionEffectiveModel(userID, sessionID, provider, modelID, modelRef, displayName, contextLimit)
 		}
-		// The original user message enters the provider history only after warmup
-		// succeeds, and StreamLocalChat is invoked exactly once.
+
 		history = append(history, chatMessage{Role: "user", Content: message})
 		modelStart := time.Now()
 		planned, planReply, planErr := m.runPlanningFlow(ctx, planningRequest{
@@ -201,16 +176,10 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 			emitEvent:    emitEvent,
 		})
 		if planned {
-			// Der Planungsmodus hat uebernommen: entweder liegt jetzt ein Plan
-			// zur Freigabe vor, oder ein freigegebener Plan wurde abgearbeitet.
+
 			reply, err = planReply, planErr
 		} else if roots := resolveToolRoots(projectPath, message); len(roots) > 0 {
-			// Datei-Tool-Loop statt einmaligem Chat, damit der Bot im Projekt-
-			// Ordner arbeiten kann — oder in einem Ordner, den der Nutzer in
-			// seiner Nachricht genannt hat.
-			// Der Permission-Broker erlaubt dem Nutzer, Zugriffe ausserhalb der
-			// Roots im laufenden Stream freizugeben oder abzulehnen; er lebt nur
-			// fuer diesen Request und wird danach aufgeloest.
+
 			broker := newPermissionBroker()
 			m.mu.Lock()
 			m.permissionBrokers[sessionID] = broker
@@ -229,13 +198,10 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 				}
 				return emitEvent("reasoning_delta", map[string]interface{}{"chunk": chunk})
 			}
-			// Ohne Projekt gibt es keine Datei-Werkzeuge, aber die Web-Recherche:
-			// der Bot entscheidet selbst, ob eine Frage eine Suche rechtfertigt.
+
 			reply, err = runWebOnlyToolLoop(ctx, history, systemPrompt, providerEmit, emitEvent,
 				func(convo []chatMessage, prompt string, filterEmit func(string) error) (string, error) {
-					// thinkFilter loest inline <think> Bloecke (Modelle ohne natives
-					// Reasoning-Feld) aus dem sichtbaren Text heraus, BEVOR filterEmit
-					// entscheidet, ob ein Tool-Aufruf oder die Endantwort vorliegt.
+
 					thinkFilter := newThinkTagFilter(filterEmit, emitReasoning)
 					out, streamErr := m.streamProviderChat(ctx, provider, modelID, convo, prompt, thinking, thinkFilter.Emit, emitReasoning)
 					if streamErr == nil {
@@ -244,8 +210,7 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 					return out, streamErr
 				})
 		}
-		// Modellzeit getrennt loggen: so ist im Log sofort erkennbar, dass die
-		// wahrgenommene Langsamkeit an der Inferenz haengt, nicht am Recall.
+
 		log.Printf("[philobot] Modell-Antwort in %s (provider=%s, model=%s, projekt-tools=%t)", time.Since(modelStart).Round(time.Millisecond), apimodels.NormalizeProvider(provider), modelID, projectPath != "")
 		if err != nil {
 			if boundModel && errors.Is(err, localinference.ErrNotFound) {
@@ -266,9 +231,7 @@ func (m *PhiloBotModule) generateReply(ctx context.Context, userID, sessionID, m
 			return "", "", "", nil, err
 		}
 	}
-	// Ein evtl. <think> Block wurde bereits live als reasoning_delta gestreamt;
-	// aus der gespeicherten/finalen Antwort entfernen, damit sie nicht als
-	// unformatierter Rohtext in Verlauf und UI landet.
+
 	reply = stripThinkBlocks(reply)
 	if finalBot.ID == "botbuilder" {
 		reply, createdBot = m.applyBotBuilderAutomation(userID, reply)
@@ -329,17 +292,12 @@ func (m *PhiloBotModule) generateAgenticReply(ctx context.Context, userID, sessi
 	}
 	m.mu.Unlock()
 
-	// Jede agentische Anfrage laeuft ueber den Datei-Tool-Loop in
-	// generateReply.
 	return m.generateBoundAgenticReply(ctx, userID, sessionID, message, options, finalBot, onBotSelected, emit)
 }
 
-// A fixed model binding is authoritative even when the UI requests agentic
-// thinking: bound bots use the normal provider pipeline, keeping agentic
-// prompt/style settings and the same SSE event contract.
 func (m *PhiloBotModule) generateBoundAgenticReply(ctx context.Context, userID, sessionID, message string, options chatOptions, finalBot BotConfig, onBotSelected func(botID, botName string), emit func(string, interface{}) error) (string, string, string, error) {
 	delegated := options
-	delegated.EditMessageIndex = -1 // generateAgenticReply already applied the edit atomically.
+	delegated.EditMessageIndex = -1
 	selected := cloneBot(finalBot)
 	delegated.PreselectedBot = &selected
 
@@ -355,8 +313,7 @@ func (m *PhiloBotModule) generateBoundAgenticReply(ctx context.Context, userID, 
 		emitWarmup = func(progress localinference.WarmupProgress) error {
 			return emit("model_warmup", progress)
 		}
-		// Datei-Tool-Events (im Projekt-Kontext) an denselben SSE-Kanal; vorher
-		// gepufferten Text flushen, damit die Reihenfolge stimmt.
+
 		emitEvent = func(eventType string, data interface{}) error {
 			if textEmitter != nil {
 				if err := textEmitter.Flush(); err != nil {

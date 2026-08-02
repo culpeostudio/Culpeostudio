@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../engine/widgets.dart';
 import '../../l10n/app_strings.dart';
 
-// Kleine Bausteine der Kopfzeile und Arbeitsbereich-Umschaltung.
-
 class HeaderMark extends StatelessWidget {
   const HeaderMark({super.key});
 

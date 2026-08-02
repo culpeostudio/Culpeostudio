@@ -90,10 +90,6 @@ func (m *EngineModule) takeConfirmedStop(instanceID string) (confirmedStopTarget
 	return target, exists
 }
 
-// stopSupervisorConfirmed never treats a timeout as proof that memory was
-// released. A successful return requires either no managed handle or an
-// observable terminal Supervisor snapshot whose process watcher has reaped the
-// worker.
 func (m *EngineModule) stopSupervisorConfirmed(ctx context.Context, instanceID string) error {
 	m.clearConfirmedStop(instanceID)
 	target := m.captureStopTarget(instanceID)
@@ -155,10 +151,7 @@ func (m *EngineModule) forceStopSupervisorConfirmed(ctx context.Context, instanc
 }
 
 func (m *EngineModule) markStopUnconfirmed(instanceID, phase, detail string, cause error) {
-	// Capture the supervisor generation before publishing the unconfirmed
-	// state. A later Start is allowed to replace a terminal handle under the
-	// same instance ID, so a background reaper must never resolve the handle by
-	// ID again.
+
 	var stopHandle *engineruntime.InstanceHandle
 	var stopFailure *unconfirmedSupervisorStopError
 	if errors.As(cause, &stopFailure) {
@@ -197,8 +190,6 @@ func (m *EngineModule) markStopUnconfirmed(instanceID, phase, detail string, cau
 	m.requestConfirmedStopReaper(instanceID, stopHandle, marker)
 }
 
-// finalizeConfirmedStop must only be called after stopSupervisorConfirmed (or
-// a terminal Supervisor watcher event) established that no worker remains.
 func (m *EngineModule) finalizeConfirmedStop(instanceID, phase, detail string) {
 	target, exists := m.takeConfirmedStop(instanceID)
 	if !exists {
@@ -209,9 +200,7 @@ func (m *EngineModule) finalizeConfirmedStop(instanceID, phase, detail string) {
 
 func (m *EngineModule) finalizeStopTarget(instanceID string, target confirmedStopTarget, phase, detail string) bool {
 	if target.hadSupervisor {
-		// The EngineModule never swaps supervisors during normal operation, but
-		// treat doing so as a generation change instead of trusting an old
-		// receipt.
+
 		if m.supervisor != target.supervisor || target.supervisor == nil {
 			return false
 		}
@@ -264,9 +253,7 @@ type unconfirmedStopMarker struct {
 }
 
 func (m *EngineModule) requestConfirmedStopReaper(instanceID string, handle *engineruntime.InstanceHandle, marker unconfirmedStopMarker) {
-	// A stop error without a managed process cannot occur in the normal engine
-	// lifecycle. More importantly, looking a handle up later by instance ID
-	// could target a replacement generation.
+
 	if handle == nil {
 		return
 	}
@@ -306,9 +293,6 @@ func (m *EngineModule) reapUnconfirmedStop(instanceID string, handle *enginerunt
 	}
 }
 
-// finalizeReapedStop is a compare-and-swap over both the supervisor handle and
-// the engine-side unconfirmed-stop marker. A stale watcher is therefore unable
-// to turn a newly committed Ready worker into Stopped.
 func (m *EngineModule) finalizeReapedStop(instanceID string, handle *engineruntime.InstanceHandle, marker unconfirmedStopMarker) bool {
 	return m.finalizeStopTarget(instanceID, confirmedStopTarget{
 		supervisor:    m.supervisor,

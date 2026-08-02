@@ -113,8 +113,6 @@ func TestVulkanDependencyConsentIsOneUseAndBuildsVulkanRuntime(t *testing.T) {
 		t.Fatalf("install response = %#v", started)
 	}
 
-	// A token is consumed before the asynchronous command and cannot be reused,
-	// even while its original operation is still running.
 	replayed := requestJSON(t, app, http.MethodPost, "/api/engine/system-dependencies/vulkan/install", body, http.StatusUnauthorized)
 	if code := replayed["error"].(map[string]interface{})["code"]; code != "dependency_consent_invalid_or_consumed" {
 		t.Fatalf("replay error = %#v", replayed)

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Startet die Dev-Konsole (Textual-TUI), die Backend und Frontend
-# in der richtigen Reihenfolge (erst Backend, dann Frontend) verwaltet.
+
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Eine saubere Quellcode-Installation wird vor jedem Start per Fast-Forward auf
-# den aktuellen main-Stand gebracht. Lokale Änderungen, andere Branches und
-# fehlendes Netzwerk werden niemals überschrieben: In diesen Fällen startet die
-# vorhandene Version und der Updater gibt nur einen Hinweis aus.
+
+
+
+
 SKIP_UPDATE="${PHILOENGINE_SKIP_UPDATE:-}"
 if [[ "${SKIP_UPDATE,,}" != "1" && "${SKIP_UPDATE,,}" != "true" && \
       "${SKIP_UPDATE,,}" != "yes" && "${SKIP_UPDATE,,}" != "on" ]]; then

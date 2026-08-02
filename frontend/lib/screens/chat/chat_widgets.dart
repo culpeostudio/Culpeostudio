@@ -105,9 +105,6 @@ class ThinkingModeOption {
   final String label;
   final IconData icon;
 
-  /// When false the option is shown but cannot be selected ("In Entwicklung").
-  /// Dragging or tapping onto it previews the option but snaps back to the last
-  /// enabled option, and [ThinkingModeSliderButton.onChanged] never fires for it.
   final bool enabled;
 
   const ThinkingModeOption({
@@ -395,8 +392,7 @@ class _ThinkingModePopupCard extends StatefulWidget {
 
 class _ThinkingModePopupCardState extends State<_ThinkingModePopupCard> {
   late int _localIndex = widget.selectedIndex;
-  // The last option the user actually committed to. Disabled ("In Entwicklung")
-  // options preview under the thumb but snap back here on release.
+
   late int _lastEnabledIndex = _resolveEnabled(widget.selectedIndex);
 
   int _resolveEnabled(int index) {
@@ -462,7 +458,7 @@ class _ThinkingModePopupCardState extends State<_ThinkingModePopupCard> {
                 final nextIndex = value.round().clamp(0, optionCount - 1);
                 if (nextIndex != _localIndex) {
                   setState(() => _localIndex = nextIndex);
-                  // Only commit enabled options; disabled ones preview only.
+
                   if (widget.options[nextIndex].enabled) {
                     _lastEnabledIndex = nextIndex;
                     widget.onSliderChanged(nextIndex);
@@ -470,8 +466,6 @@ class _ThinkingModePopupCardState extends State<_ThinkingModePopupCard> {
                 }
               },
               onChangeEnd: () {
-                // Snap a preview of a disabled option back to the last committed
-                // enabled option once the interaction ends.
                 if (!widget.options[_localIndex].enabled) {
                   setState(() => _localIndex = _lastEnabledIndex);
                 }
@@ -803,7 +797,7 @@ class _SlimThinkingSliderState extends State<_SlimThinkingSlider>
                                 ),
                               ),
                             ),
-                          // Thumb
+
                           Positioned(
                             left: thumbX - _thumbRadius,
                             top: 0,
@@ -871,7 +865,6 @@ class _SlimThinkingSliderState extends State<_SlimThinkingSlider>
   }
 }
 
-/// A stable, low-key grid of pixels for the maximum Thinking level.
 class _MatrixTrackPainter extends CustomPainter {
   final Color color;
   final double phase;
@@ -888,7 +881,6 @@ class _MatrixTrackPainter extends CustomPainter {
 
     for (var row = 0; row < rows; row++) {
       for (var column = 0; column < columns; column++) {
-        // Deterministic pixels keep the effect calm instead of flickering.
         final phaseStep = (phase * 12).floor();
         final seed = (column * 17 + row * 11 + phaseStep) % 9;
         if (seed > 6) continue;

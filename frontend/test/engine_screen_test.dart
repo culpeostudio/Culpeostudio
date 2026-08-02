@@ -1048,7 +1048,6 @@ void main() {
       await tester.pumpWidget(_testApp(EngineScreen(api: api)));
       await tester.pumpAndSettle();
 
-      // Guided flow: pick a model, then open the start step and launch.
       await tester.tap(find.byKey(const Key('engine-wizard-step-1')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('engine-model-model-gguf')));
@@ -1148,7 +1147,6 @@ void main() {
       await tester.tap(trustTile);
       await tester.pumpAndSettle();
 
-      // Advance to the start step of the guided flow.
       final nextButton = find.byKey(const Key('engine-calculate-and-continue'));
       await tester.ensureVisible(nextButton);
       await tester.tap(nextButton);

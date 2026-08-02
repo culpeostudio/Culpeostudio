@@ -1,3 +1,6 @@
+// Package philobot runs the assistants: their agent loop, planning mode, project
+// file tools and the approval prompts that guard anything outside a bound
+// folder.
 package philobot
 
 import (
@@ -14,45 +17,25 @@ import (
 	"github.com/fillyengine/backend/internal/webtools"
 )
 
-// toolCallOpen ist das Sentinel, mit dem eine Modell-Antwort beginnen MUSS, wenn
-// sie ein Datei-Tool aufrufen will. Alles andere gilt als normale Endantwort.
 const toolCallOpen = "<tool_call>"
 
-// maxToolLoopIterations begrenzt die Anzahl der Tool-Runden pro Nutzernachricht,
-// damit ein sich wiederholendes Modell nicht endlos Tools aufruft.
 const maxToolLoopIterations = 12
 
-// maxConsecutiveToolFailures bricht ab, wenn dasselbe Werkzeug mehrfach
-// hintereinander fehlschlaegt. Ein Modell, das dreimal am selben Aufruf
-// scheitert, findet die Loesung auch beim vierten Versuch nicht - es
-// verbraucht nur das Rundenbudget, das dem restlichen Auftrag fehlt.
 const maxConsecutiveToolFailures = 3
 
-// errToolLoopExhausted meldet, dass die Schleife am Rundenlimit oder an
-// wiederholten Werkzeug-Fehlern abgebrochen ist, statt fertig zu werden.
-//
-// Im freien Chat ist das kein Fehler: der Nutzer bekommt den bis dahin
-// erarbeiteten Text und kann nachfassen. Fuer einen Planschritt schon —
-// er darf nicht als erledigt gelten, nur weil das Budget aufgebraucht ist.
 var errToolLoopExhausted = errors.New("philobot: werkzeug-schleife ohne abschluss beendet")
 
-// toolInvocation ist ein aus der Modell-Ausgabe geparster Tool-Aufruf.
 type toolInvocation struct {
 	Name      string
 	Arguments map[string]interface{}
 }
 
-// projectFileToolNames listet die im Projekt-Kontext verfuegbaren Datei-Tools.
 var projectFileToolNames = []string{
 	"list_dir", "read_file", "stat_path",
 	"write_file", "patch_file", "make_dir", "move_path", "delete_path",
 	"grep_search", "find_files", "run_command",
 }
 
-// buildToolLoopSystemPrompt haengt an den Basis-System-Prompt die Tool-Anleitung
-// an: das Aufruf-Protokoll, die verfuegbaren Tools und den Projekt-Root. Der
-// Bot behaelt seine Persoenlichkeit (Basis-Prompt), bekommt aber die Faehigkeit,
-// im Projekt-Ordner zu arbeiten und im Web zu recherchieren.
 func buildToolLoopSystemPrompt(base string, roots []string) string {
 	var b strings.Builder
 	b.WriteString(strings.TrimSpace(base))
@@ -93,12 +76,6 @@ func buildToolLoopSystemPrompt(base string, roots []string) string {
 	return b.String()
 }
 
-// parseToolCall erkennt einen Tool-Aufruf in der Modell-Ausgabe. Der Sentinel
-// darf an beliebiger Stelle stehen: viele Modelle stellen dem Aufruf eine kurze
-// Einleitung voran ("Los geht's: <tool_call>...") statt strikt mit dem Sentinel
-// zu beginnen. Entscheidend ist ein vollstaendiger <tool_call>{...} Block mit
-// gueltigem JSON und Tool-Namen. Der Stream-Filter blendet den rohen JSON-Block
-// passend ab dem Sentinel aus, egal ob Prosa davor steht.
 func parseToolCall(reply string) (toolInvocation, bool) {
 	sentinel := strings.Index(reply, toolCallOpen)
 	if sentinel == -1 {
@@ -129,18 +106,11 @@ func parseToolCall(reply string) (toolInvocation, bool) {
 	return toolInvocation{Name: strings.TrimSpace(payload.Name), Arguments: payload.Arguments}, true
 }
 
-// toolCallStreamFilter entscheidet waehrend des Streamings, welcher Teil der
-// Modell-Antwort beim Nutzer ankommt: normaler Text wird durchgereicht, der
-// eigentliche <tool_call>{...} Aufruf wird ab dem Sentinel unterdrueckt — egal
-// ob er am Anfang steht oder nach einer kurzen Einleitung ("Los geht's: ..."),
-// damit der rohe JSON-Aufruf nie im Chat auftaucht. Ein am Chunk-Ende erst
-// angefangener Sentinel wird zurueckgehalten, bis der naechste Chunk ihn
-// bestaetigt oder verwirft.
 type toolCallStreamFilter struct {
 	emit       func(string) error
 	buf        strings.Builder
-	emitted    int  // bereits sichtbar ausgegebene Bytes von buf
-	suppressed bool // Sentinel gesehen: alles ab dort bleibt unsichtbar
+	emitted    int
+	suppressed bool
 }
 
 func newToolCallStreamFilter(emit func(string) error) *toolCallStreamFilter {
@@ -152,7 +122,7 @@ func newToolCallStreamFilter(emit func(string) error) *toolCallStreamFilter {
 
 func (f *toolCallStreamFilter) Emit(chunk string) error {
 	if f.suppressed {
-		return nil // Tool-Aufruf laeuft: roher JSON-Text bleibt unsichtbar.
+		return nil
 	}
 	f.buf.WriteString(chunk)
 	s := f.buf.String()
@@ -160,13 +130,10 @@ func (f *toolCallStreamFilter) Emit(chunk string) error {
 		f.suppressed = true
 		return f.flushVisibleUpTo(idx)
 	}
-	// Kein vollstaendiger Sentinel: alles ausser einem evtl. angefangenen
-	// Sentinel am Ende sichtbar machen.
+
 	return f.flushVisibleUpTo(len(s) - trailingTagPrefixLen(s, toolCallOpen))
 }
 
-// Flush gibt am Rundenende den zurueckgehaltenen Rest sichtbar aus — ausser es
-// lief ein Tool-Aufruf, dann bleibt der unterdrueckte Teil unsichtbar.
 func (f *toolCallStreamFilter) Flush() error {
 	if f.suppressed {
 		return nil
@@ -174,10 +141,6 @@ func (f *toolCallStreamFilter) Flush() error {
 	return f.flushVisibleUpTo(f.buf.Len())
 }
 
-// flushVisibleUpTo streamt buf[emitted:end] an den Nutzer und merkt sich den
-// Fortschritt. end liegt stets auf einer ASCII-Grenze (Sentinel-Anfang, Puffer-
-// Ende oder direkt vor einem angefangenen Sentinel), also nie mitten in einer
-// Mehrbyte-Rune.
 func (f *toolCallStreamFilter) flushVisibleUpTo(end int) error {
 	if end <= f.emitted {
 		return nil
@@ -187,11 +150,6 @@ func (f *toolCallStreamFilter) flushVisibleUpTo(end int) error {
 	return f.emit(out)
 }
 
-// runProjectToolLoop treibt den Datei-Tool-Loop im Projekt-Kontext. Es ist ein
-// duenner Wrapper um runToolLoop, der die Modell-Runde an streamProviderChat
-// bindet; die eigentliche Schleifenlogik ist so ohne echtes Modell testbar.
-// asker/sessionID verdrahten die Permission-Anfragen bei Zugriffen ausserhalb
-// des Projekt-Roots (nil = harter Sandbox-Fehler wie bisher).
 func (m *PhiloBotModule) runProjectToolLoop(
 	ctx context.Context,
 	provider, modelID string,
@@ -211,9 +169,7 @@ func (m *PhiloBotModule) runProjectToolLoop(
 				}
 				return emitEvent("reasoning_delta", map[string]interface{}{"chunk": chunk})
 			}
-			// thinkFilter sitzt VOR dem Tool-Call-Filter: ein Denkblock kann einem
-			// <tool_call> vorausgehen, muss also zuerst herausgeloest werden, bevor
-			// filterEmit entscheidet, ob der Rest ein Tool-Aufruf oder Endantwort ist.
+
 			thinkFilter := newThinkTagFilter(filterEmit, emitReasoning)
 			reply, err := m.streamProviderChat(ctx, provider, modelID, convo, systemPrompt, thinking, thinkFilter.Emit, emitReasoning)
 			if err == nil {
@@ -223,13 +179,8 @@ func (m *PhiloBotModule) runProjectToolLoop(
 		}, asker, sessionID)
 }
 
-// chatTurnFunc fuehrt eine einzelne Modell-Runde aus: sichtbarer Text geht ueber
-// filterEmit an den Nutzer, der volle Antworttext wird zurueckgegeben.
 type chatTurnFunc func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error)
 
-// buildWebOnlySystemPrompt haengt nur die Web-Werkzeuge an den Basis-Prompt.
-// Er gilt im Chat ohne Projekt: dort gibt es keinen Sandbox-Root und damit
-// keine Datei-Werkzeuge, recherchieren soll der Bot trotzdem koennen.
 func buildWebOnlySystemPrompt(base string) string {
 	var b strings.Builder
 	b.WriteString(strings.TrimSpace(base))
@@ -247,16 +198,11 @@ func buildWebOnlySystemPrompt(base string) string {
 	return b.String()
 }
 
-// newWebTools erzeugt die Web-Werkzeuge fuer eine Agenten-Schleife. Ein
-// Fehler ist nicht toedlich: die Schleife laeuft dann ohne Recherche
-// weiter, statt die Antwort komplett zu verweigern.
 func newWebTools() *webtools.Tools {
 	tools, err := webtools.New(webtools.Options{
 		Proxy:   strings.TrimSpace(os.Getenv("PHILOSEARCH_PROXY")),
 		Timeout: 10 * time.Second,
-		// Suchregion und Budgets sind konfigurierbar - wie im ganzen
-		// Backend ueber Environment-Variablen, nicht ueber eine eigene
-		// Konfigurationsdatei.
+
 		Region:     strings.TrimSpace(os.Getenv("WEBTOOLS_REGION")),
 		MaxResults: envInt("WEBTOOLS_MAX_RESULTS"),
 		FetchChars: envInt("WEBTOOLS_FETCH_CHARS"),
@@ -268,8 +214,6 @@ func newWebTools() *webtools.Tools {
 	return tools
 }
 
-// envInt liest eine Environment-Variable als Zahl. 0 bedeutet "nicht
-// gesetzt" und ueberlaesst dem Aufgerufenen seinen Standardwert.
 func envInt(key string) int {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
@@ -283,10 +227,6 @@ func envInt(key string) int {
 	return n
 }
 
-// runToolLoop treibt die Schleife: Modell aufrufen, evtl. Tool ausfuehren,
-// Ergebnis zurueckspeisen, bis das Modell eine normale Antwort gibt oder das
-// Iterationslimit erreicht ist. emitText streamt sichtbaren Text an den Nutzer,
-// emitEvent (optional) meldet tool_start/tool_result ans Frontend.
 func runToolLoop(
 	ctx context.Context,
 	history []chatMessage,
@@ -302,8 +242,6 @@ func runToolLoop(
 		chatTurn, asker, sessionID, maxToolLoopIterations))
 }
 
-// runToolLoopWithLimit ist runToolLoop mit eigenem Iterationslimit. Ein
-// einzelner Planschritt bekommt weniger Runden als eine freie Unterhaltung.
 func runToolLoopWithLimit(
 	ctx context.Context,
 	history []chatMessage,
@@ -331,9 +269,6 @@ func runToolLoopWithLimit(
 	return driveToolLoop(ctx, history, systemPrompt, emitText, emitEvent, chatTurn, dispatch, maxIterations)
 }
 
-// runWebOnlyToolLoop treibt dieselbe Schleife ohne Datei-Werkzeuge. Er gilt
-// im Chat ohne Projekt-Kontext: ohne Sandbox-Root darf nichts auf die Platte
-// zugreifen, recherchieren im Web ist aber gefahrlos moeglich.
 func runWebOnlyToolLoop(
 	ctx context.Context,
 	history []chatMessage,
@@ -346,8 +281,6 @@ func runWebOnlyToolLoop(
 		chatTurn, maxToolLoopIterations))
 }
 
-// runWebOnlyToolLoopWithLimit ist runWebOnlyToolLoop mit eigenem
-// Iterationslimit.
 func runWebOnlyToolLoopWithLimit(
 	ctx context.Context,
 	history []chatMessage,
@@ -359,8 +292,7 @@ func runWebOnlyToolLoopWithLimit(
 ) (string, error) {
 	web := newWebTools()
 	if web == nil {
-		// Ohne Web-Werkzeuge bleibt nichts zu tun: eine einzelne Modell-Runde
-		// ohne Tool-Anleitung im Prompt.
+
 		filter := newToolCallStreamFilter(emitText)
 		reply, err := chatTurn(history, baseSystemPrompt, filter.Emit)
 		if err != nil {
@@ -383,10 +315,6 @@ func runWebOnlyToolLoopWithLimit(
 		emitText, emitEvent, chatTurn, dispatch, maxIterations)
 }
 
-// driveToolLoop ist die gemeinsame Schleifenmechanik von Projekt- und
-// Web-Modus. Sie ruft das Modell, fuehrt angeforderte Tools ueber dispatch
-// aus und speist die Ergebnisse zurueck, bis eine normale Antwort kommt
-// oder das Iterationslimit greift.
 func driveToolLoop(
 	ctx context.Context,
 	history []chatMessage,
@@ -401,7 +329,7 @@ func driveToolLoop(
 		maxIterations = maxToolLoopIterations
 	}
 	convo := append([]chatMessage{}, history...)
-	// Zaehlt, wie oft dasselbe Werkzeug in Folge fehlgeschlagen ist.
+
 	failedTool := ""
 	failureStreak := 0
 
@@ -411,15 +339,14 @@ func driveToolLoop(
 		if err != nil {
 			return "", err
 		}
-		// Zurueckgehaltenen Rest sichtbar machen (bei einer normalen Endantwort
-		// den evtl. gepufferten Sentinel-Praefix; bei einem Tool-Aufruf nichts).
+
 		if err := filter.Flush(); err != nil {
 			return "", err
 		}
 
 		call, ok := parseToolCall(reply)
 		if !ok {
-			// Normale Endantwort — wurde vom Filter bereits gestreamt.
+
 			return reply, nil
 		}
 
@@ -435,10 +362,7 @@ func driveToolLoop(
 			log.Printf("[philobot] Tool ausgefuehrt (tool=%s, ok=true, iter=%d)", call.Name, iteration+1)
 			failedTool, failureStreak = "", 0
 		} else {
-			// Den Fehlertext mitloggen: ohne ihn ist im Nachhinein nicht
-			// nachvollziehbar, woran ein Werkzeug gescheitert ist. Bei
-			// Argumentfehlern zusaetzlich, was das Modell geschickt hat -
-			// sonst bleibt offen, welchen Feldnamen es stattdessen nutzt.
+
 			errText, _ := result["error"].(string)
 			if code, _ := result["error_code"].(string); code == "invalid_tool_arguments" {
 				argsJSON, _ := json.Marshal(call.Arguments)
@@ -471,16 +395,13 @@ func driveToolLoop(
 		}
 
 		resultJSON, _ := json.Marshal(result)
-		// Assistant-Tool-Turn + Ergebnis als user-Nachricht anhaengen. role "user"
-		// ist der robusteste Kanal fuer Tool-Ergebnisse ueber lokale Modelle und
-		// API-Provider hinweg (nicht alle akzeptieren role "tool").
+
 		convo = append(convo,
 			chatMessage{Role: "assistant", Content: reply},
 			chatMessage{Role: "user", Content: fmt.Sprintf("[TOOL_RESULT %s]\n%s", call.Name, string(resultJSON))},
 		)
 	}
 
-	// Iterationslimit erreicht: saubere Abschlussnachricht statt rohem Tool-JSON.
 	final := "Ich habe das Schrittlimit fuer Werkzeug-Aufrufe erreicht und die Aufgabe moeglicherweise nicht vollstaendig abgeschlossen. Sag mir, wie ich weitermachen soll."
 	if emitText != nil {
 		_ = emitText(final)
@@ -489,10 +410,6 @@ func driveToolLoop(
 	return final, errToolLoopExhausted
 }
 
-// swallowExhausted behandelt einen Schleifen-Abbruch im freien Chat als
-// Erfolg: der Nutzer bekommt den erarbeiteten Text und kann nachfassen.
-// Die *WithLimit-Varianten reichen den Abbruch dagegen durch, damit ein
-// Planschritt nicht faelschlich als erledigt gilt.
 func swallowExhausted(reply string, err error) (string, error) {
 	if errors.Is(err, errToolLoopExhausted) {
 		return reply, nil

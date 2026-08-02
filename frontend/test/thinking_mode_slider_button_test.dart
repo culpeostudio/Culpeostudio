@@ -78,7 +78,7 @@ void main() {
       Offset(popupRect.left + 36, popupRect.top + 28),
       const Offset(180, 0),
     );
-    // Agentic keeps its visual pulse running, so there is no settled frame.
+
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.byKey(const ValueKey('thinking-popup')), findsOneWidget);
@@ -161,7 +161,7 @@ void main() {
       Offset(popupRect.left + 36, popupRect.top + 28),
       const Offset(180, 0),
     );
-    // Agentic keeps its visual pulse running, so there is no settled frame.
+
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('selected:agents'), findsOneWidget);
@@ -205,15 +205,13 @@ void main() {
     final popupRect = tester.getRect(
       find.byKey(const ValueKey('thinking-popup')),
     );
-    // Drag the thumb all the way onto the disabled 'agent' stop.
+
     await tester.dragFrom(
       Offset(popupRect.left + 36, popupRect.top + 28),
       const Offset(400, 0),
     );
     await tester.pump(const Duration(milliseconds: 200));
 
-    // The disabled option must never become the committed value, and the popup
-    // stays open (selection did not settle onto a real mode).
     expect(find.text('selected:agent'), findsNothing);
     expect(find.byKey(const ValueKey('thinking-popup')), findsOneWidget);
   });

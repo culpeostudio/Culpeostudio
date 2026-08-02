@@ -19,8 +19,6 @@ import (
 
 var _ localinference.Provider = (*EngineModule)(nil)
 
-// ReadyLocalModels exposes only presentation metadata. Worker URLs and secrets
-// never cross the Engine module boundary.
 func (m *EngineModule) ReadyLocalModels() []localinference.Model {
 	instances := m.listInstances()
 	models := make([]localinference.Model, 0, len(instances))
@@ -137,8 +135,7 @@ func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, r
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return "", localWorkerError(response)
 	}
-	// Wrap emit to measure time-to-first-token and chunk throughput for the
-	// live metrics endpoint. Chunk counts approximate output tokens.
+
 	var firstToken time.Time
 	tokens := 0
 	measuredEmit := func(chunk string) error {
@@ -299,9 +296,7 @@ func localWorkerError(response *http.Response) error {
 	if decodeErr != nil || message == "" {
 		message = fmt.Sprintf("lokales Modell hat die Anfrage abgelehnt (%d)", response.StatusCode)
 	}
-	// Inference-time crashes (CUDA OOM, illegal access, ...) surface as raw
-	// Python tracebacks in the worker's error body. Translate known patterns
-	// into a clear user-facing explanation instead of the traceback tail.
+
 	if diagnosis, ok := engineruntime.DiagnoseWorkerOutput(string(body)); ok {
 		message = diagnosis.Message
 	}

@@ -37,8 +37,7 @@ func (h *engineEventHub) publish(eventType string, data interface{}) {
 		select {
 		case subscriber <- event:
 		default:
-			// Slow UI clients receive the next full instance/operation snapshot;
-			// engine execution is never blocked by presentation traffic.
+
 		}
 	}
 }

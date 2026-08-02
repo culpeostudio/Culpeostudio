@@ -57,8 +57,6 @@ func TestWebFetchRejectsBadArguments(t *testing.T) {
 	assertFailure(t, tools.Execute(context.Background(), ToolWebFetch, map[string]interface{}{"url": " "}), "invalid_tool_arguments")
 }
 
-// TestWebFetchBlocksInternalTargets ist der wichtigste Test hier: ein Modell
-// darf sich ueber die Werkzeuge keinen Zugriff auf interne Dienste erschleichen.
 func TestWebFetchBlocksInternalTargets(t *testing.T) {
 	tools := newTestTools(t)
 	for _, target := range []string{
@@ -101,14 +99,12 @@ func TestTruncate(t *testing.T) {
 	if len([]rune(got)) != 6 {
 		t.Errorf("truncate = %q, erwartet 5 Zeichen + Ellipse", got)
 	}
-	// Mehrbyte-Zeichen duerfen nicht zerschnitten werden.
+
 	if got := truncate("äöüäöüäöü", 4); !strings.HasPrefix(got, "äöüä") {
 		t.Errorf("truncate zerschneidet Mehrbyte-Zeichen: %q", got)
 	}
 }
 
-// TestCacheRoundtrip prueft, dass ein Ergebnis zurueckkommt und als
-// zwischengespeichert markiert wird, ohne den Original-Eintrag zu veraendern.
 func TestCacheRoundtrip(t *testing.T) {
 	tools := newTestTools(t)
 	original := map[string]interface{}{"ok": true, "count": 1}
@@ -148,8 +144,6 @@ func TestCacheDisabled(t *testing.T) {
 	}
 }
 
-// TestPromptSection sichert Werkzeugnamen und Abwaege-Kriterien: der Prompt
-// ist der einzige Weg, auf dem das Modell von den Werkzeugen erfaehrt.
 func TestPromptSection(t *testing.T) {
 	for _, hasFileTools := range []bool{true, false} {
 		section := PromptSection(hasFileTools)
@@ -159,7 +153,7 @@ func TestPromptSection(t *testing.T) {
 			}
 		}
 	}
-	// Ohne Datei-Werkzeuge darf der Prompt nicht auf sie verweisen.
+
 	if strings.Contains(PromptSection(false), "dafuer sind die Datei-Werkzeuge da") {
 		t.Error("PromptSection(false) verweist auf nicht vorhandene Datei-Werkzeuge")
 	}

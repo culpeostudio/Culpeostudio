@@ -8,6 +8,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
+	github.com/parquet-go/parquet-go v0.30.1
 	github.com/pkoukk/tiktoken-go v0.1.8
 	github.com/pkoukk/tiktoken-go-loader v0.0.2
 	github.com/rivo/uniseg v0.2.0
@@ -22,18 +23,22 @@ require (
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/antchfx/xpath v1.3.8 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/parquet-go/bitpack v1.0.0 // indirect
+	github.com/parquet-go/jsonlite v1.0.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

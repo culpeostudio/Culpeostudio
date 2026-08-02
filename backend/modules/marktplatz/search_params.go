@@ -9,17 +9,8 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// maxSearchWindow begrenzt, wie viele Modelle pro Suche maximal beim Provider
-// angefordert werden – verhindert, dass eine kombinierte Filter+Paging-
-// Anfrage den Katalog komplett laedt. Wurde frueher inline in handleSearch
-// gefuehrt; ist jetzt zur Kapselung der Such-Helper hier.
 const maxSearchWindow = 1000
 
-// searchParams fasst alle pro Suchanfrage gueltigen Filter und
-// paging-Parameter zusammen. parseSearchParams erzeugt sie aus einem
-// fiber.Ctx; danach sind sie reine Daten, die in computeSearchLimit / den
-// Provider-Suchen / prepareMarketplaceResults verwendet werden. So laesst
-// sich die Logik ohne fiber.Ctx unit-testen.
 type searchParams struct {
 	Provider               string
 	Query                  string
@@ -34,10 +25,6 @@ type searchParams struct {
 	LocalOnly              bool
 }
 
-// fiberErr traegt HTTP-Status + Klartext-Nachricht. So kann parseSearchParams
-// Validierungsfehler als error an den Handler zurueckgeben, der sie direkt
-// via c.Status(...) weiterreichen kann – ohne dass der Handler
-// string-Matches machen muss.
 type fiberErr struct {
 	status int
 	msg    string
@@ -45,9 +32,6 @@ type fiberErr struct {
 
 func (e *fiberErr) Error() string { return e.msg }
 
-// parseSearchParams liest und validiert alle Query-Parameter einer /search-
-// Anfrage. Bei jedem Validierungsfehler kehrt sie sofort mit einem *fiberErr
-// zurueck – die Statuscodes sind stabil fuer Test-Cases und Clients.
 func parseSearchParams(c *fiber.Ctx) (searchParams, error) {
 	provider := types.NormalizeProvider(c.Query("provider", types.ProviderAll))
 	if !types.IsSupportedProvider(provider) {
@@ -100,12 +84,6 @@ func parseSearchParams(c *fiber.Ctx) (searchParams, error) {
 		localOnly = parsed
 	}
 
-	// local_only/gpu_fit/quantization sind HF-spezifische Filter (lokale
-	// gguf-Downloads, VRAM-Check). Cloud-Provider liefern garantiert leere
-	// Ergebnisse, weil der Backend alle nicht-HF-Modelle herausfiltert.
-	// Stille leere Listen sind fuer Clients unauffaellig – wir lehnen hier
-	// frueh mit 400 ab, damit der Aufrufer den Missbrauch bemerkt. ProviderAll
-	// bleibt erlaubt (Backend schaltet verdeckt auf HF um).
 	if (localOnly || gpuOnly || normalizedQuantization != "") &&
 		provider != types.ProviderAll && provider != types.ProviderHuggingFace {
 		return searchParams{}, &fiberErr{
@@ -129,10 +107,6 @@ func parseSearchParams(c *fiber.Ctx) (searchParams, error) {
 	}, nil
 }
 
-// resolvedProvider liefert den tatsaechlich abzufragenden Provider. Bei
-// "all" kollabiert die Suche auf HuggingFace, sobald lokale Filter aktiv
-// sind – der Vertrag der /search-API ist: "all + lokaler Filter == nur
-// HF-Treffer, da nur HF lokal ladbar ist".
 func (p searchParams) resolvedProvider() string {
 	if p.Provider == types.ProviderAll && (p.LocalOnly || p.GPUOnly || p.NormalizedQuantization != "") {
 		return types.ProviderHuggingFace
@@ -140,9 +114,6 @@ func (p searchParams) resolvedProvider() string {
 	return p.Provider
 }
 
-// isPostFilteredSearch gibt an, ob Filter erst nach dem Providerabruf auf
-// angereicherte Metadaten angewandt werden. Dann reichen die ersten N
-// Rohmodelle nicht: Kategorie-Treffer können erst viel später vorkommen.
 func (p searchParams) isPostFilteredSearch() bool {
 	if p.Category != "" || p.Format != "" {
 		return true
@@ -151,10 +122,6 @@ func (p searchParams) isPostFilteredSearch() bool {
 		(p.LocalOnly || p.GPUOnly || p.NormalizedQuantization != "")
 }
 
-// computeSearchLimit bestimmt das initiale Suchfenster (Limit), das beim
-// Provider angefragt wird. Fuer lokale Filter wird das Fenster bis zu 8x
-// vergroessert, damit nach Enrichment+Filter genug Treffer fuer die
-// angefragte Seite uebrig bleiben.
 func computeSearchLimit(p searchParams) int {
 	searchLimit := p.PageSize * p.Page
 	if searchLimit > maxSearchWindow {
@@ -175,12 +142,6 @@ func computeSearchLimit(p searchParams) int {
 	return searchLimit
 }
 
-// expandSearchLimit verdoppelt das Suchfenster, wenn die bisherige
-// Provider-Antwort nicht genug gefilterte Treffer geliefert hat. Gibt
-// (neuerLimit, ok) zurueck; ok=false bedeutet, dass kein weiteres Wachstum
-// moeglich ist (maxSearchWindow erreicht oder Verdopplung wuerde nichts
-// bringen). So bleibt die Expansionslogik in handleSearch als einfaches
-// `for { ... if !ok { break } ... }`.
 func expandSearchLimit(current int) (int, bool) {
 	if current >= maxSearchWindow {
 		return current, false

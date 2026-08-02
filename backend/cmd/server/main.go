@@ -1,3 +1,5 @@
+// Command server runs the PhiloEngine backend: the HTTP control plane, the
+// module registry and the gRPC listener.
 package main
 
 import (
@@ -19,6 +21,7 @@ import (
 	"github.com/fillyengine/backend/internal/middleware"
 
 	modModule "github.com/fillyengine/backend/modules"
+	modBenchmark "github.com/fillyengine/backend/modules/benchmark"
 	modEngine "github.com/fillyengine/backend/modules/engine"
 	modLogin "github.com/fillyengine/backend/modules/login"
 	modMarktplatz "github.com/fillyengine/backend/modules/marktplatz"
@@ -39,29 +42,20 @@ func main() {
 		cfg.UserPreferencesFile,
 	)
 
-	// ══════════════════════════════════════════════════════
-	// 1. Fiber HTTP/HTTPS Server
-	// ══════════════════════════════════════════════════════
 	app := fiber.New(fiber.Config{
 		AppName:      "FillyEngine Backend",
 		ServerHeader: "FillyEngine",
-		// Engine operations keep route IDs after the request returns. Without
-		// Immutable, fasthttp may reuse and overwrite their backing byte buffer.
+
 		Immutable: true,
 	})
 
-	// Globale Middleware
 	app.Use(logger.New())
 	app.Use(recover.New())
 	app.Use(middleware.CORSMiddleware())
 	app.Use(middleware.AuthMiddleware(cfg.JWTSecret, loginModule.UserExists))
 
-	// API-Router Gruppe
 	api := app.Group("/api")
 
-	// ══════════════════════════════════════════════════════
-	// 2. Module registrieren (jedes Modul unabhängig)
-	// ══════════════════════════════════════════════════════
 	memoryModule := modMemory.New(
 		cfg.MemorySQLitePath,
 		cfg.MemoryVectorPath,
@@ -104,8 +98,7 @@ func main() {
 	)
 
 	philobotModule := modPhilobot.New(cfg.SettingsFile)
-	// PhiloBot bekommt lesenden Zugriff aufs Projektgedaechtnis, damit dauerhafte
-	// Nutzerfakten (z. B. der Name) auch in neuen Chats erinnert werden.
+
 	philobotModule.SetMemory(memoryModule)
 	philobotModule.SetExistingUsers(loginModule.ListUserIDs)
 	loginModule.SetUserCreatedHook(philobotModule.EnsureUser)
@@ -121,7 +114,8 @@ func main() {
 		modSettings.New(cfg.SettingsFile),
 		skillsModule,
 		engineModule,
-		modNews.New(),
+		modNews.New(cfg.NewsSavedFile),
+		modBenchmark.New(cfg.BenchmarkCacheDir, cfg.SettingsFile),
 		modPhilosearch.New(),
 	}
 
@@ -136,28 +130,18 @@ func main() {
 		log.Printf("[HTTP] Modul '%s' registriert", m.Name())
 	}
 
-	// ══════════════════════════════════════════════════════
-	// 3. Inter-Modul-Kommunikation (Event Bus)
-	// ══════════════════════════════════════════════════════
 	eventBus := bus.Get()
 
-	// Memory hoert auf alle Bus-Events: PhiloBot-Chats werden strukturiert
-	// erfasst, uebrige Modul-Events landen als Observations im Gedaechtnis.
 	memoryModule.AttachBus(eventBus)
 
-	// Beispiel: Wenn ein Modell heruntergeladen wurde, Engine benachrichtigen
 	eventBus.On(bus.EventModelDownloaded, func(e bus.Event) {
 		log.Printf("[Bus] Modell heruntergeladen: %v – Engine kann Modell-Liste aktualisieren", e.Data)
 	})
 
-	// Debug: Alle Events loggen
 	eventBus.OnAll(func(e bus.Event) {
 		log.Printf("[Bus] %s -> %s: %v", e.Source, e.Type, e.Data)
 	})
 
-	// ══════════════════════════════════════════════════════
-	// 4. Health Check
-	// ══════════════════════════════════════════════════════
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
@@ -165,17 +149,8 @@ func main() {
 		})
 	})
 
-	// ══════════════════════════════════════════════════════
-	// 5. gRPC Server (parallel)
-	// ══════════════════════════════════════════════════════
 	grpcSrv := grpcserver.New(cfg.HTTPHost, cfg.GRPCPort)
 
-	// TODO: gRPC Service-Implementierungen registrieren:
-	// pb.RegisterEngineServiceServer(grpcSrv.GetGRPC(), &engineGrpc{})
-	// pb.RegisterChatServiceServer(grpcSrv.GetGRPC(), &chatGrpc{})
-	// pb.RegisterTrainingServiceServer(grpcSrv.GetGRPC(), &trainingGrpc{})
-	// pb.RegisterQuantizationServiceServer(grpcSrv.GetGRPC(), &quantGrpc{})
-	// pb.RegisterMarktplatzServiceServer(grpcSrv.GetGRPC(), &marktplatzGrpc{})
 	skillsModule.RegisterGRPC(grpcSrv.GetGRPC())
 
 	go func() {
@@ -184,15 +159,8 @@ func main() {
 		}
 	}()
 
-	// ══════════════════════════════════════════════════════
-	// 6. HTTP(S) Server starten
-	// ══════════════════════════════════════════════════════
 	go func() {
-		// Standardmaessig nur lokal erreichbar: Frontend und Backend laufen auf
-		// demselben Rechner, ein Lauschen auf allen Interfaces (":8080") wuerde
-		// die Instanz sonst im ganzen Netz (z. B. oeffentliches WLAN) anbieten.
-		// Wer bewusst von aussen zugreifen will, setzt HTTP_HOST — etwa
-		// HTTP_HOST=0.0.0.0 fuer alle Interfaces.
+
 		addr := cfg.HTTPHost + ":" + cfg.HTTPPort
 		if cfg.UseHTTPS && cfg.TLSCert != "" && cfg.TLSKey != "" {
 			log.Printf("[HTTPS] Server läuft auf %s", addr)
@@ -207,16 +175,12 @@ func main() {
 		}
 	}()
 
-	// ══════════════════════════════════════════════════════
-	// 7. Graceful Shutdown
-	// ══════════════════════════════════════════════════════
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("Server wird heruntergefahren...")
 
-	// Module herunterfahren
 	for _, m := range modules {
 		if err := m.Shutdown(); err != nil {
 			log.Printf("[%s] Shutdown-Fehler: %v", m.Name(), err)

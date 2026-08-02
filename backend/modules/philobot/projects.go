@@ -16,10 +16,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// philoBotProject buendelt Chatverlaeufe eines Nutzers in einem Ordner
-// ("Projekt"). Die Zuordnung liegt auf der Session (ProjectID); das Projekt
-// selbst traegt nur Anzeige-Metadaten. Pro Projekt eine Datei
-// <baseDir>/<id>.json, analog zur Session-Persistenz.
 type philoBotProject struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
@@ -38,8 +34,6 @@ const (
 	maxProjectIconRunes  = 64
 )
 
-// projectStorage nutzt denselben dateibasierten Mechanismus wie die
-// Session-Persistenz; nur das (De)kodieren der Projektstruktur ist eigen.
 type projectStorage struct {
 	base *sessionStorage
 }
@@ -101,9 +95,6 @@ func normalizeProjectColor(value string) string {
 	return color
 }
 
-// normalizeProjectPath saeubert den optionalen Dateisystem-Pfad eines
-// Projekts (z. B. fuer agentischen Dateizugriff). Ein leerer Wert loescht den
-// Pfad wieder.
 func normalizeProjectPath(value string) string {
 	path := strings.TrimSpace(value)
 	if utf8.RuneCountInString(path) > maxProjectPathRunes {
@@ -116,9 +107,6 @@ func newChatProjectID() string {
 	return "proj-" + uuid.New().String()
 }
 
-// normalizeProjectIcon saebert den optionalen Icon-Schluessel eines Projekts
-// (Anzeige im Frontend). Erlaubt sind nur Kleinbuchstaben, Ziffern und
-// Unterstrich; ein leerer Wert bedeutet Standard-Icon.
 func normalizeProjectIcon(value string) string {
 	icon := strings.ToLower(strings.TrimSpace(value))
 	if utf8.RuneCountInString(icon) > maxProjectIconRunes {
@@ -133,8 +121,6 @@ func normalizeProjectIcon(value string) string {
 	return b.String()
 }
 
-// loadPersistedProjects holt gespeicherte Projektordner zurueck in den
-// Speicher. Fehler sind nicht fatal, analog zur Session-Wiederherstellung.
 func (m *PhiloBotModule) loadPersistedProjects() {
 	if m.projectStorage == nil {
 		return
@@ -155,7 +141,6 @@ func (m *PhiloBotModule) loadPersistedProjects() {
 	log.Printf("[philobot] %d gespeicherte Projektordner geladen", len(projects))
 }
 
-// persistProject schreibt ein Projekt auf Platte; Fehler blockieren nie.
 func (m *PhiloBotModule) persistProject(projectID string) {
 	if m.projectStorage == nil || !m.projectStorage.enabled() {
 		return
@@ -177,7 +162,6 @@ func (m *PhiloBotModule) persistProject(projectID string) {
 	}
 }
 
-// handleListProjects liefert alle Projektordner des Nutzers, neueste zuerst.
 func (m *PhiloBotModule) handleListProjects(c *fiber.Ctx) error {
 	userID := philoBotRequestUserID(c)
 	m.mu.Lock()
@@ -195,7 +179,6 @@ func (m *PhiloBotModule) handleListProjects(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"projects": projects})
 }
 
-// handleCreateProject legt einen neuen Projektordner an.
 func (m *PhiloBotModule) handleCreateProject(c *fiber.Ctx) error {
 	var body struct {
 		Name  string `json:"name"`
@@ -229,7 +212,6 @@ func (m *PhiloBotModule) handleCreateProject(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "created", "project": project})
 }
 
-// handleRenameProject benennt einen Projektordner um (und faerbt ihn optional).
 func (m *PhiloBotModule) handleRenameProject(c *fiber.Ctx) error {
 	var body struct {
 		Name  string  `json:"name"`
@@ -256,11 +238,9 @@ func (m *PhiloBotModule) handleRenameProject(c *fiber.Ctx) error {
 	if color := normalizeProjectColor(body.Color); color != "" {
 		project.Color = color
 	}
-	// Anders als Farbe darf der Pfad hier bewusst auch wieder geleert werden,
-	// da die UI ihn ueber eine Checkbox (an/aus) steuert.
+
 	project.Path = normalizeProjectPath(body.Path)
-	// Das Icon wird nur angeruehrt, wenn der Client den Key mitschickt — so
-	// loeschen aeltere Clients es nicht unbeabsichtigt.
+
 	if body.Icon != nil {
 		project.Icon = normalizeProjectIcon(*body.Icon)
 	}
@@ -270,8 +250,6 @@ func (m *PhiloBotModule) handleRenameProject(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok", "project": project})
 }
 
-// handleDeleteProject entfernt einen Projektordner. Zugeordnete Chats bleiben
-// erhalten und landen wieder in der allgemeinen Liste.
 func (m *PhiloBotModule) handleDeleteProject(c *fiber.Ctx) error {
 	projectID := strings.TrimSpace(c.Params("id"))
 	userID := philoBotRequestUserID(c)
@@ -299,9 +277,6 @@ func (m *PhiloBotModule) handleDeleteProject(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "deleted"})
 }
 
-// handleSessionTree liefert den Dateibaum des Projekt-Pfads einer Session
-// (tiefen- und eintragsbegrenzt), damit das Frontend den Ordner visuell
-// anzeigen kann. 404, wenn die Session keinem Projekt mit Pfad zugeordnet ist.
 func (m *PhiloBotModule) handleSessionTree(c *fiber.Ctx) error {
 	sessionID := strings.TrimSpace(c.Params("session_id"))
 	userID := philoBotRequestUserID(c)
@@ -324,8 +299,6 @@ func (m *PhiloBotModule) handleSessionTree(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"root": root, "tree": tree, "truncated": truncated})
 }
 
-// handleSetSessionProject ordnet einen Chat einem Projekt zu; ein leeres
-// project_id hebt die Zuordnung auf.
 func (m *PhiloBotModule) handleSetSessionProject(c *fiber.Ctx) error {
 	var body struct {
 		ProjectID string `json:"project_id"`

@@ -38,9 +38,6 @@ func newTestService(t *testing.T) *memory.Service {
 	return service
 }
 
-// BuildUserContext muss Fakten aus einer frueheren Session finden, ohne dass die
-// aktuelle (neue) Session im Gedaechtnis existiert – genau der PhiloBot-Fall
-// "Bot hat meinen Namen nach Neustart vergessen".
 func TestBuildUserContextRecallsAcrossSessions(t *testing.T) {
 	service := newTestService(t)
 
@@ -51,8 +48,7 @@ func TestBuildUserContextRecallsAcrossSessions(t *testing.T) {
 	if _, err := service.AddObservation(first.ID, memory.AddObservationInput{
 		Source: "chat",
 		Type:   "dialogue_pair",
-		// Der echte Chat-Compressor routet "mein "-Fakten nach LayerUserData;
-		// die "mein "-Query unten routet ebenso dorthin (routeIntent).
+
 		Layer:     memory.LayerUserData,
 		Category:  memory.CategoryStatus,
 		Title:     "Chat: Name",
@@ -61,7 +57,6 @@ func TestBuildUserContextRecallsAcrossSessions(t *testing.T) {
 		t.Fatalf("add observation failed: %v", err)
 	}
 
-	// Nutzerweiter Recall: kein session-gebundener GetSession-Aufruf.
 	envelope, err := service.BuildUserContext("local", "Wie ist mein Name David", 0)
 	if err != nil {
 		t.Fatalf("build user context failed: %v", err)
@@ -77,10 +72,6 @@ func TestBuildUserContextRecallsAcrossSessions(t *testing.T) {
 	}
 }
 
-// Wenn der Recall noch nicht aktiv war, hat der Bot fruehere "Wie heiße ich?"-
-// Fragen mit "Ich weiß deinen Namen nicht" beantwortet. Diese Anti-Fakten sind
-// gespeichert und ranken lexikalisch ganz oben – der Recall muss sie
-// herausfiltern, sonst verleitet er das Modell zur falschen Antwort.
 func TestBuildUserContextFiltersIgnoranceAntiFacts(t *testing.T) {
 	service := newTestService(t)
 
@@ -100,10 +91,10 @@ func TestBuildUserContextFiltersIgnoranceAntiFacts(t *testing.T) {
 			t.Fatalf("add observation failed: %v", err)
 		}
 	}
-	// Anti-Fakten (aus der Zeit ohne Recall):
+
 	add("User request: wie lautet mein name Assistant answer: Ich weiß leider nicht, wie dein Name ist.")
 	add("User request: wer bin ich Assistant answer: Ich kenne deinen Namen leider nicht.")
-	// Der echte Fakt:
+
 	add("User request: david Assistant answer: Dein Name ist David.")
 
 	envelope, err := service.BuildUserContext("local", "wie lautet mein name", 0)
@@ -131,14 +122,9 @@ func TestBuildUserContextEmptyQueryIsEmpty(t *testing.T) {
 	}
 }
 
-// TestBuildScopedContextIsolatesProjects beweist die Grid-Semantik: ein
-// projekt-gebundener Fakt (project_data) wird nur im eigenen Projekt erinnert,
-// waehrend ein globaler Nutzer-Fakt (user_data) in jedem Projekt-Grid auftaucht.
 func TestBuildScopedContextIsolatesProjects(t *testing.T) {
 	service := newTestService(t)
 
-	// Hilfsfunktion: legt eine Session im gegebenen Projekt an und haengt eine
-	// Observation an. Der Observation-Layer entscheidet ueber die Sichtbarkeit.
 	addFact := func(project string, layer memory.MemoryLayer, title, narrative string) {
 		t.Helper()
 		session, err := service.CreateSession(memory.CreateSessionInput{Project: project, Source: "chat"})
@@ -157,18 +143,15 @@ func TestBuildScopedContextIsolatesProjects(t *testing.T) {
 		}
 	}
 
-	// Projektspezifische Fakten mit fast identischen Keywords – nur die Sprache
-	// unterscheidet sie, sodass der Scope allein den Treffer bestimmt.
 	langQuery := "welche programmiersprache nutzen wir in diesem projekt"
 	addFact("proj-A", memory.LayerProjectData, "Projekt A: Sprache",
 		"User request: "+langQuery+" Assistant answer: In diesem Projekt nutzen wir Golang.")
 	addFact("proj-B", memory.LayerProjectData, "Projekt B: Sprache",
 		"User request: "+langQuery+" Assistant answer: In diesem Projekt nutzen wir Rustlang.")
-	// Globaler Nutzer-Fakt (user_data), im Projekt A erfasst, aber projektuebergreifend gueltig.
+
 	addFact("proj-A", memory.LayerUserData, "Nutzer: Name",
 		"User request: Mein Name ist David. Assistant answer: Freut mich, David.")
 
-	// Grid A sieht Golang, nicht Rustlang.
 	ctxA, err := service.BuildScopedContext("local", "proj-A", langQuery, 0)
 	if err != nil {
 		t.Fatalf("scoped context A failed: %v", err)
@@ -180,7 +163,6 @@ func TestBuildScopedContextIsolatesProjects(t *testing.T) {
 		t.Fatalf("Projekt A darf den Fakt aus Projekt B nicht sehen: %q", ctxA.InjectionPrompt)
 	}
 
-	// Grid B sieht Rustlang, nicht Golang.
 	ctxB, err := service.BuildScopedContext("local", "proj-B", langQuery, 0)
 	if err != nil {
 		t.Fatalf("scoped context B failed: %v", err)
@@ -192,7 +174,6 @@ func TestBuildScopedContextIsolatesProjects(t *testing.T) {
 		t.Fatalf("Projekt B darf den Fakt aus Projekt A nicht sehen: %q", ctxB.InjectionPrompt)
 	}
 
-	// Der globale Nutzer-Fakt taucht in BEIDEN Projekt-Grids auf.
 	for _, project := range []string{"proj-A", "proj-B"} {
 		nameCtx, err := service.BuildScopedContext("local", project, "Wie ist mein Name David", 0)
 		if err != nil {
@@ -264,8 +245,7 @@ func TestCompressionKeepsRecentObservationsActive(t *testing.T) {
 	if len(loaded.Memories) == 0 {
 		t.Fatalf("expected at least one compressed memory")
 	}
-	// Compression keeps ActiveWindow observations and re-fills until the next
-	// threshold trigger, so the invariant is "always below the threshold".
+
 	if len(loaded.ActiveObservations) >= 10 {
 		t.Fatalf("expected active observations below threshold 10, got %d", len(loaded.ActiveObservations))
 	}
@@ -405,12 +385,7 @@ func TestSearchIsScopedByUserID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("alice search failed: %v", err)
 	}
-	// The property under test is user isolation: alice must never see bob's
-	// memory. We assert exactly that, not "zero results" – the hash-v2 embedding
-	// uses character trigrams, so alice's own "aliceonly" can fuzzy-match the
-	// query "bobonly" via the shared "only" suffix. That is her own data (the
-	// user_id filter is enforced in SQL), so it is fine; a bob-owned hit would
-	// not be.
+
 	for _, result := range aliceResults {
 		if result.UserID == "bob" || strings.Contains(result.Title, "Bob") {
 			t.Fatalf("alice must not see bob's memory, got %+v", result)
@@ -550,7 +525,6 @@ func TestBackendSwitchSearch(t *testing.T) {
 		t.Fatalf("create session failed: %v", err)
 	}
 
-	// Add an observation using active backend (onnx-v2)
 	_, err = service.AddObservation(session.ID, memory.AddObservationInput{
 		Source:    "philox",
 		Type:      "insight",
@@ -561,7 +535,6 @@ func TestBackendSwitchSearch(t *testing.T) {
 		t.Fatalf("add observation failed: %v", err)
 	}
 
-	// Verify search works
 	hits, err := service.Search("Test-Beobachtung", memory.SearchFilters{Limit: 5})
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
@@ -598,7 +571,6 @@ func TestReindexUnderLoad(t *testing.T) {
 		t.Fatalf("create session failed: %v", err)
 	}
 
-	// Add legacy document directly into store (mocking pre-existing hash embeddings)
 	err = store.UpsertEmbedding(memorystore.EmbeddingRecord{
 		DocID:     "obs:old-1",
 		Embedding: make([]float32, 16),
@@ -615,7 +587,6 @@ func TestReindexUnderLoad(t *testing.T) {
 		vector.RunReindexer(stop, 10*time.Millisecond, 1, 2)
 	}()
 
-	// Concurrently add new observations
 	for i := 0; i < 5; i++ {
 		_, err := service.AddObservation(session.ID, memory.AddObservationInput{
 			Source:    "philox",

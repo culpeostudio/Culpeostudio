@@ -27,8 +27,8 @@ class WorkerConfig:
     kv_cache: str
     trust_remote_code: bool
     max_sequences: int
-    # One byte limit per GPU after CUDA/ROCm visibility remapping. Empty keeps
-    # the existing CPU-only/autodetected loading behaviour unchanged.
+
+
     gpu_max_memory_bytes: tuple[int, ...] = ()
     cpu_max_memory_bytes: int | None = None
 
@@ -110,9 +110,9 @@ class ModelTokenStream:
                         return
                     continue
                 if state == "done":
-                    # TextIteratorStreamer queues its stop marker immediately
-                    # before ``generate`` returns. Wait for the producer to
-                    # publish its result or error before deciding how to end.
+
+
+
                     while not self._finished_event.is_set():
                         await asyncio.sleep(0)
                     completed = True
@@ -126,8 +126,8 @@ class ModelTokenStream:
             self.cancel()
             raise
         finally:
-            # Closing an async response generator is another form of client
-            # cancellation. The StoppingCriteria checks this event each step.
+
+
             if not completed and not self._finished_event.is_set():
                 self.cancel()
 
@@ -144,17 +144,17 @@ class LocalModel:
             "trust_remote_code": config.trust_remote_code,
         }
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, **common)
-        # Deliberately no quantization_config/load_in_4bit: checkpoint weights
-        # must never be converted as a side effect of starting the engine.
+
+
         load_options: dict[str, Any] = {
             "device_map": "auto",
             "torch_dtype": "auto",
             "low_cpu_mem_usage": True,
         }
         if config.gpu_max_memory_bytes:
-            # Accelerate accepts runtime-local integer device ordinals and byte
-            # values. The Go launcher aligns these ordinals with the worker's
-            # CUDA/ROCm visibility mask, so a host GPU ID never leaks here.
+
+
+
             load_options["max_memory"] = {
                 index: limit
                 for index, limit in enumerate(config.gpu_max_memory_bytes)
@@ -216,8 +216,8 @@ class LocalModel:
                         and await disconnect_check()
                     ):
                         cancel_event.set()
-                        # One signal is enough. Keep the sequence slot until the
-                        # decoder observes it and exits.
+
+
                         disconnect_check = None
                 return await asyncio.shield(generation_task)
             except asyncio.CancelledError:
@@ -251,7 +251,7 @@ class LocalModel:
                 return ModelTokenStream.completed(prepared.prompt_tokens)
 
             token_stream = self._launch_stream(prepared)
-            slot_owned = False  # The generation thread releases this slot.
+            slot_owned = False
             return token_stream
         finally:
             if slot_owned:
@@ -348,22 +348,22 @@ class LocalModel:
                 result["output_tokens"] = max(
                     0, int(sequences.shape[-1]) - prepared.prompt_tokens
                 )
-            except BaseException as error:  # surfaced through the response iterator
+            except BaseException as error:
                 result["error"] = error
-                # ``generate`` normally closes the streamer. It may fail before
-                # doing so (for example on an unsupported cache backend).
+
+
                 try:
                     streamer.end()
                 except BaseException:
-                    # The consumer also observes ``finished_event`` and will
-                    # therefore not remain blocked if even closing fails.
+
+
                     pass
             finally:
                 finished_event.set()
                 try:
                     loop.call_soon_threadsafe(self._slots.release)
                 except RuntimeError:
-                    # The process is already shutting down and the loop is gone.
+
                     pass
 
         thread = threading.Thread(
@@ -636,7 +636,7 @@ def _next_streamer_value(streamer: Iterator[str]) -> tuple[str, str]:
     except queue.Empty:
         return "wait", ""
     except StopIteration:
-        # StopIteration must not cross an asyncio Future boundary.
+
         return "done", ""
 
 
@@ -647,15 +647,15 @@ async def _wait_for_cancelled_generation(generation_task: asyncio.Task[Any]) -> 
         try:
             await asyncio.shield(generation_task)
         except asyncio.CancelledError:
-            # A second transport cancellation must still not release the slot
-            # while the executor thread owns model/GPU state.
+
+
             continue
         except Exception:
             return
     try:
         generation_task.result()
     except BaseException:
-        # The caller re-raises the original cancellation/monitoring exception.
+
         pass
 
 

@@ -4,10 +4,6 @@ import '../../engine/models.dart';
 import '../../engine/widgets.dart';
 import '../../l10n/app_strings.dart';
 
-// Wiederverwendbare Bausteine des Einrichtungs-Assistenten: Schrittleiste
-// und die Fortschrittsanzeige der GPU-Runtime-Reparatur. Zustandslos — der
-// Screen haelt den aktuellen Schritt und reagiert auf onSelect.
-
 Widget wizardStepNav(
   int step,
   String label, {

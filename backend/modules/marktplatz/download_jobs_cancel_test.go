@@ -9,9 +9,6 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// TestDownloadJobCancelOnDelete prueft, dass Delete einer laufenden Job-ID
-// die hinterlegte CancelFunc ausloest. Frueher lief die Download-Goroutine
-// bei "Abbrechen" weiter – der Button war wirkungslos.
 func TestDownloadJobCancelOnDelete(t *testing.T) {
 	store := NewDownloadJobStore()
 	job := store.Create(types.ProviderHuggingFace, "org/model", "weights.gguf", "data/models")
@@ -28,7 +25,7 @@ func TestDownloadJobCancelOnDelete(t *testing.T) {
 
 	select {
 	case <-cancelled:
-		// ok – cancels wurde synchron ausgeloesst
+
 	case <-time.After(time.Second):
 		t.Fatalf("cancel func was not invoked after Delete")
 	}
@@ -38,9 +35,6 @@ func TestDownloadJobCancelOnDelete(t *testing.T) {
 	}
 }
 
-// TestDownloadJobUnregisterCancelCleanup stellt sicher, dass nach
-// runDownloadJob-Ende (done/failed) die hinterlegte CancelFunc entfernt wird,
-// so dass kein toter Referenz-ptr im Store uebrigbleibt.
 func TestDownloadJobUnregisterCancelCleanup(t *testing.T) {
 	store := NewDownloadJobStore()
 	job := store.Create(types.ProviderHuggingFace, "org/model", "weights.gguf", "data/models")
@@ -48,15 +42,11 @@ func TestDownloadJobUnregisterCancelCleanup(t *testing.T) {
 	store.RegisterCancel(job.ID, func() {})
 	store.UnregisterCancel(job.ID)
 
-	// Nach cleanup darf ein spaeteres Delete keine panic wegen nil map
-	// ausloesen; cancel fehlt einfach, der Job wird nur geloescht.
 	if !store.Delete(job.ID) {
 		t.Fatalf("delete should still work after UnregisterCancel")
 	}
 }
 
-// TestRegisterCancelKeepsContextAlive dokumentiert das Zusammenspiel mit
-// echten context.CancelFunc – die Goroutine soll ctx.Err() beobachten.
 func TestRegisterCancelKeepsContextAlive(t *testing.T) {
 	store := NewDownloadJobStore()
 	job := store.Create(types.ProviderHuggingFace, "org/model", "weights.gguf", "data/models")

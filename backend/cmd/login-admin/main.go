@@ -1,3 +1,4 @@
+// Command login-admin creates and manages administrator accounts.
 package main
 
 import (

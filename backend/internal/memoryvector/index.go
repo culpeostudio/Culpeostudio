@@ -1,4 +1,5 @@
-// Package memoryvector implements the vector search layer on top of SQLite using sqlite-vec.
+// Package memoryvector keeps the in-process vector index used for similarity
+// search over stored memories.
 package memoryvector
 
 import (
@@ -50,11 +51,9 @@ func New(store *memorystore.SQLiteStore, active, hash memoryembed.Backend, legac
 
 func (i *Index) ActiveBackend() memoryembed.Backend { return i.active }
 
-// Initialize dynamically creates/recreates the virtual tables vec_active and vec_hash
-// based on backend dimensions, and runs the legacy JSON migration if required.
 func (i *Index) Initialize() error {
 	log.Printf("[memory-vector] Initialisiere Vektor-Index mit Backend=%s, Modell=%s, Dimension=%d", i.active.Name(), i.active.Model(), i.active.Dim())
-	// 1. Setup vec_hash virtual table
+
 	hashDim := i.hash.Dim()
 	if err := i.store.CreateVectorIndexTable("vec_hash", hashDim); err != nil {
 		return fmt.Errorf("failed to initialize vec_hash: %w", err)
@@ -63,7 +62,6 @@ func (i *Index) Initialize() error {
 		return fmt.Errorf("failed to sync vec_hash: %w", err)
 	}
 
-	// 2. Setup vec_active virtual table
 	activeDim := i.active.Dim()
 	if err := i.store.CreateVectorIndexTable("vec_active", activeDim); err != nil {
 		return fmt.Errorf("failed to initialize vec_active: %w", err)
@@ -72,7 +70,6 @@ func (i *Index) Initialize() error {
 		return fmt.Errorf("failed to sync vec_active: %w", err)
 	}
 
-	// 3. Migrate legacy JSON sidecar index if it exists
 	if strings.TrimSpace(i.legacyJSONPath) == "" {
 		return nil
 	}
@@ -108,8 +105,6 @@ func (i *Index) Initialize() error {
 	return nil
 }
 
-// Upsert embeds the document body with the active backend and stores vector,
-// model metadata and populates virtual tables.
 func (i *Index) Upsert(document memory.SearchDocument) error {
 	backend := i.active
 	vector, err := backend.Embed(document.Body)
@@ -132,8 +127,6 @@ func (i *Index) Delete(docID string) error {
 	return i.store.DeleteEmbedding(docID)
 }
 
-// Search queries the active model's virtual table, and if a model switch is in flight,
-// also queries the hash fallback table, then merges the similarity scores.
 func (i *Index) Search(query string, filters memory.SearchFilters, limit int) ([]memory.VectorHit, error) {
 	if strings.TrimSpace(query) == "" {
 		return []memory.VectorHit{}, nil
@@ -205,13 +198,6 @@ func (i *Index) scoreModel(model string, queryVector []float32, filters memory.S
 	return nil
 }
 
-// ReindexBatch re-embeds one batch of documents whose stored embedding does
-// not come from the active model. Embeds run concurrently (bounded by
-// concurrency) since the embedding call is the slow, network-bound step for
-// the sidecar/Ollama/API backends; the actual write stays a single SQLite
-// transaction. A document whose embed call fails is logged and skipped
-// rather than aborting the whole batch, so one flaky call cannot stall an
-// entire model migration.
 func (i *Index) ReindexBatch(batchSize, concurrency int) (int, int, error) {
 	if batchSize <= 0 {
 		batchSize = defaultReindexBatch
@@ -265,7 +251,6 @@ func (i *Index) ReindexBatch(batchSize, concurrency int) (int, int, error) {
 	return i.remaining(activeModel), len(successful), nil
 }
 
-// RunReindexer drives ReindexBatch until stop closes.
 func (i *Index) RunReindexer(stop <-chan struct{}, interval time.Duration, batchSize, concurrency int) {
 	if interval <= 0 {
 		interval = 2 * time.Second

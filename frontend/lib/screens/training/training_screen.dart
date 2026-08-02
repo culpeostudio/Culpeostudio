@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/phase_lock.dart';
 
-// Das Training ist fuer Phase 3 geplant und daher hinter PhaseLockOverlay
-// gesperrt. Das Backend-Stub-Modul wurde entfernt; dieser Screen ist eine reine
-// statische Design-Vorschau ohne Backend-Anbindung, bis das Feature echt
-// gebaut wird. Kein Polling, keine API-Aufrufe.
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});
 
@@ -41,7 +37,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Left side: start configuration
             Expanded(
               flex: 3,
               child: SingleChildScrollView(
@@ -49,14 +44,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 child: _buildStartCard(),
               ),
             ),
-            // Right side: active runs
+
             Expanded(
               flex: 2,
               child: Container(
                 padding: const EdgeInsets.only(left: 12),
                 decoration: BoxDecoration(
                   border: Border(
-                    left: BorderSide(color: Colors.white.withValues(alpha: 0.04)),
+                    left: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.04),
+                    ),
                   ),
                 ),
                 child: _buildJobsQueueCard(),

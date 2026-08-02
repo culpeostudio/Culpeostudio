@@ -122,9 +122,6 @@ func (s *engineKeyStore) authorize(plaintext, instanceID string) bool {
 	return ok && (len(scope) == 0 || containsString(scope, instanceID))
 }
 
-// authorizedScope returns nil for an unrestricted key and a non-empty list
-// for an instance-scoped key. The boolean distinguishes unrestricted from an
-// invalid key.
 func (s *engineKeyStore) authorizedScope(plaintext string) ([]string, bool) {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(plaintext)))
 	wanted := []byte(hex.EncodeToString(sum[:]))
@@ -136,8 +133,7 @@ func (s *engineKeyStore) authorizedScope(plaintext string) ([]string, bool) {
 		}
 		now := time.Now().UTC()
 		record.LastUsedAt = &now
-		// Last-used ist Komfortmetadatum; ein Persistenzfehler darf eine bereits
-		// kryptographisch bestaetigte lokale Anfrage nicht ablehnen.
+
 		_ = s.saveLocked()
 		return append([]string(nil), record.InstanceIDs...), true
 	}

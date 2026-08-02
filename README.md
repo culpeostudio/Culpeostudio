@@ -1,326 +1,264 @@
-<div align="center">
+<p align="center">
+  <img src="assets/readme-hero.png" alt="PhiloEngine — local-first language model studio" width="100%">
+</p>
 
-<img src="frontend/assets/logo.png" alt="PhiloEngine" width="120">
+<h1 align="center">PhiloEngine</h1>
 
-# PhiloEngine
+<p align="center">
+  <strong>A hardware-aware, local-first desktop studio for language models.</strong><br>
+  Run models on your own machine, connect API providers when you choose, and keep one clear interface for models, agents, memory, search, and evaluation.
+</p>
 
-**A self-hosted desktop studio for local and API-based language models.**
-Your models, your keys, your data — nothing leaves your machine unless you say so.
+<p align="center">
+  <a href="README.md"><strong>English</strong></a> ·
+  <a href="de/README.md">Deutsch</a>
+</p>
 
-[![Licence: AGPL v3](https://img.shields.io/badge/Licence-AGPL_v3-c9a24a.svg)](LICENSE)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange.svg)](#roadmap)
-[![Platform](https://img.shields.io/badge/Platform-Linux_·_macOS_·_Windows-blue.svg)](#requirements)
-[![Language](https://img.shields.io/badge/UI-Deutsch_·_English-c9a24a.svg)](#pick-your-language-and-your-layout)
-[![Backend: Go](https://img.shields.io/badge/Backend-Go-00ADD8.svg)](https://go.dev)
-[![Frontend: Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B.svg)](https://flutter.dev)
+<p align="center">
+  <a href="https://github.com/kuchenboss/MyPhiloEngine/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/kuchenboss/MyPhiloEngine?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C9A24A"></a>
+  <img alt="Project status: Alpha" src="https://img.shields.io/badge/status-alpha-F59E0B?style=for-the-badge">
+  <img alt="Linux, Windows and macOS" src="https://img.shields.io/badge/desktop-Linux%20%7C%20Windows%20%7C%20macOS-5A78FF?style=for-the-badge">
+  <a href="https://github.com/kuchenboss/MyPhiloEngine/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
+</p>
 
-<br>
+## Contents
 
-<img src="docs/screenshots/demo.gif" alt="Picking a model in the marketplace, starting it, and the engine retrying with a smaller context when the requested one does not fit" width="850">
+| Section | What you will find |
+|:---|:---|
+| [Download](https://github.com/kuchenboss/MyPhiloEngine/releases) | Published desktop bundles and release notes |
+| [Installation](#install) | Quick install and the recommended source start |
+| [Two ways to run](#one-studio-two-ways-to-run) | Local runtimes and optional API providers |
+| [Highlights](#what-makes-it-different) | Engine, PhiloBots, memory, search, and marketplace |
+| [Engine demo](#see-the-engine-make-a-safer-choice) | A visible hardware-aware fallback decision |
+| [Features](docs/FEATURES.md) | Complete feature and maturity overview |
+| [Architecture](docs/ARCHITECTURE.md) | Components, interfaces, and data flows |
+| [Privacy](docs/PRIVACY.md) | Local storage and external network boundaries |
+| [Transparency](docs/TRANSPARENCY.md) | Provider choices and AI-assisted development |
+| [Current scope](#current-scope) | Available modules, alpha features, and phases 1–5 |
+| [Documentation](#documentation) | Roadmap, troubleshooting, development, and contribution guides |
 
-<em>Picking a model, starting it — and at the end, 64k context does not fit,<br>
-so the engine retries with 32k on its own.</em>
+> [!IMPORTANT]
+> PhiloEngine is in **Phase 1 alpha**. Chat, model management, local inference,
+> API providers, memory, and the marketplace are usable today. Some surfaces
+> are still evolving, and future modules remain visibly locked rather than
+> pretending to be finished.
 
-</div>
+> [!NOTE]
+> This documentation follows the **current development tree**, which can be
+> ahead of the latest packaged release. For an installed package, its
+> [release notes](https://github.com/kuchenboss/MyPhiloEngine/releases) are the
+> authoritative feature list.
+
+## One studio, two ways to run
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Run locally</h3>
+      <p>PhiloEngine detects RAM, GPUs, and available VRAM before a model starts. It proposes a context size, selects a compatible runtime, and can step down to a safer configuration when the first plan does not fit.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>Use an API provider</h3>
+      <p>Use the same marketplace and chat workflow with hosted models. Provider keys are stored in the local application data and sent only to the provider involved in that request.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><strong>Runtimes:</strong> llama.cpp · vLLM · Transformers</td>
+    <td width="50%" valign="top"><strong>Providers:</strong> OpenRouter · Featherless</td>
+  </tr>
+</table>
+
+## What makes it different
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>🧠 Hardware-aware engine</h3>
+      <p>Model fingerprinting, memory estimates, runtime selection, context planning, GPU/CPU placement, guarded startup, and visible fallback decisions.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>🤖 PhiloBots with tools</h3>
+      <p>Create assistants with their own prompt, style, trigger words, model binding, planning mode, project-aware file tools, permission prompts, and readable diffs.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>🗂️ Long-term memory</h3>
+      <p>Recall across sessions with per-user and per-project storage, SQLite FTS5, vector retrieval, context budgeting, and optional embedding backends. The default is deterministic local hash embeddings; optional ONNX embeddings require a separately configured source-tree sidecar, which Quick Install does not bundle.</p>
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🔎 Built-in text search</h3>
+      <p>Search through DuckDuckGo, Brave, Google, Bing, or Wikipedia. Public pages can be fetched, guarded against local-network targets, and condensed to Markdown.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🛍️ Unified marketplace</h3>
+      <p>Browse local and hosted models together. Local candidates show formats, quantizations, estimated resource use, and a hardware-fit verdict when enough metadata is available.</p>
+    </td>
+  </tr>
+</table>
+
+## See the engine make a safer choice
+
+<p align="center">
+  <img src="assets/screenshots/demo.gif" alt="PhiloEngine selecting and starting a model, then retrying with a safer context size" width="900">
+</p>
+
+<p align="center"><em>A requested 64k context does not fit, so the engine retries with 32k and keeps the decision visible.</em></p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="assets/screenshots/engine.png" alt="PhiloEngine model studio with hardware telemetry" width="100%">
+      <p align="center"><strong>Model Studio</strong><br>Plan, configure, start, and observe local model instances.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="assets/screenshots/marketplace.png" alt="PhiloEngine marketplace with model and hardware filters" width="100%">
+      <p align="center"><strong>Marketplace</strong><br>Compare local downloads and API models in one responsive grid.</p>
+    </td>
+  </tr>
+</table>
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    UI["Flutter desktop app<br/>Material 3 · DE/EN"]
+    API["Go backend<br/>Fiber · HTTP/JSON · SSE"]
+    PLAN["Hardware planner<br/>RAM · VRAM · runtime recipes"]
+    WORKERS["Local workers<br/>llama.cpp · vLLM · Transformers"]
+    DATA[("Local application data<br/>accounts · settings · chats · memory")]
+    CLOUD["Optional network services<br/>providers · search · news · datasets · updates"]
+    SKILLS["Skills client"]
+
+    UI --> API
+    API --> PLAN --> WORKERS
+    API <--> DATA
+    API -. "feature-specific, including documented background refreshes" .-> CLOUD
+    SKILLS -. "limited gRPC surface" .-> API
+```
+
+Both application servers bind to `127.0.0.1` by default. The main desktop flow
+uses HTTP/JSON and server-sent events; the current gRPC surface is limited to
+Skills. See [Architecture](docs/ARCHITECTURE.md) for module and data-flow
+details.
+
+## Local-first, with explicit network boundaries
+
+“Local-first” means that accounts, settings, chats, memory, and model files are
+kept on your machine. It does **not** mean that every feature is offline:
+
+| Action | Where data goes |
+|---|---|
+| Chat with a local model | Inference stays with the local backend and worker; separately configured online tools or remote embeddings can still create their own network requests |
+| Chat with an API model | The selected API provider |
+| Search, news, or benchmarks | The selected/public source used by that feature |
+| Browse or download models | Hugging Face or the configured provider |
+| Check for application updates | GitHub release infrastructure |
+
+News, benchmark refreshes, and update checks may contact their documented
+sources automatically. Read the full [privacy and network matrix](docs/PRIVACY.md)
+before using PhiloEngine in a restricted environment.
+
+> [!WARNING]
+> PhiloBot adds application-level path checks and approval prompts, but command
+> execution is **not an operating-system sandbox**. Bind projects carefully and
+> review proposed actions and diffs.
+
+## Install
+
+### Quick install
+
+Download the **Quick Install** archive for your platform from the
+[releases page](https://github.com/kuchenboss/MyPhiloEngine/releases). Its
+filename ends in `-<release-target>-quickinstall` followed by the archive
+extension. Do not use the similarly named update archive for a first
+installation. Extract the Quick Install archive once, and start
+`myphiloengine` (`myphiloengine.exe` on Windows).
+The launcher verifies the published archive size and SHA-256, installs updates
+atomically, and can roll back a version that fails its initial health check.
+
+| Published target | Quick Install filename ending |
+|---|---|
+| Linux | x64 · `-linux-x64-quickinstall.tar.gz` |
+| Windows | x64 · `-windows-x64-quickinstall.zip` |
+| macOS | Apple Silicon / ARM64 · `-macos-arm64-quickinstall.tar.gz` |
+
+Quick-install users do not need Flutter or Go. See the
+[installation guide](docs/INSTALLATION.md) for platform steps, update behavior,
+runtime prerequisites, and troubleshooting.
+
+### Run from source
+
+On Linux, after completing the one-time setup described in the
+[installation guide](docs/INSTALLATION.md), change to the repository directory
+and start PhiloEngine with the project launcher:
+
+```bash
+cd /path/to/philoengine
+./start.sh
+```
+
+`start.sh` opens the development console and manages the backend and frontend
+in the intended order. On a clean `main` checkout it may apply a safe
+fast-forward update first; it does not overwrite local changes.
+
+Source development requires Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3,
+and the native toolchain required by the selected local inference runtime.
+
+## Current scope
+
+| Status | Modules |
+|---|---|
+| **Phase 1 — available** | Chat, Engine, Marketplace, authentication, user preferences, PhiloBots, memory, text search, settings, skills administration |
+| **News — alpha** | AI and technology feeds with search, filters, and saved articles |
+| **Benchmark — alpha** | LMArena text leaderboard with ranking, model details, and comparison views |
+| **Phase 1 — active development** | Improve existing functionality, fix bugs, refine frontend design and usability, strengthen verification, and expand the documentation |
+| **Phase 2 — planned** | Extend and improve current features, with usable connections to external servers |
+| **Phase 3 — locked preview** | Guided full fine-tuning, fine-tuning, and quantisation workflows |
+| **Phase 4 — locked preview** | Image and video generation plus a game-development workspace |
+| **Phase 5 — long-term direction** | Opt-in sharing of self-hosted AI models and compute capacity, following the project's commitment to keep the PhiloEngine software free and open source |
+
+There are no promised dates for future phases. The detailed
+[roadmap](ROADMAP.md) separates working functionality from previews and planned
+work. Always compare this development overview with the notes for the release
+you actually install.
+
+## Documentation
+
+| Guide | Purpose |
+|---|---|
+| [Installation](docs/INSTALLATION.md) | Quick install, source setup, first run, runtimes, and updates |
+| [Features](docs/FEATURES.md) | Detailed feature and maturity matrix |
+| [Architecture](docs/ARCHITECTURE.md) | Components, modules, data flows, and security boundaries |
+| [Privacy](docs/PRIVACY.md) | Local storage and every class of external connection |
+| [Project transparency](docs/TRANSPARENCY.md) | Why these runtimes/providers exist and how AI assists development |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Startup, runtime, memory, provider, and update problems |
+| [Development](docs/DEVELOPMENT.md) | Repository structure, commands, tests, and conventions |
+| [Roadmap](ROADMAP.md) | Current phase, active work, and future modules |
+| [Contributing](CONTRIBUTING.md) | CLA, DCO sign-off, pull requests, and verification |
+
+## Contributing, security, and licence
+
+Contributions are welcome, especially reproducible bug reports, fixes, hardware
+compatibility feedback, tests, and documentation improvements. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md); contributions require acceptance of the
+[CLA](https://github.com/kuchenboss/MyPhiloEngine/blob/main/CLA.md) and signed-off
+commits.
+
+Report vulnerabilities privately to `security@fillystudio.com` as described in
+the [security policy](https://github.com/kuchenboss/MyPhiloEngine/blob/main/SECURITY.md).
+
+PhiloEngine source code is licensed under the
+[GNU AGPL-3.0](https://github.com/kuchenboss/MyPhiloEngine/blob/main/LICENSE).
+Project names and logos are not granted by the code licence; see the
+[trademark policy](https://github.com/kuchenboss/MyPhiloEngine/blob/main/TRADEMARK.md).
+Models, runtimes, and bundled dependencies retain their own terms and licences.
 
 ---
 
-> **Alpha (Phase 1).** Usable day to day, but expect rough edges.
-
-## Why another one?
-
-Most tools make you choose: either a polished cloud product that owns your data,
-or a local setup you spend an evening assembling. PhiloEngine aims for the middle —
-everything runs on your machine, but you should not have to fight it to get there.
-
-The part that took the most work is the one you never see: figuring out **what
-your hardware can actually run**. Instead of failing with an out-of-memory error,
-PhiloEngine plans a context size that fits, picks a runtime, and steps down
-sensibly when a configuration does not hold.
-
-## Features
-
-### Run models locally
-
-- **PhiloEngine Hardware Detection** — detects GPUs, VRAM and RAM, then
-  proposes a context size that will actually load
-- **Three runtimes**: llama.cpp, vLLM and Transformers, selected per model
-- **Graceful fallbacks** instead of hard failures: GPU → CPU, smaller context,
-  alternate KV cache type — each step is shown, not hidden
-- **Resource guard** prevents starting a model that would push the machine into
-  swapping
-
-<img src="docs/screenshots/engine.png" alt="Model studio with live hardware monitor" width="850">
-
-The engine view walks a model from selection to running instance in three steps,
-with live RAM and VRAM usage next to it.
-
-### Or use API providers
-
-OpenRouter and Featherless are supported. Keys are stored in your local settings
-and used only for the requests you trigger.
-
-### PhiloBot — assistants with tools
-
-- Define bots with their own prompt, response style and trigger keywords
-- Bind a chat to a **project folder**: the bot can then list, read, search,
-  edit and create files there
-- Anything **outside** that folder triggers an explicit approval prompt —
-  allow once, allow for the session, or deny
-- File changes are shown as expandable diffs, not silent writes
-- Reasoning models: the thought process streams live, then collapses into a
-  dropdown so it does not clutter the transcript
-
-<img src="docs/screenshots/chat.png" alt="Chat with session history, model picker and reasoning selector" width="850">
-
-### Planning mode
-
-A large request is not answered in one pass. A model first breaks it into
-numbered, readable steps; you see the plan before anything runs. Each step is
-then handled by its own subagent with a fresh context. An agent working through
-a big task in a single stretch loses the thread after a few tool calls — this
-keeps every step short enough to stay coherent, and a failed step is reported
-rather than silently skipped.
-
-### Web search built in
-
-Bots can browse. Queries go through DuckDuckGo, Brave, Google, Bing or
-Wikipedia, results are fetched and condensed before they reach the model.
-`philosearch` exposes the same engine on the command line.
-
-### Pick your language, and your layout
-
-The interface ships in **German and English**, switchable at any time — the
-choice is stored per user account, not globally.
-
-The first login also asks which frontend you want, and settings can change it
-later:
-
-| | |
-|---|---|
-| **Classic** | every module: Chat, Engine, Marketplace, Training, Quantisation, Gen Studio, News, Benchmark |
-| **Lite** | only Chat, Engine, Marketplace, News and Benchmark — the rest stays out of the way |
-
-### Long-term memory
-
-Facts from earlier conversations are recalled into later ones, so you do not
-repeat yourself across sessions. Backed by SQLite with full-text and vector
-search, scoped per user and per project.
-
-### Model marketplace
-
-Search Hugging Face and the API providers in one view, filtered by provider,
-category and quantisation. Every entry states the estimated VRAM and whether it
-fits your card **before you download it**, then manage what you have locally.
-
-<img src="docs/screenshots/marketplace.png" alt="Model marketplace showing which models fit the installed GPU" width="850">
-
-## How it works
-
-```
-┌─────────────────────────────┐
-│  Flutter desktop app        │   UI, chat, settings
-└──────────────┬──────────────┘
-               │ HTTP + SSE (127.0.0.1)
-┌──────────────┴──────────────┐
-│  Go backend                 │   modules: engine, philobot, marktplatz,
-│                             │   memory, skills, settings, login, news,
-│                             │   philosearch
-└──────────────┬──────────────┘
-               │ spawns & supervises
-┌──────────────┴──────────────┐
-│  llama.cpp · vLLM ·         │   local inference runtimes
-│  Transformers               │
-└─────────────────────────────┘
-```
-
-Both servers bind to `127.0.0.1` by default. The backend keeps all state under
-`backend/data/` — models, chats, memory database and settings.
-
-## Requirements
-
-| | |
-|---|---|
-| OS | Linux desktop (primary), macOS on Apple Silicon, Windows x64 |
-| [Flutter](https://flutter.dev) | 3.44+ (Dart 3.12+) |
-| [Go](https://go.dev) | 1.25+ |
-| GPU | optional — CPU inference works, just slower |
-
-Linux is what gets the most use and testing. macOS and Windows builds are
-produced on native runners for every release; Intel Macs are not covered,
-because the runner able to build them has been retired.
-
-## Getting started
-
-```bash
-git clone <repository-url>
-cd philoengine
-
-# terminal 1 — backend
-cd backend && go run ./cmd/server
-
-# terminal 2 — frontend
-cd frontend && flutter run -d linux
-```
-
-On first start a random signing secret is generated under `backend/data/` —
-no setup step required.
-
-**First run, in order:**
-
-1. Set up the authenticator (TOTP) when prompted, then create your account
-2. *Marketplace* → search a model and check the hardware verdict before downloading
-3. *Engine* → start the model; the wizard proposes a context size that fits
-4. *Chat* → pick the model and start talking
-
-No GPU? Use an API provider instead: *Settings → Server / API*, add an
-OpenRouter or Featherless key, then start a model from the marketplace.
-
-## Automatic updates
-
-Both supported installation styles update without a manual reinstall:
-
-- **Source checkout:** start with `./start.sh`. Before opening the developer
-  console, its bootstrap updater fetches `main` from
-  `kuchenboss/MyPhiloEngine` and applies only a clean fast-forward. Local
-  changes, another branch, a diverged history, or an offline machine are never
-  overwritten; the existing checkout starts with a warning instead.
-- **Compiled quick install:** download the `quickinstall` archive for your
-  platform from the [latest
-  release](https://github.com/kuchenboss/MyPhiloEngine/releases), extract it
-  once, and always start the top-level `myphiloengine` launcher
-  (`myphiloengine.exe` on Windows). Before every launch it reads
-  `quikinstall/manifest.json`, selects the current OS/architecture, downloads
-  and verifies the complete frontend/backend bundle, and atomically activates
-  it. User data lives outside versioned bundles.
-
-The compiled launcher verifies the trusted GitHub origin, declared size,
-SHA-256 checksum, archive paths, and all three entrypoints before activation. A
-failed download never replaces the working version, and an offline start uses
-the last verified bundle.
-
-A release that installs but fails to start is rolled back to the previous
-version and recorded in `quarantine.json`, so the next launch skips it instead
-of downloading and failing again every time. The record is keyed on version and
-asset checksum, so a rebuilt archive of the same version number is offered
-again. Superseded bundles are pruned; the active version and the rollback
-target are kept.
-
-Releases are built by
-[`.github/workflows/release.yml`](.github/workflows/release.yml): pushing a
-`v*` tag builds every platform on a native runner, uploads the archives as
-release assets, and publishes the manifest only after each asset is confirmed
-reachable. A single platform can also be built locally:
-
-```bash
-python3 quikinstall/build_release.py --version 1.1.0-alpha
-```
-
-The complete manifest contract and publishing order are documented in
-[`quikinstall/README.md`](quikinstall/README.md). Set
-`PHILOENGINE_SKIP_UPDATE=1` only when a deliberate offline/development start is
-needed.
-
-<details>
-<summary>Source checkout: developer console prerequisites</summary>
-
-A terminal UI that supervises backend and frontend together with live logs.
-Needs Python and [Textual](https://textual.textualize.io/):
-
-```bash
-cd backend
-python3 -m venv .venv
-.venv/bin/pip install textual
-cd .. && ./start.sh
-```
-</details>
-
-<details>
-<summary>Exposing the backend to your network</summary>
-
-Both servers bind to localhost. Only if you deliberately want to reach the
-instance from another machine:
-
-```bash
-HTTP_HOST=0.0.0.0 go run ./cmd/server
-```
-
-Be aware this makes the API reachable for everyone on that network.
-</details>
-
-## Roadmap
-
-The interface already shows modules from later phases — they are visible but
-locked, so you can see where this is going.
-
-| Phase | Scope | Status |
-|---|---|---|
-| **1** | Chat, local + API models, memory, marketplace, skills, planning mode, web search | **current** |
-| 2 | Stabilisation, broader hardware coverage | planned |
-| 3 | Fine-tuning and quantisation | locked in UI |
-| 4 | Image and video generation | locked in UI |
-
-## Development
-
-```bash
-cd backend  && go test ./...            # backend tests
-cd frontend && flutter test             # widget tests
-cd frontend && flutter test integration_test/ -d linux   # drives the real app
-```
-
-Repository layout:
-
-```
-backend/
-  cmd/server/      entry point
-  modules/         feature modules, one per domain
-  internal/        shared infrastructure (memory, runtimes, hardware, security)
-frontend/
-  lib/screens/     one folder per screen
-  lib/services/    API client
-  lib/state/       app state
-```
-
-## Contributing
-
-Contributions are welcome — bug reports, fixes, hardware feedback from setups
-we cannot test, and translations once the UI is localised.
-
-Please read [CLA.md](CLA.md) first. It keeps the rights to the code in one place
-so a hosted service and third-party licensing stay possible without a
-relicensing mess. Sign commits with `git commit -s`.
-
-AGPL plus a CLA usually reads as a rug-pull, so to be explicit: **this
-repository stays AGPL-3.0 and free to run yourself.** The plan is to charge for
-hosted models by usage and for hardware provided with them — not for the
-software on your own machine. Independently of that promise, every version
-already released stays under the AGPL for good; nobody can withdraw those
-rights afterwards.
-
-## Security
-
-Found a security issue? Please report it **privately** to
-<security@fillystudio.com> instead of opening a public issue — see
-[SECURITY.md](SECURITY.md).
-
-Relevant because assistants can modify files and run commands inside a project
-folder, and the backend stores provider API keys.
-
-## Licence
-
-[GNU AGPL-3.0](LICENSE). You may use, modify and redistribute this software.
-If you offer a modified version as a network service, you must publish your
-changes.
-
-Names and logos are not covered by the code licence — see
-[TRADEMARK.md](TRADEMARK.md). Forks are welcome under their own name.
-
-Runtimes and models carry their own licences; see [NOTICE](NOTICE) and
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). **If you host models
-commercially, check their terms first** — some prohibit it outright.
-
----
-
-<div align="center">
-<sub>Built by fillystudio · Powered by PhiloEngine</sub>
-</div>
+<p align="center">
+  <sub>Built by fillystudio · Powered by PhiloEngine</sub>
+</p>

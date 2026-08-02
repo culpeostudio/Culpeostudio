@@ -79,8 +79,6 @@ func TestClassifyLoadPeakConflictAsRAMRetry(t *testing.T) {
 		t.Fatalf("load-peak conflict should request a RAM replan, got %+v", fix)
 	}
 
-	// Failed instances persist the error text, not the concrete Go error. The
-	// text-only classification must therefore keep the same one-click fix.
 	code, _ = classifyEngineError(errors.New(cause.Error()))
 	if code != "resource_conflict" {
 		t.Fatalf("persisted load-peak classification = %q", code)
@@ -103,7 +101,6 @@ func TestConfigForFixReduceContext(t *testing.T) {
 		t.Fatalf("expected fixed 4096 context, got mode=%q tokens=%v", config.ContextMode, config.ContextTokens)
 	}
 
-	// Never shrink below the useful minimum.
 	plan.EffectiveContextTokens = 3000
 	instance.Plan = &plan
 	config, err = module.configForFix(instance, engineruntime.FixReduceContext)
@@ -212,8 +209,7 @@ func TestConfigForFixUnknownAction(t *testing.T) {
 }
 
 func TestComputeReducedContextUsesExactDeficit(t *testing.T) {
-	// 8192 tokens, 64 KiB per token, deficit of 64 MiB → cut 1024 tokens
-	// + 25% margin = 1280 tokens → 6912, rounded down to 256 steps → 6912.
+
 	cause := &ResourceConflictError{
 		Resource: "ram", RequiredBytes: 24 << 30, AvailableBytes: (24 << 30) - (64 << 20),
 	}
@@ -224,12 +220,12 @@ func TestComputeReducedContextUsesExactDeficit(t *testing.T) {
 }
 
 func TestComputeReducedContextFallsBackToHalving(t *testing.T) {
-	// Worker died without structured numbers → halving.
+
 	reduced := computeReducedContext(8192, 64<<10, errors.New("[ram_out_of_memory] Der Arbeitsspeicher hat nicht ausgereicht"))
 	if reduced != 4096 {
 		t.Fatalf("expected halving to 4096, got %d", reduced)
 	}
-	// Huge deficit → halving wins over the (worse) exact computation.
+
 	cause := &ResourceConflictError{Resource: "ram", RequiredBytes: 40 << 30, AvailableBytes: 1 << 30}
 	reduced = computeReducedContext(8192, 64<<10, cause)
 	if reduced != 4096 {

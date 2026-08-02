@@ -1,3 +1,5 @@
+// Package openrouter adapts the OpenRouter catalogue to the marketplace provider
+// interface.
 package openrouter
 
 import (
@@ -30,9 +32,6 @@ type openRouterResponse struct {
 	Data []openRouterModel `json:"data"`
 }
 
-// catalogCacheTTL: OpenRouter-Katalog (Tausende Modelle) bleibt 15min
-// gueltig; vermeidet pro Request einen Download + JSON-Decode der
-// vollstaendigen Liste. Siehe H8.
 const catalogCacheTTL = 15 * time.Minute
 
 var (
@@ -41,9 +40,6 @@ var (
 	cachedAt      time.Time
 )
 
-// loadCatalog laedt den OpenRouter-Katalog mit TTL-Cache und liefert die
-// rohen Eintraege. Netzwerk-/HTTP-Fehler werden direkt durchgereicht, damit
-// der Handler `partial=true` und die Fehlermeldung melden kann.
 func loadCatalog(ctx context.Context, httpClient *http.Client, apiBase, token string) ([]openRouterModel, error) {
 	catalogMu.Lock()
 	if len(cachedCatalog) > 0 && time.Since(cachedAt) < catalogCacheTTL {
@@ -71,8 +67,6 @@ func loadCatalog(ctx context.Context, httpClient *http.Client, apiBase, token st
 	return response.Data, nil
 }
 
-// InvalidateCache ist ein Test-Hook, um den Katalog-Cache zwischen Tests
-// zurueckzusetzen. Produktivcode sollte ihn nicht aufrufen.
 func InvalidateCache() {
 	catalogMu.Lock()
 	cachedCatalog = nil
@@ -98,7 +92,6 @@ func SearchOpenRouter(ctx context.Context, httpClient *http.Client, apiBase, que
 		name := strings.TrimSpace(model.Name)
 		desc := strings.TrimSpace(model.Description)
 
-		// Filter by query
 		if q != "" {
 			if !strings.Contains(strings.ToLower(modelID), q) && !strings.Contains(strings.ToLower(name), q) {
 				continue
@@ -157,9 +150,6 @@ func parseOpenRouterPricePerMillion(raw string) (float64, bool) {
 	return value * 1_000_000, true
 }
 
-// DetailOpenRouter sucht ein einzelnes Modell im (ggf. gecachten) Katalog.
-// Vermeidet, dass fuer jede Detail-Anzeige der komplette OpenRouter-Katalog
-// neu geladen wird. H8.
 func DetailOpenRouter(ctx context.Context, httpClient *http.Client, apiBase string, modelID string, token string) (types.ModelDetail, error) {
 	list, err := SearchOpenRouter(ctx, httpClient, apiBase, modelID, "", 0, token)
 	if err != nil {

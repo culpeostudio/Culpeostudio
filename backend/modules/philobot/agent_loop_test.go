@@ -24,9 +24,6 @@ func TestParseToolCall(t *testing.T) {
 		t.Fatalf("normaler Text darf kein Tool-Aufruf sein")
 	}
 
-	// Prosa vor dem Sentinel ("Los geht's: <tool_call>...") ist ein haeufiges
-	// Modell-Verhalten und MUSS als Tool-Aufruf erkannt werden — sonst leckt der
-	// rohe JSON in den Chat und das Tool laeuft nie.
 	preambleCall, ok := parseToolCall(`Los geht's: <tool_call>{"name":"read_file","arguments":{"path":"config.json"}}</tool_call>`)
 	if !ok {
 		t.Fatalf("Tool-Aufruf mit Einleitung sollte erkannt werden")
@@ -50,32 +47,26 @@ func filterVisible(reply string) string {
 }
 
 func TestToolCallStreamFilter(t *testing.T) {
-	// Tool-Aufruf: der rohe JSON-Text darf NICHT beim Nutzer ankommen.
+
 	if visible := filterVisible(`<tool_call>{"name":"read_file","arguments":{"path":"a"}}</tool_call>`); visible != "" {
 		t.Fatalf("Tool-Aufruf sollte unsichtbar bleiben, sichtbar: %q", visible)
 	}
-	// Normale Antwort: wird vollstaendig durchgereicht.
+
 	answer := "Das ist die finale Antwort an den Nutzer."
 	if visible := filterVisible(answer); visible != answer {
 		t.Fatalf("normale Antwort sollte komplett gestreamt werden, bekam: %q", visible)
 	}
-	// Einleitung vor dem Sentinel: die Prosa bleibt sichtbar, der rohe JSON-Aufruf
-	// dahinter wird unterdrueckt.
+
 	if visible := filterVisible(`Los geht's: <tool_call>{"name":"read_file","arguments":{"path":"a"}}</tool_call>`); visible != "Los geht's: " {
 		t.Fatalf("nur die Einleitung sollte sichtbar sein, bekam: %q", visible)
 	}
-	// Eine normale Antwort, die zufaellig mit einem Sentinel-Praefix endet, darf
-	// beim Flush nicht verschluckt werden.
+
 	tail := "Fertig. Kleiner Hinweis: <t"
 	if visible := filterVisible(tail); visible != tail {
 		t.Fatalf("Text der wie ein angefangener Sentinel endet, sollte beim Flush sichtbar werden, bekam: %q", visible)
 	}
 }
 
-// TestRunToolLoopExecutesToolThenAnswers skriptet ein Modell, das erst ein Tool
-// aufruft und dann normal antwortet: das Tool muss ausgefuehrt werden (Datei im
-// Root), die finale Antwort zurueckkommen und tool_start/tool_result gemeldet
-// werden — ohne rohen Tool-JSON im sichtbaren Text.
 func TestRunToolLoopExecutesToolThenAnswers(t *testing.T) {
 	root := t.TempDir()
 
@@ -90,7 +81,7 @@ func TestRunToolLoopExecutesToolThenAnswers(t *testing.T) {
 		}
 		reply := replies[callCount]
 		callCount++
-		_ = filterEmit(reply) // Streaming simulieren
+		_ = filterEmit(reply)
 		return reply, nil
 	}
 
@@ -136,8 +127,6 @@ func TestRunToolLoopExecutesToolThenAnswers(t *testing.T) {
 	}
 }
 
-// TestRunToolLoopStopsAtIterationCap stellt sicher, dass ein endlos Tools
-// aufrufendes Modell nach dem Limit sauber abbricht statt zu haengen.
 func TestRunToolLoopStopsAtIterationCap(t *testing.T) {
 	root := t.TempDir()
 	callCount := 0
@@ -158,8 +147,6 @@ func TestRunToolLoopStopsAtIterationCap(t *testing.T) {
 	}
 }
 
-// TestRunToolLoopRejectsMissingRoot verhindert, dass der Loop ohne gueltigen
-// Sandbox-Root startet.
 func TestRunToolLoopRejectsMissingRoot(t *testing.T) {
 	_, err := runToolLoop(context.Background(), nil, "", []string{"   "}, nil, nil,
 		func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error) {

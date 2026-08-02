@@ -42,7 +42,6 @@ func TestEventTickets(t *testing.T) {
 	app := fiber.New()
 	m.RegisterRoutes(app)
 
-	// 1. Post to create a ticket (should succeed with auth)
 	req1 := httptest.NewRequest("POST", "/memory/events/ticket", nil)
 	req1.Header.Set("Authorization", "Bearer dev-memory-token")
 	resp1, err := app.Test(req1)
@@ -63,7 +62,6 @@ func TestEventTickets(t *testing.T) {
 		t.Fatalf("expected non-empty ticket")
 	}
 
-	// 2. Consume ticket (valid, should exist in maps before consume)
 	m.ticketsMu.Lock()
 	info, exists := m.tickets[body.Ticket]
 	m.ticketsMu.Unlock()
@@ -101,7 +99,6 @@ func TestEventTickets(t *testing.T) {
 		t.Errorf("expected ticket user to be 'alice', got %s", info2.userID)
 	}
 
-	// 3. Reject invalid ticket
 	req2 := httptest.NewRequest("GET", "/memory/events?ticket=invalid-ticket", nil)
 	resp2, err := app.Test(req2)
 	if err != nil {

@@ -16,8 +16,6 @@ const (
 	maxQuarantineReason  = 300
 )
 
-// QuarantinedBundle records a version that was installed successfully but could
-// not start, so the launcher does not download and retry it on every start.
 type QuarantinedBundle struct {
 	Version     string `json:"version"`
 	AssetSHA256 string `json:"asset_sha256"`
@@ -30,9 +28,6 @@ type Quarantine struct {
 	Entries       []QuarantinedBundle `json:"entries"`
 }
 
-// LoadQuarantine reads the quarantine list. A missing list is not an error: it
-// simply means no version has failed yet. A corrupt list returns an empty
-// quarantine alongside the error so callers can warn and still offer updates.
 func LoadQuarantine(installRoot string) (Quarantine, error) {
 	empty := Quarantine{SchemaVersion: ManifestSchemaVersion}
 	payload, err := os.ReadFile(filepath.Join(installRoot, quarantineFilename))
@@ -57,9 +52,6 @@ func LoadQuarantine(installRoot string) (Quarantine, error) {
 	return quarantine, nil
 }
 
-// Contains reports whether exactly this build already failed to start. Keying
-// on the asset checksum as well as the version means a republished build of the
-// same version is still offered.
 func (quarantine Quarantine) Contains(version, assetSHA256 string) bool {
 	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
 	for _, entry := range quarantine.Entries {
@@ -70,14 +62,11 @@ func (quarantine Quarantine) Contains(version, assetSHA256 string) bool {
 	return false
 }
 
-// QuarantineBundle remembers a broken version. It keeps the newest
-// maxQuarantineEntries records so the list cannot grow without bound.
 func QuarantineBundle(installRoot string, state CurrentState, reason string) error {
 	if err := validateCurrentState(state); err != nil {
 		return err
 	}
-	// A corrupt list must not stop us from recording the current failure,
-	// otherwise the retry loop this guards against would return.
+
 	quarantine, _ := LoadQuarantine(installRoot)
 	quarantine.SchemaVersion = ManifestSchemaVersion
 	if quarantine.Contains(state.Version, state.AssetSHA256) {

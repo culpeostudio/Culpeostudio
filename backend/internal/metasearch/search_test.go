@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// mockEngine ist ein Test-Engine, der vordefinierte Treffer liefert
-// und ggf. Fehler simuliert.
 type mockEngine struct {
 	info    EngineInfo
 	results []Result
@@ -46,7 +44,7 @@ func TestSearchRunAggregatesAndRanks(t *testing.T) {
 	engB := &mockEngine{
 		info: EngineInfo{Name: "b", Category: "text", Provider: "B", Priority: 1},
 		results: []Result{
-			{Title: "Tokio runtime", Href: "https://en.wikipedia.org/wiki/Tokio", Body: "the tokio runtime"}, // dup, should bump count
+			{Title: "Tokio runtime", Href: "https://en.wikipedia.org/wiki/Tokio", Body: "the tokio runtime"},
 			{Title: "rust", Href: "https://rust-lang.org", Body: "rust-lang homepage"},
 		},
 	}
@@ -68,7 +66,7 @@ func TestSearchRunAggregatesAndRanks(t *testing.T) {
 	if len(out) < 3 {
 		t.Fatalf("erwartet >= 3 unique Treffer, got %d", len(out))
 	}
-	// Wikipedia-Treffer sollte durch SimpleFilterRanker ganz vorne sein.
+
 	if !strings.Contains(out[0].Href, "wikipedia.org") {
 		t.Errorf("erster Treffer sollte Wikipedia sein: %+v", out[0])
 	}

@@ -375,8 +375,6 @@ func helperSpec(id string, arguments ...string) ProcessSpec {
 	}
 }
 
-// TestSupervisorHelperProcess is re-executed by supervisor tests. It is not a
-// unit test in the child: os.Exit prevents the testing harness from continuing.
 func TestSupervisorHelperProcess(t *testing.T) {
 	if os.Getenv("PHILOENGINE_HELPER_PROCESS") != "1" {
 		return

@@ -13,9 +13,6 @@ type semanticVersion struct {
 	prerelease []string
 }
 
-// CompareVersions compares two SemVer 2.0 versions. It returns -1 when left
-// is older, 0 when both versions have equal precedence, and 1 when left is
-// newer. Build metadata is deliberately ignored as required by SemVer.
 func CompareVersions(left, right string) (int, error) {
 	leftVersion, err := parseSemanticVersion(left)
 	if err != nil {

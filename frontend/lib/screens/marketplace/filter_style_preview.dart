@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/marketplace_detail_strings.dart';
 
-// Vorschau der Filter-Chip-Optik in den Marktplatz-Einstellungen.
-
 class MarketplaceFilterStylePreview extends StatelessWidget {
   const MarketplaceFilterStylePreview({super.key});
 
@@ -89,7 +87,3 @@ class PreviewFilterChip extends StatelessWidget {
     );
   }
 }
-
-// M17: Kleines Tooltip-Popover fuer die Empfehlung-Badges im
-// Download-Option-Picker. Zeigt kurz erklaerend, was "Ausgewogen",
-// "Max Qualitaet" oder "Kompakt" konkret fuer den User bedeutet.

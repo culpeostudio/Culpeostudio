@@ -19,7 +19,7 @@ func (s *SQLiteStore) CreateVectorIndexTable(name string, dim int) error {
 		err := tx.QueryRow("SELECT sql FROM sqlite_schema WHERE name = ?", name).Scan(&schemaSQL)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				// Table does not exist, create it
+
 				_, err = tx.Exec(fmt.Sprintf(`
 					CREATE VIRTUAL TABLE %s USING vec0(
 						doc_id TEXT PRIMARY KEY,
@@ -31,12 +31,9 @@ func (s *SQLiteStore) CreateVectorIndexTable(name string, dim int) error {
 			return err
 		}
 
-		// Table exists, check if dimension or element type (float -> int8
-		// migration) matches; the schema text is stored verbatim so a
-		// substring check is enough to detect both.
 		dimToken := fmt.Sprintf("int8[%d]", dim)
 		if !strings.Contains(schemaSQL, dimToken) {
-			// Dimension mismatch, drop and recreate
+
 			_, err = tx.Exec(fmt.Sprintf("DROP TABLE %s", name))
 			if err != nil {
 				return fmt.Errorf("failed to drop legacy vector index table %s: %w", name, err)
@@ -82,10 +79,6 @@ func (s *SQLiteStore) SyncVectorIndex(name, model string) error {
 		}
 		rows.Close()
 
-		// vec0 virtual tables reject INSERT OR REPLACE on their primary key,
-		// so the sync mirrors upsertEmbedding: delete + insert per document.
-		// vec_quantize_int8(x, 'unit') assumes a [-1,1] input range, which
-		// holds because every embedding backend L2-normalizes its output.
 		deleteSQL := fmt.Sprintf(`DELETE FROM %s WHERE doc_id = ?`, name)
 		insertSQL := fmt.Sprintf(`INSERT INTO %s(doc_id, embedding) VALUES (?, vec_quantize_int8(?, 'unit'))`, name)
 		for _, row := range pending {

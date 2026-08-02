@@ -23,10 +23,6 @@ const (
 
 var safePathPart = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
-// Recipe is an immutable, content-addressed environment description. Packages
-// must use exact versions (or a direct URL with a sha256 fragment). Pip and
-// probes are always launched as argv arrays; recipe values never pass through a
-// command shell.
 type Recipe struct {
 	Runtime      RuntimeKind       `json:"runtime"`
 	Version      string            `json:"version"`
@@ -34,8 +30,7 @@ type Recipe struct {
 	PipArgs      []string          `json:"pip_args,omitempty"`
 	Environment  map[string]string `json:"environment,omitempty"`
 	ProbeModules []string          `json:"probe_modules,omitempty"`
-	// SmokeTestArgs are arguments following the environment's Python binary.
-	// They should perform a device/import/mini-inference check and exit.
+
 	SmokeTestArgs []string `json:"smoke_test_args,omitempty"`
 }
 
@@ -81,8 +76,6 @@ func exactlyPinned(pkg string) bool {
 		!strings.ContainsAny(parts[0], "<>!~") && !strings.ContainsAny(parts[1], "<>!~* ")
 }
 
-// Digest includes all recipe inputs and makes parallel runtime versions safe to
-// retain. Canonical JSON is stable because encoding/json sorts map keys.
 func (r Recipe) Digest() (string, error) {
 	if err := r.Validate(); err != nil {
 		return "", err
@@ -112,8 +105,6 @@ func environmentPython(environment string) string {
 	return filepath.Join(environment, "bin", "python")
 }
 
-// PythonExecutable returns the platform-specific Python path in a virtual
-// environment and is shared by service integration and tests.
 func PythonExecutable(environment string) string { return environmentPython(environment) }
 
 func (r Recipe) PythonPath(root string) (string, error) {
@@ -124,8 +115,6 @@ func (r Recipe) PythonPath(root string) (string, error) {
 	return environmentPython(environment), nil
 }
 
-// DefaultLlamaCPPRecipe can be extended with build environment values such as
-// CMAKE_ARGS by the hardware detector. Those values become part of the digest.
 func DefaultLlamaCPPRecipe(environment map[string]string) Recipe {
 	return Recipe{
 		Runtime:      RuntimeLlamaCPP,
@@ -145,9 +134,6 @@ func DefaultVLLMRecipe() Recipe {
 	}
 }
 
-// DefaultTransformersRecipe requires the caller to select an exact Torch build
-// for the detected accelerator. This prevents pip from silently choosing an
-// incompatible or changing Torch version.
 func DefaultTransformersRecipe(torchPackage string, pipArgs []string) (Recipe, error) {
 	r := Recipe{
 		Runtime: RuntimeTransformers,

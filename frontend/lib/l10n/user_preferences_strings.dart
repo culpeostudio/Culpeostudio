@@ -1,9 +1,5 @@
 import 'app_strings.dart' show appLanguage;
 
-/// Isolated texts for the server-backed user-preferences flow.
-///
-/// These are intentionally separate from the existing app string maps while
-/// that broader localization migration is in progress.
 const _userPreferencesStringsDe = <String, String>{
   'saving': 'Wird gespeichert…',
   'saveFailed':

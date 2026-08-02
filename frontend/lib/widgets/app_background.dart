@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Flat, calm backdrop for the permanent Obsidian dark theme.
-/// A soft radial vignette keeps it from looking dead-flat without distracting
-/// from content.
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key});
 

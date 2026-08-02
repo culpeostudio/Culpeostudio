@@ -1,10 +1,7 @@
-// Package modelcatalog discovers local model bundles without importing or
-// executing any model-provided code.
 package modelcatalog
 
 import "context"
 
-// Format identifies the on-disk representation of a model.
 type Format string
 
 const (
@@ -12,7 +9,6 @@ const (
 	FormatSafeTensors Format = "safetensors"
 )
 
-// Severity controls whether a catalog problem prevents a model from starting.
 type Severity string
 
 const (
@@ -20,7 +16,6 @@ const (
 	SeverityError   Severity = "error"
 )
 
-// ValidationIssue is actionable and safe to display directly in the UI.
 type ValidationIssue struct {
 	Code        string   `json:"code"`
 	Severity    Severity `json:"severity"`
@@ -28,8 +23,6 @@ type ValidationIssue struct {
 	Remediation string   `json:"remediation,omitempty"`
 }
 
-// Metadata is the normalized subset needed by runtime selection and context
-// planning. Zero values mean that the source did not expose the value.
 type Metadata struct {
 	Name                 string `json:"name,omitempty"`
 	Architecture         string `json:"architecture,omitempty"`
@@ -45,8 +38,6 @@ type Metadata struct {
 	StoredTensorDataType string `json:"stored_tensor_data_type,omitempty"`
 }
 
-// ModelRecord represents one logical model. Files contains paths relative to
-// the configured root and uses slash separators on every platform.
 type ModelRecord struct {
 	ID                string            `json:"id"`
 	Fingerprint       string            `json:"fingerprint"`
@@ -62,17 +53,12 @@ type ModelRecord struct {
 	Issues            []ValidationIssue `json:"issues,omitempty"`
 }
 
-// Scanner is reusable; every Scan performs a fresh recursive snapshot.
 type Scanner struct {
 	root string
 }
 
-// NewScanner creates a scanner rooted at modelDir. The root itself may be a
-// symlink, but discovered symlinks are accepted only when their target remains
-// inside the resolved root.
 func NewScanner(modelDir string) *Scanner { return &Scanner{root: modelDir} }
 
-// Scan is a convenience wrapper around NewScanner(modelDir).Scan(ctx).
 func Scan(ctx context.Context, modelDir string) ([]ModelRecord, error) {
 	return NewScanner(modelDir).Scan(ctx)
 }

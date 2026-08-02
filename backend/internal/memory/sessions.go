@@ -14,8 +14,7 @@ func (s *Service) EnsureSession(input CreateSessionInput) (*Session, error) {
 		if err == nil {
 			return session, nil
 		}
-		// Only fall through to creation when the session is missing; real
-		// store errors must not silently spawn a fresh session.
+
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
@@ -80,8 +79,7 @@ func (s *Service) DeleteSessionForUser(userID, id string) error {
 	if _, err := s.repo.GetSession(userID, id); err != nil {
 		return err
 	}
-	// The store removes prompts, observations, memories, summaries, search
-	// index rows and vector data (embeddings + ANN buckets) in one transaction.
+
 	if err := s.repo.DeleteSession(userID, id); err != nil {
 		return err
 	}
@@ -207,14 +205,10 @@ func (s *Service) AddObservation(sessionID string, input AddObservationInput) (*
 	return observation, nil
 }
 
-// DeleteObservation removes an observation via the default user.
 func (s *Service) DeleteObservation(observationID string) (*Observation, bool, error) {
 	return s.DeleteObservationForUser(s.defaultUserID, observationID)
 }
 
-// DeleteObservationForUser deletes SQLite row, search index entry, vector
-// data and dedupe bucket in one store transaction. Change requests are
-// tombstoned instead of hard-deleted.
 func (s *Service) DeleteObservationForUser(userID, observationID string) (*Observation, bool, error) {
 	userID = normalizeUserID(userID, s.defaultUserID)
 	observation, tombstoned, err := s.repo.DeleteObservation(userID, strings.TrimSpace(observationID))
@@ -230,8 +224,6 @@ func (s *Service) DeleteObservationForUser(userID, observationID string) (*Obser
 	return observation, tombstoned, nil
 }
 
-// UpdateMemoryForUser applies a manual correction to a compressed memory and
-// sets the corrected_by_user flag, which protects it from automatic rewrites.
 func (s *Service) UpdateMemoryForUser(userID, memoryID string, patch MemoryPatch) (*CompressedMemory, error) {
 	userID = normalizeUserID(userID, s.defaultUserID)
 	item, document, err := s.repo.UpdateCompressedMemory(userID, strings.TrimSpace(memoryID), patch, true)
@@ -240,7 +232,7 @@ func (s *Service) UpdateMemoryForUser(userID, memoryID string, patch MemoryPatch
 	}
 	if s.vector != nil {
 		if vectorErr := s.vector.Upsert(document); vectorErr != nil {
-			// Search stays FTS-consistent; the reindexer re-embeds later.
+
 			s.publish("vector_upsert_failed", map[string]string{"doc_id": document.DocID, "error": vectorErr.Error()})
 		}
 	}

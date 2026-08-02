@@ -19,8 +19,6 @@ func TestExtractFindetGenanntesVerzeichnis(t *testing.T) {
 	}
 }
 
-// TestExtractLiefertOrdnerZurDatei: wer eine Datei nennt, meint den Ordner,
-// in dem gearbeitet werden soll.
 func TestExtractLiefertOrdnerZurDatei(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "main.go")
@@ -33,8 +31,6 @@ func TestExtractLiefertOrdnerZurDatei(t *testing.T) {
 	}
 }
 
-// TestExtractIgnoriertErfundenePfade haelt Beispiele aus dem Fliesstext
-// draussen — sonst wuerde jede Erwaehnung eines Pfads zur Freigabe.
 func TestExtractIgnoriertErfundenePfade(t *testing.T) {
 	for _, message := range []string{
 		"Lege sowas wie /home/nichtvorhanden/projekt an",
@@ -47,8 +43,6 @@ func TestExtractIgnoriertErfundenePfade(t *testing.T) {
 	}
 }
 
-// TestExtractIgnoriertSystemverzeichnisse ist die Sicherheitsgrenze: ein
-// beilaeufig genanntes /etc darf nicht stillschweigend freigegeben werden.
 func TestExtractIgnoriertSystemverzeichnisse(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix-Pfade")
@@ -86,7 +80,6 @@ func TestExtractDedupliziert(t *testing.T) {
 	}
 }
 
-// TestExtractTrenntSatzzeichenAb: ein Punkt am Satzende gehoert nicht zum Pfad.
 func TestExtractTrenntSatzzeichenAb(t *testing.T) {
 	dir := t.TempDir()
 	for _, message := range []string{
@@ -102,9 +95,6 @@ func TestExtractTrenntSatzzeichenAb(t *testing.T) {
 	}
 }
 
-// TestExtractTildeUnterordner: ~/ordner wird aufgeloest, das nackte
-// Heimatverzeichnis dagegen nicht — dort liegen SSH-Schluessel und
-// Browser-Profile, das ist so weit wie die Wurzel.
 func TestExtractTildeUnterordner(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
@@ -132,7 +122,7 @@ func TestExtractIgnoriertHeimatverzeichnisSelbst(t *testing.T) {
 			t.Errorf("Extract(%q) = %v, das Heimatverzeichnis darf nicht automatisch freigegeben werden", message, got)
 		}
 	}
-	// "~andereruser" wird nicht aufgeloest.
+
 	if got := Extract("Schau in ~root nach"); len(got) != 0 {
 		t.Errorf("Extract = %v, erwartet leer", got)
 	}
@@ -146,8 +136,6 @@ func TestExtractLeereEingabe(t *testing.T) {
 	}
 }
 
-// sameDir vergleicht zwei Pfade nach Aufloesung von Symlinks (unter macOS
-// ist /tmp ein Symlink auf /private/tmp).
 func sameDir(a, b string) bool {
 	if resolved, err := filepath.EvalSymlinks(b); err == nil {
 		b = resolved

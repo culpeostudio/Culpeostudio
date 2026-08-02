@@ -1,8 +1,10 @@
 package news
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -18,35 +20,46 @@ import (
 	"unicode"
 
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/net/html/charset"
 )
 
-// NewsItem repräsentiert einen einzelnen News-Eintrag aus externen Quellen.
 type NewsItem struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
-	Author      string    `json:"author"` // Repräsentiert die Quelle (z.B. "The Verge AI")
+	Author      string    `json:"author"`
 	PublishedAt time.Time `json:"published_at"`
 	Tags        []string  `json:"tags,omitempty"`
 	ImageURL    string    `json:"image_url,omitempty"`
-	URL         string    `json:"url"`      // Link zum Originalartikel
-	Category    string    `json:"category"` // KI-Releases, Hardware, Open Source, Research
+	URL         string    `json:"url"`
+	Category    string    `json:"category"`
 }
 
-// NewsModule verwaltet die externen News-Beiträge thread-safe im Cache.
 type NewsModule struct {
 	mu              sync.RWMutex
 	items           []NewsItem
+	saved           *SavedStore
 	refresherMu     sync.Mutex
 	refresherStop   chan struct{}
 	refresherDone   chan struct{}
 	refresherActive bool
 }
 
+const (
+	categoryReleases   = "KI-Releases"
+	categoryHardware   = "Hardware"
+	categorySoftware   = "Software"
+	categorySecurity   = "Security"
+	categoryOpenSource = "Open Source"
+	categoryResearch   = "Research"
+)
+
 type feedSource struct {
-	URL           string
-	Author        string
-	DefaultTags   []string
+	URL         string
+	Author      string
+	DefaultTags []string
+
+	Category      string
 	Disabled      bool
 	DisableReason string
 }
@@ -85,6 +98,10 @@ type atomText struct {
 	Value string `xml:",innerxml"`
 }
 
+func (t atomText) text() string {
+	return unwrapCDATA(t.Value)
+}
+
 type atomLink struct {
 	Rel  string `xml:"rel,attr"`
 	Href string `xml:"href,attr"`
@@ -102,7 +119,77 @@ type rssEnclosure struct {
 	Type string `xml:"type,attr"`
 }
 
-var liveFeedSources = []feedSource{
+type golemTopic struct {
+	Slug     string
+	Tag      string
+	Category string
+}
+
+var golemTopics = []golemTopic{
+	{Slug: "ki", Tag: "KI", Category: categoryReleases},
+	{Slug: "technik-und-hardware", Tag: "Hardware", Category: categoryHardware},
+	{Slug: "software", Tag: "Software", Category: categorySoftware},
+	{Slug: "open-source", Tag: "Open Source", Category: categoryOpenSource},
+	{Slug: "security", Tag: "Security", Category: categorySecurity},
+	{Slug: "cloud-computing", Tag: "Cloud", Category: categorySoftware},
+	{Slug: "wissenschaft", Tag: "Research", Category: categoryResearch},
+	{Slug: "windows", Tag: "Software", Category: categorySoftware},
+}
+
+func golemTopicSources() []feedSource {
+	sources := make([]feedSource, 0, len(golemTopics))
+	for _, topic := range golemTopics {
+		sources = append(sources, feedSource{
+
+			URL:         "https://rss.golem.de/rss.php?ms=" + topic.Slug,
+			Author:      "Golem.de",
+			DefaultTags: []string{"Golem", topic.Tag},
+			Category:    topic.Category,
+		})
+	}
+	return sources
+}
+
+type heiseSection struct {
+	URL      string
+	Tag      string
+	Category string
+}
+
+var heiseSections = []heiseSection{
+	{URL: "https://www.heise.de/thema/Kuenstliche-Intelligenz.xml", Tag: "KI", Category: categoryReleases},
+	{URL: "https://www.heise.de/thema/hardware.xml", Tag: "Hardware", Category: categoryHardware},
+	{URL: "https://www.heise.de/thema/Grafikkarten.xml", Tag: "Hardware", Category: categoryHardware},
+	{URL: "https://www.heise.de/thema/programmierung.xml", Tag: "Developer", Category: categorySoftware},
+	{URL: "https://www.heise.de/developer/rss/news-atom.xml", Tag: "Developer", Category: categorySoftware},
+	{URL: "https://www.heise.de/security/rss/news-atom.xml", Tag: "Security", Category: categorySecurity},
+	{URL: "https://www.heise.de/thema/open-source.xml", Tag: "Open Source", Category: categoryOpenSource},
+}
+
+func heiseSectionSources() []feedSource {
+	sources := make([]feedSource, 0, len(heiseSections))
+	for _, section := range heiseSections {
+		sources = append(sources, feedSource{
+			URL:         section.URL,
+			Author:      "heise online",
+			DefaultTags: []string{"heise", section.Tag},
+			Category:    section.Category,
+		})
+	}
+	return sources
+}
+
+var liveFeedSources = buildFeedSources()
+
+func buildFeedSources() []feedSource {
+	sources := make([]feedSource, 0, len(baseFeedSources)+len(golemTopics)+len(heiseSections))
+	sources = append(sources, baseFeedSources...)
+	sources = append(sources, golemTopicSources()...)
+	sources = append(sources, heiseSectionSources()...)
+	return sources
+}
+
+var baseFeedSources = []feedSource{
 	{
 		URL:         "https://openai.com/news/rss.xml",
 		Author:      "OpenAI News",
@@ -114,6 +201,16 @@ var liveFeedSources = []feedSource{
 		DefaultTags: []string{"Hugging Face", "ML"},
 	},
 	{
+		URL:         "https://deepmind.google/blog/rss.xml",
+		Author:      "Google DeepMind Blog",
+		DefaultTags: []string{"DeepMind", "AI"},
+	},
+	{
+		URL:         "https://mistral.ai/rss.xml",
+		Author:      "Mistral AI News",
+		DefaultTags: []string{"Mistral", "AI"},
+	},
+	{
 		URL:         "https://www.marktechpost.com/feed/",
 		Author:      "MarkTechPost",
 		DefaultTags: []string{"MarkTechPost", "Research"},
@@ -122,6 +219,7 @@ var liveFeedSources = []feedSource{
 		URL:         "https://www.tomshardware.com/feeds/all",
 		Author:      "Tom's Hardware",
 		DefaultTags: []string{"Hardware", "Tech"},
+		Category:    categoryHardware,
 	},
 	{
 		URL:           "https://videocardz.com/feed",
@@ -135,11 +233,16 @@ var liveFeedSources = []feedSource{
 		Author:      "The Verge AI",
 		DefaultTags: []string{"The Verge", "AI"},
 	},
+	{
+		URL:         "https://venturebeat.com/feed/",
+		Author:      "VentureBeat",
+		DefaultTags: []string{"VentureBeat", "AI"},
+	},
 }
 
-// New erzeugt eine neue Instanz des NewsModule mit Fallback-Daten.
-func New() *NewsModule {
+func New(savedArticlesFile string) *NewsModule {
 	m := &NewsModule{
+		saved: NewSavedStore(savedArticlesFile),
 		items: []NewsItem{
 			{
 				ID:          "news-hacker-news-01",
@@ -186,25 +289,28 @@ func New() *NewsModule {
 	return m
 }
 
-// Name gibt den Namen des Moduls zurück.
 func (m *NewsModule) Name() string {
 	return "news"
 }
 
-// RegisterRoutes registriert alle Routen des News-Moduls unter dem API-Router.
 func (m *NewsModule) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/news")
 	g.Get("/", m.handleGetAll)
+
+	g.Get("/saved", m.handleListSaved)
+	g.Post("/saved", m.handleSaveArticle)
+	g.Delete("/saved/:id", m.handleDeleteSaved)
 	g.Get("/:id", m.handleGetByID)
 }
 
-// Initialize wird beim Modulstart aufgerufen.
 func (m *NewsModule) Initialize() error {
+	if err := m.saved.Load(); err != nil {
+		return err
+	}
 	m.startRefresher()
 	return nil
 }
 
-// Shutdown wird beim Stoppen des Servers aufgerufen.
 func (m *NewsModule) Shutdown() error {
 	m.refresherMu.Lock()
 	if !m.refresherActive {
@@ -231,14 +337,86 @@ func (m *NewsModule) handleGetAll(c *fiber.Ctx) error {
 
 func (m *NewsModule) handleGetByID(c *fiber.Ctx) error {
 	id := c.Params("id")
+	if item, found := m.itemByID(id); found {
+		return c.JSON(item)
+	}
+	return c.Status(404).JSON(fiber.Map{"error": "News-Eintrag nicht gefunden"})
+}
+
+func (m *NewsModule) itemByID(id string) (NewsItem, bool) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return NewsItem{}, false
+	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	for _, item := range m.items {
 		if item.ID == id {
-			return c.JSON(item)
+			return item, true
 		}
 	}
-	return c.Status(404).JSON(fiber.Map{"error": "News-Eintrag nicht gefunden"})
+	return NewsItem{}, false
+}
+
+func (m *NewsModule) handleListSaved(c *fiber.Ctx) error {
+	userID, ok := authenticatedUserID(c)
+	if !ok {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Nicht autorisiert"})
+	}
+	articles := m.saved.List(userID)
+	if articles == nil {
+		articles = []SavedArticle{}
+	}
+	return c.JSON(articles)
+}
+
+func (m *NewsModule) handleSaveArticle(c *fiber.Ctx) error {
+	userID, ok := authenticatedUserID(c)
+	if !ok {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Nicht autorisiert"})
+	}
+
+	var body NewsItem
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Ungueltige Anfrage"})
+	}
+
+	if cached, found := m.itemByID(body.ID); found {
+		body = cached
+	}
+
+	article, err := m.saved.Save(userID, body, time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, errSavedArticleIncomplete) {
+			return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		log.Printf("[NEWS] Merkliste speichern fehlgeschlagen: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Beitrag konnte nicht gespeichert werden"})
+	}
+	return c.Status(http.StatusCreated).JSON(article)
+}
+
+func (m *NewsModule) handleDeleteSaved(c *fiber.Ctx) error {
+	userID, ok := authenticatedUserID(c)
+	if !ok {
+		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Nicht autorisiert"})
+	}
+
+	removed, err := m.saved.Delete(userID, c.Params("id"))
+	if err != nil {
+		log.Printf("[NEWS] Merkliste loeschen fehlgeschlagen: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Beitrag konnte nicht entfernt werden"})
+	}
+	if !removed {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Beitrag ist nicht gemerkt"})
+	}
+	return c.SendStatus(http.StatusNoContent)
+}
+
+func authenticatedUserID(c *fiber.Ctx) (string, bool) {
+	userID, ok := c.Locals("user_id").(string)
+	userID = strings.TrimSpace(userID)
+	return userID, ok && userID != ""
 }
 
 func (m *NewsModule) startRefresher() {
@@ -259,7 +437,7 @@ func (m *NewsModule) startRefresher() {
 	go func() {
 		defer close(done)
 		log.Println("[NEWS] Starte Live-Feeds Refresher Goroutine...")
-		// Erster Refresh beim Serverstart
+
 		m.refreshFeeds()
 
 		ticker := time.NewTicker(15 * time.Minute)
@@ -280,13 +458,15 @@ func (m *NewsModule) refreshFeeds() {
 	var newItems []NewsItem
 	client := &http.Client{Timeout: 8 * time.Second}
 
-	// 1. Fetch Hacker News (Algolia API: Filter auf >= 100 Punkte)
 	hnItems := fetchHackerNews(client)
 	newItems = append(newItems, hnItems...)
+
+	newItems = append(newItems, fetchAnthropicNews(client)...)
 	newItems = append(newItems, collectFeedItems(client, liveFeedSources)...)
+	newItems = dedupeByID(newItems)
 
 	if len(newItems) > 0 {
-		// Sortieren nach Datum (neuste zuerst)
+
 		sort.Slice(newItems, func(i, j int) bool {
 			return newItems[i].PublishedAt.After(newItems[j].PublishedAt)
 		})
@@ -300,7 +480,6 @@ func (m *NewsModule) refreshFeeds() {
 	}
 }
 
-// Structs für Algolia Hacker News API
 type AlgoliaResponse struct {
 	Hits []struct {
 		ObjectID  string `json:"objectID"`
@@ -315,7 +494,7 @@ type AlgoliaResponse struct {
 
 func fetchHackerNews(client *http.Client) []NewsItem {
 	var items []NewsItem
-	// Hole die neuesten Stories mit >= 100 Punkten
+
 	query := url.Values{}
 	query.Set("tags", "story")
 	query.Set("numericFilters", "points>=100")
@@ -338,7 +517,7 @@ func fetchHackerNews(client *http.Client) []NewsItem {
 	}
 
 	for _, hit := range data.Hits {
-		// HN stories points >= 100 filter (schon über API-Filter abgedeckt, hier als doppelte Absicherung)
+
 		if hit.Points < 100 {
 			continue
 		}
@@ -371,6 +550,19 @@ func fetchHackerNews(client *http.Client) []NewsItem {
 		})
 	}
 	return items
+}
+
+func dedupeByID(items []NewsItem) []NewsItem {
+	seen := make(map[string]struct{}, len(items))
+	unique := make([]NewsItem, 0, len(items))
+	for _, item := range items {
+		if _, exists := seen[item.ID]; exists {
+			continue
+		}
+		seen[item.ID] = struct{}{}
+		unique = append(unique, item)
+	}
+	return unique
 }
 
 func collectFeedItems(client *http.Client, sources []feedSource) []NewsItem {
@@ -411,7 +603,7 @@ func fetchFeed(client *http.Client, source feedSource) []NewsItem {
 		return nil
 	}
 
-	items, err := parseFeedItems(data, source.Author, source.DefaultTags)
+	items, err := parseFeedItems(data, source)
 	if err != nil {
 		log.Printf("[NEWS] Feed Parsing Fehler für %s: %v", source.Author, err)
 		return nil
@@ -420,47 +612,54 @@ func fetchFeed(client *http.Client, source feedSource) []NewsItem {
 	return items
 }
 
-func parseFeedItems(data []byte, author string, defaultTags []string) ([]NewsItem, error) {
+func parseFeedItems(data []byte, source feedSource) ([]NewsItem, error) {
 	var feed feedDocument
-	if err := xml.Unmarshal(data, &feed); err != nil {
+	decoder := xml.NewDecoder(bytes.NewReader(data))
+
+	decoder.CharsetReader = charset.NewReaderLabel
+	if err := decoder.Decode(&feed); err != nil {
 		return nil, err
 	}
 
 	switch strings.ToLower(feed.XMLName.Local) {
 	case "rss":
-		return mapRSSItems(feed.Channel.Items, author, defaultTags), nil
+		return mapRSSItems(feed.Channel.Items, source), nil
 	case "feed":
-		return mapAtomEntries(feed.Entries, author, defaultTags), nil
+		return mapAtomEntries(feed.Entries, source), nil
 	default:
 		return nil, fmt.Errorf("unerwarteter Feed-Typ <%s>", feed.XMLName.Local)
 	}
 }
 
-func mapRSSItems(rssItems []rssItem, author string, defaultTags []string) []NewsItem {
+func mapRSSItems(rssItems []rssItem, source feedSource) []NewsItem {
 	var items []NewsItem
 	for _, item := range rssItems {
+		if isAdvertisement(item.Title) {
+			continue
+		}
 		content := firstNonEmpty(item.Description, item.Content)
 		items = append(items, newFeedNewsItem(
-			author,
-			defaultTags,
+			source,
 			item.Title,
 			content,
 			item.Link,
 			extractImageURLFromRSSItem(item),
-			parsePublishedAt(item.PubDate, author),
+			parsePublishedAt(item.PubDate, source.Author),
 		))
 	}
 	return items
 }
 
-func mapAtomEntries(entries []atomEntry, author string, defaultTags []string) []NewsItem {
+func mapAtomEntries(entries []atomEntry, source feedSource) []NewsItem {
 	var items []NewsItem
 	for _, entry := range entries {
-		content := firstNonEmpty(entry.Summary.Value, entry.Content.Value)
-		publishedAt := parsePublishedAt(firstNonEmpty(entry.Updated, entry.Published), author)
+		if isAdvertisement(entry.Title) {
+			continue
+		}
+		content := firstNonEmpty(entry.Summary.text(), entry.Content.text())
+		publishedAt := parsePublishedAt(firstNonEmpty(entry.Updated, entry.Published), source.Author)
 		items = append(items, newFeedNewsItem(
-			author,
-			defaultTags,
+			source,
 			entry.Title,
 			content,
 			pickAtomLink(entry.Links),
@@ -471,22 +670,38 @@ func mapAtomEntries(entries []atomEntry, author string, defaultTags []string) []
 	return items
 }
 
-func newFeedNewsItem(author string, defaultTags []string, title string, rawContent string, link string, imageURL string, publishedAt time.Time) NewsItem {
+func newFeedNewsItem(source feedSource, title string, rawContent string, link string, imageURL string, publishedAt time.Time) NewsItem {
 	title = strings.TrimSpace(stripHTML(title))
 	content := trimPreviewContent(rawContent)
-	category := classifyCategory(title, content, author, defaultTags)
+
+	category := source.Category
+	if category == "" {
+		category = classifyCategory(title, content, source.Author, source.DefaultTags)
+	}
 
 	return NewsItem{
-		ID:          buildNewsItemID(author, link),
+		ID:          buildNewsItemID(source.Author, link),
 		Title:       title,
 		Content:     content,
-		Author:      author,
+		Author:      source.Author,
 		PublishedAt: publishedAt,
-		Tags:        defaultTags,
+		Tags:        source.DefaultTags,
 		ImageURL:    normalizeImageURL(imageURL),
 		URL:         strings.TrimSpace(link),
 		Category:    category,
 	}
+}
+
+var advertisementPrefixes = []string{"anzeige:", "anzeige |", "werbung:", "sponsored:", "advertisement:"}
+
+func isAdvertisement(title string) bool {
+	normalized := strings.ToLower(stripHTML(title))
+	for _, prefix := range advertisementPrefixes {
+		if strings.HasPrefix(normalized, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func buildNewsItemID(author string, link string) string {
@@ -588,7 +803,7 @@ func extractImageURLFromAtomEntry(entry atomEntry) string {
 			return link.Href
 		}
 	}
-	return extractImageURLFromHTML(firstNonEmpty(entry.Content.Value, entry.Summary.Value))
+	return extractImageURLFromHTML(firstNonEmpty(entry.Content.text(), entry.Summary.text()))
 }
 
 func isImageCandidate(medium string, contentType string, candidateURL string) bool {
@@ -738,6 +953,15 @@ func stripHTML(input string) string {
 
 var imageSrcPattern = regexp.MustCompile(`(?i)<img[^>]+src=["']([^"' >]+)["']`)
 
+var cdataPattern = regexp.MustCompile(`(?s)<!\[CDATA\[(.*?)\]\]>`)
+
+func unwrapCDATA(value string) string {
+	if !strings.Contains(value, "<![CDATA[") {
+		return value
+	}
+	return cdataPattern.ReplaceAllString(value, "$1")
+}
+
 func stripHTMLTags(input string) string {
 	var builder strings.Builder
 	inTag := false
@@ -816,9 +1040,9 @@ func looksDecorativeImageURL(raw string) bool {
 }
 
 func classifyCategory(title, content, author string, tags []string) string {
-	t := strings.ToLower(title)
-	c := strings.ToLower(content)
 	auth := strings.ToLower(author)
+	haystack := strings.ToLower(title + " " + content)
+	words := wordsOf(haystack)
 
 	var lTags []string
 	for _, tag := range tags {
@@ -834,51 +1058,104 @@ func classifyCategory(title, content, author string, tags []string) string {
 		return false
 	}
 
-	// 1. Hardware
+	hasKeyword := func(kw string) bool {
+		if strings.ContainsAny(kw, " -.") {
+			return strings.Contains(haystack, kw)
+		}
+		return words.contains(kw) || hasTag(kw)
+	}
+
+	securityKeywords := []string{"sicherheitsluecke", "schwachstelle", "ransomware", "malware", "phishing", "exploit", "cve", "botnet", "backdoor", "zero-day", "datenleck"}
+	for _, kw := range securityKeywords {
+		if hasKeyword(kw) {
+			return categorySecurity
+		}
+	}
+
 	if strings.Contains(auth, "hardware") || strings.Contains(auth, "videocardz") {
-		return "Hardware"
+		return categoryHardware
 	}
-	hardwareKeywords := []string{"nvidia", "amd", "intel", "gpu", "cpu", "rtx", "motherboard", "chip", "processor", "hardware", "card", "geforce", "radeon", "ryzen", "pcie", "socket", "laptop", "desktop", "pc", "console"}
+	hardwareKeywords := []string{"nvidia", "amd", "intel", "gpu", "cpu", "rtx", "motherboard", "chip", "processor", "hardware", "card", "geforce", "radeon", "ryzen", "pcie", "socket", "laptop", "desktop", "console",
+		"grafikkarte", "prozessor", "mainboard", "arbeitsspeicher", "notebook"}
 	for _, kw := range hardwareKeywords {
-		if strings.Contains(t, kw) || strings.Contains(c, kw) || hasTag(kw) {
-			return "Hardware"
+		if hasKeyword(kw) {
+			return categoryHardware
 		}
 	}
 
-	// 2. Open Source
-	openSourceKeywords := []string{"open-source", "open source", "github", "open weights", "open weight", "openweight", "apache", "mit license", "gpl", "weights release", "hugging face", "huggingface"}
+	openSourceKeywords := []string{"open-source", "open source", "github", "open weights", "open weight", "openweight", "apache", "mit license", "gpl", "weights release", "hugging face", "huggingface",
+		"quelloffen", "freie software"}
 	for _, kw := range openSourceKeywords {
-		if strings.Contains(t, kw) || strings.Contains(c, kw) || hasTag(kw) || hasTag("opensource") {
-			return "Open Source"
+		if hasKeyword(kw) || hasTag("opensource") {
+			return categoryOpenSource
 		}
 	}
 
-	// 3. Research
-	researchKeywords := []string{"paper", "research", "study", "researchers", "scientist", "arxiv", "benchmark", "novel", "method", "dataset", "evaluation", "framework", "marktechpost"}
+	softwareKeywords := []string{"api", "sdk", "compiler", "framework", "typescript", "javascript", "python", "kubernetes", "docker", "linux", "windows", "programmierung", "entwickler", "quellcode"}
+	for _, kw := range softwareKeywords {
+		if hasKeyword(kw) {
+			return categorySoftware
+		}
+	}
+
+	researchKeywords := []string{"paper", "research", "study", "researchers", "scientist", "arxiv", "benchmark", "novel", "method", "dataset", "evaluation", "marktechpost",
+		"forschung", "forscher", "studie", "wissenschaftler"}
 	for _, kw := range researchKeywords {
-		if strings.Contains(t, kw) || strings.Contains(c, kw) || hasTag(kw) {
-			return "Research"
+		if hasKeyword(kw) {
+			return categoryResearch
 		}
 	}
 
-	// 4. KI-Releases
-	releaseKeywords := []string{"release", "launch", "version", "introduce", "introducing", "announced", "announce", "beta", "public", "gpt-4o", "llama 3", "claude 3", "gemini 1.5", "mistral large"}
+	releaseKeywords := []string{"release", "launch", "version", "introduce", "introducing", "announced", "announce", "beta", "gpt-4o", "llama 3", "claude 3", "gemini 1.5", "mistral large"}
 	for _, kw := range releaseKeywords {
-		if strings.Contains(t, kw) || strings.Contains(c, kw) || hasTag(kw) {
-			return "KI-Releases"
+		if hasKeyword(kw) {
+			return categoryReleases
 		}
 	}
 
-	// Fallbacks
 	if strings.Contains(auth, "openai") || strings.Contains(auth, "the verge") {
-		return "KI-Releases"
+		return categoryReleases
 	}
 	if strings.Contains(auth, "hugging face") {
-		return "Open Source"
+		return categoryOpenSource
 	}
 	if strings.Contains(auth, "marktechpost") {
-		return "Research"
+		return categoryResearch
 	}
 
-	return "KI-Releases" // Fallback Default
+	return categoryReleases
+}
+
+type wordSet map[string]struct{}
+
+func wordsOf(text string) wordSet {
+	words := make(wordSet)
+	var builder strings.Builder
+	flush := func() {
+		if builder.Len() > 0 {
+			words[builder.String()] = struct{}{}
+			builder.Reset()
+		}
+	}
+	for _, r := range text {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			builder.WriteRune(r)
+			continue
+		}
+		flush()
+	}
+	flush()
+	return words
+}
+
+func (w wordSet) contains(keyword string) bool {
+	if _, ok := w[keyword]; ok {
+		return true
+	}
+	for _, suffix := range []string{"s", "es", "e", "n", "en", "er"} {
+		if _, ok := w[keyword+suffix]; ok {
+			return true
+		}
+	}
+	return false
 }

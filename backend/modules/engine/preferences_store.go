@@ -18,9 +18,6 @@ type persistedEngineUserPreferences struct {
 	Users         map[string]engineUserPreferences `json:"users"`
 }
 
-// enginePreferenceStore deliberately lives outside engine_instances.json:
-// instances and hardware are machine-wide, while picker visibility belongs to
-// the authenticated login. Every mutation is an atomic 0600 replacement.
 type enginePreferenceStore struct {
 	mu    sync.RWMutex
 	path  string
@@ -55,10 +52,7 @@ func newEnginePreferenceStore(path string) (*enginePreferenceStore, error) {
 }
 
 func normalizedEngineUserID(value string) string {
-	// Login account keys are case-insensitive but otherwise preserve the full
-	// trimmed username. Using the stricter memory/file-name sanitizer here would
-	// merge distinct valid accounts such as "alice" and "alice!", and would map
-	// Unicode-only names to the shared fallback namespace.
+
 	value = strings.ToLower(strings.TrimSpace(value))
 	if value == "" {
 		return "local"

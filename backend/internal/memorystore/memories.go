@@ -40,11 +40,6 @@ func (s *SQLiteStore) listMemories(q queryer, userID, sessionID string) ([]memor
 	return result, rows.Err()
 }
 
-// UpdateCompressedMemory patches summary/learned/open tasks of a compressed
-// memory. Manual edits set corrected_by_user; automatic rewrites (manual ==
-// false) are rejected for corrected memories so re-compression never
-// silently overwrites a user correction. Returns the updated memory and its
-// rebuilt search document (with cleared embedding, so it gets re-embedded).
 func (s *SQLiteStore) UpdateCompressedMemory(userID, memoryID string, patch memory.MemoryPatch, manual bool) (*memory.CompressedMemory, memory.SearchDocument, error) {
 	var updated *memory.CompressedMemory
 	var document memory.SearchDocument
@@ -100,18 +95,12 @@ func (s *SQLiteStore) UpdateCompressedMemory(userID, memoryID string, patch memo
 	return updated, document, nil
 }
 
-// WriteCompressedMemory writes the new memory, observation links, archives
-// observations and updates the search document — all inside one BEGIN IMMEDIATE
-// transaction. Two parallel triggers serialize on the write lock; the second
-// one sees the already archived observations and returns memory.ErrAlreadyArchived.
-// Note that the LLM-based summarization call itself is executed outside this
-// transaction to avoid blocking other writes.
 func (s *SQLiteStore) WriteCompressedMemory(userID, sessionID string, plan *memory.CompressionPlan, obsIDs []string) error {
 	if len(obsIDs) == 0 {
 		return nil
 	}
 	return s.withImmediateTx(func(tx *writeTx) error {
-		// 1. Double check: count active observations matching the obsIDs
+
 		inSQL, inArgs := buildInClause("SELECT COUNT(*) FROM observations WHERE user_id = ? AND session_id = ? AND archived = 0 AND id IN (%s)", obsIDs)
 		args := append([]interface{}{userID, sessionID}, inArgs...)
 
@@ -122,11 +111,10 @@ func (s *SQLiteStore) WriteCompressedMemory(userID, sessionID string, plan *memo
 		}
 
 		if count != len(obsIDs) {
-			// Some observations are already archived (or deleted)! Abort!
+
 			return memory.ErrAlreadyArchived
 		}
 
-		// 2. Write the compressed memory
 		item := plan.Memory
 		if _, err := tx.Exec(`
 			INSERT INTO compressed_memories
@@ -147,7 +135,6 @@ func (s *SQLiteStore) WriteCompressedMemory(userID, sessionID string, plan *memo
 			return fmt.Errorf("compressed memory insert failed: %w", err)
 		}
 
-		// 3. Write observation links
 		for position, observationID := range item.ObservationIDs {
 			if _, err := tx.Exec(`
 				INSERT INTO observation_links (user_id, memory_id, observation_id, position)
@@ -157,7 +144,6 @@ func (s *SQLiteStore) WriteCompressedMemory(userID, sessionID string, plan *memo
 			}
 		}
 
-		// 4. Archive observations
 		query, args := buildInClause(`
 			UPDATE observations
 			SET archived = 1, memory_id = ?
@@ -168,12 +154,10 @@ func (s *SQLiteStore) WriteCompressedMemory(userID, sessionID string, plan *memo
 			return fmt.Errorf("observation archive failed: %w", err)
 		}
 
-		// 5. Upsert search document (in vector_documents and search_index)
 		if err := upsertSearchDocument(tx, plan.Document); err != nil {
 			return err
 		}
 
-		// 6. Update session usage
 		if err := updateSessionUsage(tx, userID, sessionID, plan.UsageAfter); err != nil {
 			return err
 		}

@@ -54,10 +54,6 @@ func (m *EngineModule) getModel(id string) (modelcatalog.ModelRecord, bool) {
 	return record, ok
 }
 
-// freshModelRecord guards a model start against stale catalog metadata. When
-// the files on disk no longer match the cached fingerprint (the user replaced
-// or removed the model), the catalog is rescanned transparently and the fresh
-// record is used, so memory plans never run on outdated sizes or metadata.
 func (m *EngineModule) freshModelRecord(ctx context.Context, record modelcatalog.ModelRecord) (modelcatalog.ModelRecord, error) {
 	m.mu.RLock()
 	root := m.modelDir
@@ -121,10 +117,6 @@ func (m *EngineModule) liveHardware(ctx context.Context) (hardware.Snapshot, eng
 	return snapshot, plannerHardware
 }
 
-// enginePlannedGPUUsage reclaims the engine's own currently allocated VRAM
-// before replanning. Live free-VRAM counters already exclude these bytes; not
-// reclaiming them would count every running model twice. The placement is an
-// estimate from the last verified plan when a driver has no per-PID API.
 func (m *EngineModule) enginePlannedGPUUsage() map[string]int64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

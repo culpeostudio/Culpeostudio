@@ -42,7 +42,6 @@ func TestStoreUpdatePersistsAndTokenFlags(t *testing.T) {
 		t.Fatalf("Update failed: %v", err)
 	}
 
-	// Load fresh store from disk to verify persistence.
 	fresh := NewStore(settingsPath)
 	if err := fresh.Load(); err != nil {
 		t.Fatalf("fresh Load failed: %v", err)

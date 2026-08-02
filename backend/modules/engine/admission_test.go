@@ -12,7 +12,7 @@ func TestStartAdmissionCancelVersusPromotionNeverStrandsActiveEntry(t *testing.T
 		queue.enqueue("racing", "normal")
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		queue.setPaused(false) // ready and ctx.Done are both selectable
+		queue.setPaused(false)
 		if err := queue.wait(ctx, "racing"); err != nil {
 			t.Fatalf("granted admission returned cancellation on attempt %d: %v", attempt, err)
 		}

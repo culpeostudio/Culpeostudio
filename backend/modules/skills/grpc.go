@@ -1,3 +1,5 @@
+// Package skills stores and validates the skill definitions and serves them over
+// both HTTP and gRPC.
 package skills
 
 import (

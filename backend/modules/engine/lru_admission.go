@@ -24,9 +24,6 @@ func isRetryablePlanningConflict(err error) bool {
 	return errors.As(err, &conflict)
 }
 
-// planWithNormalLRUExclusions is side-effect free. It incrementally simulates
-// removing eligible instances in stable LRU order and stops at the smallest
-// eviction set that makes the target plan feasible.
 func planWithNormalLRUExclusions(candidates []normalLRUCandidate, attempt func(map[string]bool) error) ([]string, error) {
 	excluded := map[string]bool{}
 	var lastConflict error
@@ -95,9 +92,6 @@ func (m *EngineModule) recommendationWithNormalLRU(ctx context.Context, modelID,
 	return view, views, evictions, err
 }
 
-// recommendationWithNormalLRUEviction runs only after this operation owns the
-// global start-admission slot and lifecycle mutex. Candidate claiming changes
-// Ready->Draining under m.mu, atomically excluding new inference admissions.
 func (m *EngineModule) recommendationWithNormalLRUEviction(ctx context.Context, modelID, instanceID string, config EngineConfig, operationID string) (ContextPlanView, map[string]ContextPlanView, error) {
 	var view ContextPlanView
 	var views map[string]ContextPlanView
@@ -189,9 +183,6 @@ func (m *EngineModule) evictNormalLRUUntilPeakAdmittedWithClaim(ctx context.Cont
 	}
 }
 
-// claimNormalLRUCandidate performs the final eligibility check immediately
-// before eviction. ActiveRequests must still be exactly zero while holding the
-// same mutex used by inference admission.
 func (m *EngineModule) claimNormalLRUCandidate(primaryID string) *EngineInstance {
 	m.mu.Lock()
 	instance, snapshot := m.claimNormalLRUCandidateLocked(map[string]bool{primaryID: true})
@@ -289,9 +280,6 @@ func terminalSupervisorState(state engineruntime.InstanceState) bool {
 	return state == engineruntime.StateStopped || state == engineruntime.StateFailed || state == engineruntime.StateFailedRollback
 }
 
-// A stop timeout is not proof that resources were released. Keep the instance
-// Draining/resource-holding (and therefore closed to new inference admission)
-// until the Supervisor handle confirms its eventual exit.
 func (m *EngineModule) restoreClaimedNormalLRU(instanceID string, handle *engineruntime.InstanceHandle, stopErr error) {
 	m.mu.Lock()
 	instance := m.instances[instanceID]

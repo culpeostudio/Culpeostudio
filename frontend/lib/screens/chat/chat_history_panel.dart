@@ -5,21 +5,17 @@ import '../../l10n/chat_aux_strings.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
 
-/// Gold-Akzent des Chat-Bereichs.
 const Color kChatAccent = Color(0xFFC9A24A);
 
-/// Zur Auswahl stehende Ordnerfarben im Projekt-Dialog.
 const List<Color> kProjectColorChoices = [
-  Color(0xFFC9A24A), // Gold
-  Color(0xFF6E8FE0), // Blau
-  Color(0xFF7BAE7F), // Gruen
-  Color(0xFFA98BD4), // Lila
-  Color(0xFFD97B7B), // Rot
-  Color(0xFF62B5AB), // Petrol
+  Color(0xFFC9A24A),
+  Color(0xFF6E8FE0),
+  Color(0xFF7BAE7F),
+  Color(0xFFA98BD4),
+  Color(0xFFD97B7B),
+  Color(0xFF62B5AB),
 ];
 
-/// Farbe eines Projektordners; faellt auf Gold zurueck, wenn keine oder eine
-/// ungueltige Farbe hinterlegt ist.
 Color chatProjectColor(ChatProject? project) {
   final raw = project?.color;
   if (raw != null) {
@@ -32,8 +28,6 @@ Color chatProjectColor(ChatProject? project) {
   return kChatAccent;
 }
 
-/// Zur Auswahl stehende Icons im Projekt-Dialog; Schluessel sind die
-/// String-Ids, die backend-seitig am Projekt gespeichert werden.
 const Map<String, IconData> kChatProjectIcons = {
   'folder': Icons.folder_outlined,
   'code': Icons.code_rounded,
@@ -49,8 +43,6 @@ const Map<String, IconData> kChatProjectIcons = {
   'travel': Icons.flight_outlined,
 };
 
-/// Icon eines Projektordners; faellt auf den Ordner zurueck, wenn kein oder
-/// ein unbekannter Icon-Schluessel hinterlegt ist.
 IconData chatProjectIcon(ChatProject? project) {
   final key = project?.icon;
   if (key != null && kChatProjectIcons.containsKey(key)) {
@@ -59,8 +51,6 @@ IconData chatProjectIcon(ChatProject? project) {
   return Icons.folder_outlined;
 }
 
-/// Dialog zum Umbenennen eines Chats; wird sowohl vom Verlaufs-Dropdown in
-/// der Sidebar als auch (frueher) direkt vom Chat-Tab genutzt.
 Future<void> promptRenameChatSession(
   BuildContext context,
   AppState appState,
@@ -117,9 +107,6 @@ Future<void> promptRenameChatSession(
   }
 }
 
-/// Bestaetigungsdialog zum Loeschen eines Chats. War die geloeschte Sitzung
-/// die aktive und bleibt keine mehr uebrig, ruft [onNeedNewSession] den
-/// Aufrufer auf, damit dieser (z. B. im Chat-Tab) eine neue Sitzung startet.
 Future<void> confirmDeleteChatSession(
   BuildContext context,
   AppState appState,
@@ -165,7 +152,6 @@ Future<void> confirmDeleteChatSession(
   }
 }
 
-/// Kleine Pill in der Chat-Leiste, die den Ordner des aktiven Chats zeigt.
 class ChatProjectBadge extends StatelessWidget {
   const ChatProjectBadge({super.key, required this.project});
 
@@ -203,11 +189,6 @@ class ChatProjectBadge extends StatelessWidget {
   }
 }
 
-/// Verlaufs-Dropdown unter dem "Chat"-Reiter der Sidebar. Zeigt die
-/// Projektordner und die freien Chats an und bietet alle Verlaufs-Aktionen
-/// (neu, umbenennen, loeschen, in Ordner verschieben) direkt inline an. Ein
-/// neuer (nicht zugeordneter) Chat wird ueber das Icon am "Chat"-Reiter
-/// selbst gestartet, nicht mehr hier im Panel.
 class ChatHistoryPanel extends StatefulWidget {
   const ChatHistoryPanel({
     super.key,
@@ -223,8 +204,6 @@ class ChatHistoryPanel extends StatefulWidget {
   final AppState appState;
   final String? currentChatId;
 
-  /// Gemerkte Aufklapp-Zustaende der Ordner; gehoert dem aufrufenden Tab,
-  /// damit sie ein Schliessen des Panels ueberleben.
   final Set<String> expandedProjects;
 
   final ValueChanged<String> onNewChatInProject;
@@ -324,10 +303,6 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
           return pid == null || !projectIds.contains(pid);
         }).toList();
 
-        // Auf ca. 8 sichtbare Chat-Zeilen begrenzt (34px je Zeile) plus
-        // Platz fuer "Neuer Ordner" und eine Sektions-Ueberschrift; darueber
-        // hinaus scrollt die Liste innerhalb dieser Hoehe statt die restliche
-        // Sidebar zu verdraengen.
         return ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 340),
           child: ListView(
@@ -415,7 +390,6 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
   }
 }
 
-/// Ergebnis des Ordner-Dialogs (Name, gewaehlte Farbe, optionaler Projektpfad).
 class _ProjectEditorResult {
   const _ProjectEditorResult(this.name, this.color, this.path, this.icon);
 
@@ -425,9 +399,6 @@ class _ProjectEditorResult {
   final String? icon;
 }
 
-/// Dialog zum Anlegen/Bearbeiten eines Projektordners. Als eigenes
-/// StatefulWidget, damit der TextEditingController erst bei Route-Dispose
-/// (nach der Schluss-Animation) entsorgt wird.
 class _ProjectEditorDialog extends StatefulWidget {
   const _ProjectEditorDialog({this.existing});
 
@@ -444,8 +415,6 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
   late String? _selectedIcon;
   late bool _hasPath;
 
-  // Validierungsfehler, die unter den Feldern angezeigt werden, statt den
-  // Dialog bei unvollstaendigen Angaben still offen zu lassen.
   String? _nameError;
   String? _pathError;
 
@@ -485,9 +454,7 @@ class _ProjectEditorDialogState extends State<_ProjectEditorDialog> {
           _pathError = null;
         });
       }
-    } catch (_) {
-      // Abbruch oder Fehler im Datei-Dialog ignorieren.
-    }
+    } catch (_) {}
   }
 
   void _submit() {
@@ -758,7 +725,6 @@ class _PanelSectionHeader extends StatelessWidget {
   }
 }
 
-/// Einfache Aktionszeile (z. B. "Neuer Chat") im Panel.
 class _PanelActionRow extends StatefulWidget {
   const _PanelActionRow({
     super.key,
@@ -817,7 +783,6 @@ class _PanelActionRowState extends State<_PanelActionRow> {
   }
 }
 
-/// Ordner-Zeile eines Projekts mit Aufklapp-Chevron und Hover-Aktionen.
 class _ProjectRow extends StatefulWidget {
   const _ProjectRow({
     super.key,
@@ -886,8 +851,6 @@ class _ProjectRowState extends State<_ProjectRow> {
               ),
             ),
             Icon(
-              // Eigenes Icon gewinnt; sonst der klassische Ordner, der sich
-              // beim Auf-/Zuklappen oeffnet und schliesst.
               widget.project.icon != null
                   ? chatProjectIcon(widget.project)
                   : (widget.expanded
@@ -951,8 +914,6 @@ class _ProjectRowState extends State<_ProjectRow> {
   }
 }
 
-/// Chat-Zeile im Panel; bei Hover erscheinen Verschieben-, Umbenennen- und
-/// Loesch-Aktionen.
 class _ChatRow extends StatefulWidget {
   const _ChatRow({
     super.key,
@@ -974,7 +935,6 @@ class _ChatRow extends StatefulWidget {
   final double indent;
   final List<ChatProject> projects;
 
-  /// Projekt, in dem die Zeile gerade gerendert wird (null = freie Liste).
   final String? currentProjectId;
   final VoidCallback onSelect;
   final VoidCallback onRename;

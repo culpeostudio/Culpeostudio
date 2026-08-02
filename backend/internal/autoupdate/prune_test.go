@@ -72,7 +72,7 @@ func TestPruneVersionsRemovesOnlyStaleTemporaries(t *testing.T) {
 			t.Fatalf("PruneVersions() kept abandoned %s: %v", removed, err)
 		}
 	}
-	// A running update owns these, so age is the only safe signal.
+
 	for _, kept := range []string{freshStaging, freshWork} {
 		if _, err := os.Stat(kept); err != nil {
 			t.Fatalf("PruneVersions() removed in-flight %s: %v", kept, err)

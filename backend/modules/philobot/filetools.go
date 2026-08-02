@@ -15,9 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// outsideRootsError markiert den Fall "Pfad ausserhalb der freigegebenen
-// Roots" als eigenen Typ, damit Execute ihn von normalen Fehlern
-// unterscheiden und eine Permission-Anfrage an den Nutzer ausloesen kann.
 type outsideRootsError struct {
 	resolved string
 }
@@ -26,15 +23,6 @@ func (e *outsideRootsError) Error() string {
 	return fmt.Sprintf("Pfad ausserhalb erlaubter Roots: %s", e.resolved)
 }
 
-// fileToolExecutor fuehrt Datei-Operationen strikt innerhalb der freigegebenen
-// Roots aus (Sandbox). Die Roots liegen direkt auf dem Executor, und
-// "read before write" wird ueber ein internes Set nachgehalten. Ein Executor
-// lebt pro Tool-Loop-Durchlauf und ist NICHT nebenlaeufig sicher.
-//
-// Ist ein permissionAsker gesetzt, wird bei Zugriffen ausserhalb der Roots der
-// Nutzer um Erlaubnis gefragt statt sofort abzulehnen: "once" gibt genau den
-// angefragten Pfad einmalig frei (approvedOnce), "session" nimmt den Ordner
-// als zusaetzlichen Root auf, "deny" behaelt das bisherige Fehlerverhalten.
 type fileToolExecutor struct {
 	roots        []string
 	readPaths    map[string]struct{}
@@ -43,22 +31,14 @@ type fileToolExecutor struct {
 	emitEvent    func(eventType string, data interface{}) error
 	sessionID    string
 	approvedOnce map[string]struct{}
-	// approvedPrograms merkt Programme, die der Nutzer per "session"-Entscheid
-	// fuer run_command freigegeben hat.
+
 	approvedPrograms map[string]struct{}
 }
 
-// newFileToolExecutor normalisiert die Roots (Symlink-Aufloesung, Deduplikation)
-// und schlaegt fehl, wenn kein gueltiger Root uebrig bleibt — ohne Root gaebe es
-// keine Sandbox-Grenze. Ohne Asker bleibt es beim harten Sandbox-Fehler.
 func newFileToolExecutor(roots []string) (*fileToolExecutor, error) {
 	return newFileToolExecutorWithPermissions(context.Background(), roots, nil, nil, "")
 }
 
-// newFileToolExecutorWithPermissions ist die vollstaendige Variante des
-// Konstruktors: ctx bricht wartende Permission-Anfragen ab, asker vermittelt
-// die Nutzer-Entscheidung, emitEvent meldet permission_request/-result als
-// SSE-Events ans Frontend, sessionID wird in diese Events eingebettet.
 func newFileToolExecutorWithPermissions(
 	ctx context.Context,
 	roots []string,
@@ -118,9 +98,6 @@ func (e *fileToolExecutor) normalizeRoots(roots []string) ([]string, error) {
 	return normalized, nil
 }
 
-// resolvePath macht aus einem (relativen oder absoluten) Pfad einen absoluten
-// Pfad und stellt sicher, dass er innerhalb eines Roots liegt. Symlinks werden
-// aufgeloest, ".." ausserhalb des Roots wird abgewiesen.
 func (e *fileToolExecutor) resolvePath(rawPath string, allowMissing bool) (string, error) {
 	trimmed := strings.TrimSpace(rawPath)
 	if trimmed == "" {
@@ -158,29 +135,18 @@ func (e *fileToolExecutor) resolvePath(rawPath string, allowMissing bool) (strin
 			return resolved, nil
 		}
 	}
-	// Einmalig freigegebene Pfade (Permission "once") duerfen passieren.
+
 	if _, ok := e.approvedOnce[strings.ToLower(resolved)]; ok {
 		return resolved, nil
 	}
 	return "", &outsideRootsError{resolved: resolved}
 }
 
-// Execute fuehrt einen Tool-Aufruf aus und liefert immer ein Ergebnis-Objekt
-// zurueck (nie einen Go-Fehler): Fehlschlaege stehen als {"ok":false,"error":..}
-// im Ergebnis, damit der Tool-Loop sie dem Modell zurueckgeben kann und dieses
-// sich selbst korrigieren darf.
-//
-// Sonderfall Sandbox: schlaegt die Pfadpruefung mit "ausserhalb der Roots"
-// fehl und ist ein permissionAsker verdrahtet, wird zuerst der Nutzer gefragt
-// (blockierend, Events permission_request/-result). Erst bei "deny" geht der
-// Fehler ans Modell zurueck; bei "once"/"session" wird der Aufruf wiederholt.
 func (e *fileToolExecutor) Execute(name string, args map[string]interface{}) map[string]interface{} {
 	if args == nil {
 		args = map[string]interface{}{}
 	}
-	// Gaengige Feldnamen-Varianten auf die erwarteten Namen bringen, bevor
-	// geprueft wird: kleinere Modelle schreiben "glob" statt "pattern" und
-	// scheitern sonst wiederholt am selben Aufruf.
+
 	args = normalizeToolArguments(name, args)
 	if err := validateFileToolArguments(name, args); err != nil {
 		return map[string]interface{}{
@@ -206,7 +172,7 @@ func (e *fileToolExecutor) Execute(name string, args map[string]interface{}) map
 		case permissionSession:
 			e.grantSessionRoot(outside.resolved)
 		default:
-			// "deny" (auch Timeout/Abbruch): bisheriger Sandbox-Fehler.
+
 			return map[string]interface{}{
 				"ok":         false,
 				"error":      err.Error(),
@@ -215,8 +181,7 @@ func (e *fileToolExecutor) Execute(name string, args map[string]interface{}) map
 		}
 		result, err = e.dispatch(name, args)
 		if onceKey != "" {
-			// "Einmalig" wortwoertlich: die Freigabe gilt nur fuer diesen
-			// einen Aufruf, der naechste Zugriff fragt erneut.
+
 			delete(e.approvedOnce, onceKey)
 		}
 	}
@@ -226,8 +191,6 @@ func (e *fileToolExecutor) Execute(name string, args map[string]interface{}) map
 	return result
 }
 
-// requestPermission meldet die Anfrage ans Frontend und wartet blockierend auf
-// die Entscheidung des Nutzers.
 func (e *fileToolExecutor) requestPermission(tool, resolved string) string {
 	requestID := "perm-" + uuid.New().String()
 	if e.emitEvent != nil {
@@ -249,10 +212,6 @@ func (e *fileToolExecutor) requestPermission(tool, resolved string) string {
 	return decision
 }
 
-// grantSessionRoot nimmt den angefragten Pfad dauerhaft als zusaetzlichen Root
-// auf: bei Dateien (oder nicht existierenden Pfaden) deren Elternverzeichnis,
-// bei Verzeichnissen das Verzeichnis selbst. Danach greifen weitere Zugriffe
-// in diesem Ordner ohne erneute Nachfrage.
 func (e *fileToolExecutor) grantSessionRoot(resolved string) {
 	root := resolved
 	if info, err := os.Stat(resolved); err != nil || !info.IsDir() {
@@ -265,7 +224,6 @@ func (e *fileToolExecutor) grantSessionRoot(resolved string) {
 	e.roots = normalized
 }
 
-// dispatch verteilt den Tool-Aufruf auf die konkrete Implementierung.
 func (e *fileToolExecutor) dispatch(name string, args map[string]interface{}) (map[string]interface{}, error) {
 	switch name {
 	case "list_dir":
@@ -295,9 +253,6 @@ func (e *fileToolExecutor) dispatch(name string, args map[string]interface{}) (m
 	}
 }
 
-// emitFileChanged meldet eine erfolgreiche Datei-Aenderung als eigenes Event
-// ans Frontend (Live-Diff + Dateibaum-Refresh). Fehler beim Senden werden
-// ignoriert — das Tool-Ergebnis selbst ist bereits erfolgreich.
 func (e *fileToolExecutor) emitFileChanged(resolvedPath, action string, oldText, newText string) {
 	if e.emitEvent == nil {
 		return
@@ -427,7 +382,7 @@ func (e *fileToolExecutor) readFile(args map[string]interface{}) (map[string]int
 	if err != nil {
 		return nil, err
 	}
-	// Higher default to give the model more context for better code quality.
+
 	maxChars := 32000
 	if raw, ok := args["max_chars"].(float64); ok && int(raw) > 0 {
 		maxChars = int(raw)
@@ -462,7 +417,6 @@ func (e *fileToolExecutor) writeFile(args map[string]interface{}) (map[string]in
 		return nil, err
 	}
 
-	// Check if file already exists — if so, warn when it was never read.
 	fileExisted := false
 	oldText := ""
 	if info, statErr := os.Stat(resolved); statErr == nil {
@@ -535,8 +489,7 @@ func (e *fileToolExecutor) deletePath(args map[string]interface{}) (map[string]i
 	if err != nil {
 		return nil, err
 	}
-	// Vorher-Inhalt sichern (nur Dateien, keine Verzeichnisse), damit das
-	// Frontend die Loeschung als Diff zeigen kann.
+
 	oldText := ""
 	if info, statErr := os.Stat(resolved); statErr == nil && !info.IsDir() && info.Size() <= 256*1024 {
 		if raw, readErr := os.ReadFile(resolved); readErr == nil {
@@ -615,8 +568,6 @@ func (e *fileToolExecutor) statPath(args map[string]interface{}) (map[string]int
 	}, nil
 }
 
-// resultPreview macht aus einem Tool-Ergebnis eine kurze JSON-Vorschau fuer
-// tool_result-Events (die volle Nutzlast geht separat ans Modell zurueck).
 func resultPreview(result map[string]interface{}, limit int) string {
 	payload, err := json.Marshal(result)
 	if err != nil {

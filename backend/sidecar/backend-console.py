@@ -12,7 +12,7 @@ import shutil
 import subprocess
 from typing import TextIO
 
-# Add Go to PATH if not already present
+
 def _setup_go_path() -> None:
     if shutil.which("go"):
         return

@@ -13,8 +13,6 @@ import (
 
 var stripTagsPattern = regexp.MustCompile(`<[^>]*>`)
 
-// ExtractVQD extrahiert den DuckDuckGo-spezifischen vqd-Token aus
-// HTML-Bytes. Er wird fuer die JSON-Endpunkte von DuckDuckGo benoetigt.
 func ExtractVQD(htmlBytes []byte, query string) (string, error) {
 	markers := []struct {
 		prefix []byte
@@ -77,7 +75,6 @@ func bytesIndexByteFrom(haystack []byte, needle byte, from int) int {
 	return -1
 }
 
-// NormalizeURL dekodiert eine URL und ersetzt Leerzeichen durch '+'.
 func NormalizeURL(raw string) string {
 	if raw == "" {
 		return ""
@@ -89,9 +86,6 @@ func NormalizeURL(raw string) string {
 	return strings.ReplaceAll(decoded, " ", "+")
 }
 
-// NormalizeText entfernt HTML-Tags, dekodiert HTML-Entities, entfernt
-// Unicode-Steuer- und Formatierungszeichen und fasst Whitespace zusammen.
-// Entspricht der Python-Funktion _normalize_text aus ddgs.
 func NormalizeText(raw string) string {
 	if raw == "" {
 		return ""
@@ -102,8 +96,6 @@ func NormalizeText(raw string) string {
 	return strings.Join(strings.Fields(text), " ")
 }
 
-// stripControlChars entfernt Zeichen der Unicode-Kategorien C und Cf
-// (Steuerzeichen, BOM, RTL/LTR-Markierungen).
 func stripControlChars(s string) string {
 	if !utf8.ValidString(s) {
 		return s
@@ -122,9 +114,6 @@ func stripControlChars(s string) string {
 	return b.String()
 }
 
-// NormalizeDate wandelt einen Unix-Timestamp in ISO-8601 um, falls
-// der Wert als solcher erkannt wird. Strings werden unververaessert
-// zurueckgegeben.
 func NormalizeDate(date any) string {
 	if date == nil {
 		return ""
@@ -142,8 +131,6 @@ func NormalizeDate(date any) string {
 	return ""
 }
 
-// ExpandProxyTBAlias wandelt das Alias "tb" in einen Tor-Browser-SOCKS5-Proxy
-// um. Andere Werte werden unververaessert zurueckgegeben.
 func ExpandProxyTBAlias(proxy string) string {
 	if proxy == "tb" {
 		return "socks5h://127.0.0.1:9150"

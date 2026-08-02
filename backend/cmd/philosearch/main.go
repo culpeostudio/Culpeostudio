@@ -1,17 +1,4 @@
-// Command philosearch ist die CLI-Variante der PhiloSearch-Metasuch-
-// Engine. Es ist direkter Go-Nachfahre des Python-CLI ddgs und
-// ersetzt die click-basierte Vorgaengerin durch ein schlankes
-// flag.NewFlagSet pro Subkommando.
-//
-// Aufruf:
-//
-//	philosearch text "railway nginx" -max 5 -json
-//	philosearch news "tls fingerprint" -region uk-en
-//	philosearch extract https://example.com -fmt text_markdown
-//	philosearch engines
-//
-// Globale Flags koennen vor dem Subkommando stehen; pro Subkommando
-// gibt es eigene Flags.
+// Command philosearch exposes the metasearch engine on the command line.
 package main
 
 import (
@@ -28,7 +15,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch/engines"
 )
 
-// Globals
 var (
 	gProxy  string
 	gTime   int
@@ -61,21 +47,12 @@ func main() {
 	}
 }
 
-// parseGlobals parst globale Flags aus einem Flag-Set und verschiebt
-// die verbleibenden Argumente zurueck.
 func parseGlobals(fs *flag.FlagSet) {
 	fs.StringVar(&gProxy, "proxy", "", "Proxy-URL (http/socks5/socks5h) oder 'tb' fuer Tor")
 	fs.IntVar(&gTime, "timeout", 10, "HTTP-Timeout in Sekunden")
 	fs.BoolVar(&gVerify, "verify", true, "TLS-Verifikation (false = InsecureSkipVerify)")
 }
 
-// splitArgs trennt Positionsargumente von Flags, egal in welcher
-// Reihenfolge sie stehen.
-//
-// Das flag-Paket hoert beim ersten Nicht-Flag-Argument auf zu parsen,
-// deshalb landete bei `philosearch text "nginx" -max 5` das "-max 5"
-// bisher in der Suchanfrage. fs wird nur zum Nachschlagen gebraucht:
-// Bool-Flags verbrauchen kein Folge-Argument, alle anderen schon.
 func splitArgs(fs *flag.FlagSet, args []string) (positional, flags []string) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -90,12 +67,12 @@ func splitArgs(fs *flag.FlagSet, args []string) (positional, flags []string) {
 		flags = append(flags, arg)
 		name := strings.TrimLeft(arg, "-")
 		if strings.Contains(name, "=") {
-			// -flag=wert traegt den Wert bereits bei sich
+
 			continue
 		}
 		f := fs.Lookup(name)
 		if f == nil {
-			// Unbekanntes Flag: fs.Parse soll den Fehler melden
+
 			continue
 		}
 		if bf, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && bf.IsBoolFlag() {
@@ -109,7 +86,6 @@ func splitArgs(fs *flag.FlagSet, args []string) (positional, flags []string) {
 	return positional, flags
 }
 
-// buildSearch stellt den Search-Aggregator fuer die CLI her.
 func buildSearch() (*metasearch.HttpClient, *metasearch.Search) {
 	client, err := metasearch.NewHttpClient(metasearch.ClientOptions{
 		Proxy:   metasearch.ExpandProxyTBAlias(gProxy),
@@ -257,7 +233,6 @@ func runEngines(args []string) {
 	}
 }
 
-// printHuman schreibt Treffer in einer gut lesbaren Form ins Terminal.
 func printHuman(category, query string, results []metasearch.Result) {
 	fmt.Printf("PhiloSearch '%s' (%s) – %d Treffer\n\n", query, category, len(results))
 	for i, r := range results {
@@ -284,7 +259,6 @@ func printHuman(category, query string, results []metasearch.Result) {
 	}
 }
 
-// wrapWords bricht einen Text bei vorgegebener Spaltenbreite um.
 func wrapWords(s string, width int) string {
 	if width <= 0 || len(s) <= width {
 		return s
@@ -318,7 +292,6 @@ func wrapWords(s string, width int) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-// usage gibt den Hilfe-Text auf stderr aus.
 func usage() {
 	fmt.Fprintln(os.Stderr, `philosearch - PhiloEngine Metasuch-CLI
 
@@ -356,8 +329,6 @@ Beispiele:
   philosearch engines`)
 }
 
-// philosearchVersion liefert die eingebettete Versionsnummer. Später
-// koennte hier via ldflags eine Build-Version injiziert werden.
 func philosearchVersion() string {
 	return "0.1.0-mvp"
 }

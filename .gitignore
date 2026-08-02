@@ -1,29 +1,29 @@
-# Added by code-review-graph
+
 .code-review-graph/
 
-# Lokal gebauter Bootstrap-Updater für Quellcode-Starts
+
 .philoengine/
 
-# Local credentials and runtime/user data
+
 .env
 .env.*
 backend/data/
-# Der Server legt sein data/ relativ zum Arbeitsverzeichnis an. Wird er einmal
-# aus dem Projektwurzel gestartet, entstehen hier jwt_secret, memory_api_token
-# und die Memory-Datenbank -- die niemals versioniert werden duerfen.
+
+
+
 /data/
 
-# Generated build and dependency output
+
 frontend/.dart_tool/
 frontend/build/
 frontend/.flutter-plugins-dependencies
 
-# Gebaute Release-Archive. Sie werden als GitHub-Release-Assets veroeffentlicht,
-# nicht im Repository: jeder Release wuerde die Git-Historie sonst dauerhaft um
-# rund 60 MB aufblaehen. Nur quikinstall/manifest.json gehoert versioniert.
+
+
+
 quikinstall/releases/
 
-# Local Python environments, caches, and compiled server binaries
+
 backend/.venv/
 **/__pycache__/
 *.pyc
@@ -34,19 +34,19 @@ backend/server.exe
 backend/sidecar/server.exe
 *.bak
 
-# Local Codex/Claude runtime state
+
 .claude/scheduled_tasks.lock
 **/.claude/
 
-# Persoenliche KI-Werkzeug-Konfiguration (bleibt lokal)
+
 AGENTS.md
 
-# Von Tests im Paketverzeichnis erzeugte Laufzeitdaten (relative Pfade in
-# module.go). Gehoeren nicht in die Versionierung.
+
+
 backend/modules/*/data/
 
-# Persoenliches Sync-Werkzeug (enthaelt lokale Pfade)
+
 sync-to-github.sh
 
-# Anweisungsdateien fuer KI-Assistenten (persoenliche Werkzeug-Konfiguration)
+
 CLAUDE.md

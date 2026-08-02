@@ -1,3 +1,4 @@
+// Package common holds the HTTP client shared by the marketplace providers.
 package common
 
 import (
@@ -15,8 +16,6 @@ import (
 	"time"
 )
 
-// friendlyDownloadStatusError maps provider HTTP status codes to clear,
-// actionable German messages instead of raw "download failed (403)" strings.
 func friendlyDownloadStatusError(status int, body string) error {
 	detail := strings.TrimSpace(body)
 	if len(detail) > 160 {
@@ -43,8 +42,6 @@ func friendlyDownloadStatusError(status int, body string) error {
 	}
 }
 
-// friendlyTransportError translates connection-level failures (DNS, timeout,
-// reset) into user language while preserving cancellation semantics.
 func friendlyTransportError(err error) error {
 	if err == nil {
 		return nil
@@ -96,10 +93,7 @@ func RequestJSON(ctx context.Context, httpClient *http.Client, method, rawURL st
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return fmt.Errorf("request failed (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
-	// M8: Antwortgroesse begrenzen, damit ein fehlerhafter/boesartiger
-	// Provider den Backend-Speicher nicht unlimitiert fuellen kann.
-	// HuggingFace/OpenRouter-/Featherless-Kataloge liegen bei wenigen MB;
-	// 64 MB sind ein grosszuegiger Anschlag.
+
 	const maxResponseBytes = 64 * 1024 * 1024
 	limited := io.LimitReader(resp.Body, maxResponseBytes)
 	return json.NewDecoder(limited).Decode(out)
@@ -109,10 +103,6 @@ func DownloadFile(ctx context.Context, httpClient *http.Client, sourceURL string
 	return DownloadFileWithStats(ctx, httpClient, sourceURL, headers, targetDir, fileName, onProgress, nil)
 }
 
-// DownloadFileWithStats ist wie DownloadFile, ruft aber zusaetzlich
-// sekündlich onStats mit (downloadedBytes, totalBytes, speedBytesPerSec)
-// auf. So kann der Aufrufer "5.2 MB/s · 1.4 GB / 5.0 GB" in der UI anzeigen,
-// ohne die Bandbreite mit notify-Mapfeldern zu fluten.
 func DownloadFileWithStats(ctx context.Context, httpClient *http.Client, sourceURL string, headers map[string]string, targetDir string, fileName string, onProgress func(int), onStats func(downloadedBytes int64, totalBytes int64, speedBytesPerSec int64)) (string, error) {
 	const (
 		requestStartedProgress = 2
@@ -154,17 +144,11 @@ func DownloadFileWithStats(ctx context.Context, httpClient *http.Client, sourceU
 	if onProgress != nil {
 		onProgress(responseReadyProgress)
 	}
-	// auf initialen Stats-call: der Server liefert ggf. ContentLength; das
-	// gibt der UI einen Totalbytes-Puffer obwohl noch kein Byte geflossen
-	// ist (so sieht der User ein "5.0 GB insgesamt" und eine laufende
-	// Fortschrittszahl).
+
 	if onStats != nil && resp.ContentLength > 0 {
 		onStats(0, resp.ContentLength, 0)
 	}
 
-	// Hugging-Face Snapshots koennen Dateien in Unterordnern enthalten. Einen
-	// sicheren relativen Pfad erhalten wir unveraendert; freie Dateinamen aus
-	// anderen Providern werden weiterhin auf eine einzelne Komponente reduziert.
 	name := ""
 	if relative, ok := SafeRelativePath(fileName); ok {
 		name = relative
@@ -203,9 +187,7 @@ func DownloadFileWithStats(ctx context.Context, httpClient *http.Client, sourceU
 	lastProgress := responseReadyProgress
 	var nextUnknownProgressStep int64 = 25 * 1024 * 1024
 	total := resp.ContentLength
-	// Geschwindigkeits-Messung: rolling-window zwischen zwei
-	// checkpoints.  beginng mit read start; wir nehmen die gesamt-bytes
-	// contra seit-checkpointStartNow verbracht time.Now().
+
 	speedCheckpoint := time.Now()
 	speedCheckpointBytes := int64(0)
 	lastStatsEmit := time.Now()
@@ -229,9 +211,7 @@ func DownloadFileWithStats(ctx context.Context, httpClient *http.Client, sourceU
 				if windowDelta > 0 {
 					speed = int64(float64(deltaBytes) / windowDelta)
 				}
-				// rolling-window reset fuer staendig neueMessung
-				// (start frisch alle 2s, um kurzfristige schwankungen
-				// zu stabilisieren ohne zu lang zu werden).
+
 				speedCheckpoint = now
 				speedCheckpointBytes = written
 				lastStatsEmit = now
@@ -286,9 +266,6 @@ func DownloadFileWithStats(ctx context.Context, httpClient *http.Client, sourceU
 	return finalPath, nil
 }
 
-// SafeRelativePath akzeptiert ausschließlich relative Snapshot-Pfade. Damit
-// bleiben z.B. tokenizer/vocab.json erhalten, ohne dass "..", absolute Pfade
-// oder Windows-Laufwerke das Zielverzeichnis verlassen koennen.
 func SafeRelativePath(name string) (string, bool) {
 	raw := strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
 	if raw == "" || strings.HasPrefix(raw, "/") || filepath.IsAbs(raw) {

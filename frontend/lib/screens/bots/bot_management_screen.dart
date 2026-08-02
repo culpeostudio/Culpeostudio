@@ -92,7 +92,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
       setState(() {
         _isLoading = false;
         _modelChoices = choices;
-        // Select the default bot by default if available
+
         if (_appState.philoBots.isNotEmpty) {
           final defaultBot = _appState.philoBots.firstWhere(
             (b) => b['is_default'] == true,
@@ -208,7 +208,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
           tr('bots.saved', {'name': name}),
           color: Colors.green,
         );
-        // Reselect the saved bot
+
         final saved = _appState.philoBots.firstWhere(
           (b) => b['name'] == name,
           orElse: () => _appState.philoBots.first,
@@ -417,7 +417,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
       ),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Row(
@@ -455,7 +454,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
             ),
           ),
           const Divider(height: 1, color: Colors.white10),
-          // List
+
           Expanded(
             child: _isLoading && _appState.philoBots.isEmpty
                 ? const Center(
@@ -885,7 +884,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -981,13 +979,11 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
               const SizedBox(height: 18),
             ],
 
-            // Fields
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Bot Name
                     Row(
                       children: [
                         Text(
@@ -1064,7 +1060,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Default Bot Toggle
                     Row(
                       children: [
                         Expanded(
@@ -1108,7 +1103,7 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         Switch(
                           value: _isDefault,
                           onChanged: isLockedBot || isDefault
-                              ? null // Disable turning off directly, must make another bot default instead.
+                              ? null
                               : (val) {
                                   setState(() {
                                     _isDefault = val;
@@ -1329,7 +1324,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Trigger Keywords (Skip if default and isDefault toggle is on, but let's always show it)
                     Row(
                       children: [
                         Expanded(
@@ -1402,7 +1396,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                         ),
                       ),
                       validator: (val) {
-                        // If it's default bot, keywords are optional. If not, they are required.
                         if (!_isDefault &&
                             (val == null || val.trim().isEmpty)) {
                           return tr('botManagement.keywords.required');
@@ -1412,7 +1405,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // System Prompt
                     Row(
                       children: [
                         Expanded(
@@ -1504,7 +1496,6 @@ class _BotManagementScreenState extends State<BotManagementScreen> {
             const Divider(height: 1, color: Colors.white10),
             const SizedBox(height: 20),
 
-            // Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

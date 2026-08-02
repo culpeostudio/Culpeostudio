@@ -1,3 +1,5 @@
+// Command philo-updater is the launcher. It updates a source checkout by
+// fast-forward, or verifies and activates a released bundle and starts it.
 package main
 
 import (
@@ -31,9 +33,7 @@ func main() {
 
 func run(arguments []string, stdout, stderr io.Writer) int {
 	if len(arguments) == 0 {
-		// The quick-install package exposes this binary as "myphiloengine", so
-		// double-clicking or invoking it without arguments must run the managed
-		// app.
+
 		return runCompiled(nil, stdout, stderr)
 	}
 	switch arguments[0] {
@@ -111,11 +111,7 @@ func runCompiled(arguments []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "Ungültiger Installationspfad: %v\n", err)
 		return 1
 	}
-	// A bare invocation prefers the launcher shipped inside the active bundle,
-	// so a fix to the updater ships with a normal update instead of requiring
-	// this bootstrap executable to be replaced. --delegated marks that child and
-	// stops it from delegating again. Delegating before the lock is taken keeps
-	// the child from blocking on its parent.
+
 	if len(arguments) == 0 && !*delegated {
 		if code, handled := delegateToInstalledLauncher(stdout, stderr); handled {
 			return code
@@ -191,9 +187,7 @@ func runCompiled(arguments []string, stdout, stderr io.Writer) int {
 				(comparison == 0 && !strings.EqualFold(previousState.AssetSHA256, asset.SHA256))
 		}
 	}
-	// A build that already failed to start must not be downloaded and retried on
-	// every launch. Only a fallback makes that safe, so an installation without
-	// one keeps retrying.
+
 	quarantine, quarantineErr := autoupdate.LoadQuarantine(absoluteRoot)
 	if quarantineErr != nil {
 		_, _ = fmt.Fprintf(stderr, "[Updater] Quarantäneliste wird ignoriert: %v\n", quarantineErr)
@@ -290,16 +284,12 @@ func runCompiled(arguments []string, stdout, stderr io.Writer) int {
 	return 1
 }
 
-// quarantineBundle records a version that installed but could not start, so the
-// next launch skips it instead of downloading and failing again.
 func quarantineBundle(installRoot string, state autoupdate.CurrentState, cause error, stderr io.Writer) {
 	if err := autoupdate.QuarantineBundle(installRoot, state, cause.Error()); err != nil {
 		_, _ = fmt.Fprintf(stderr, "[Updater] Defekte Version %s konnte nicht vorgemerkt werden: %v\n", state.Version, err)
 	}
 }
 
-// pruneObsoleteVersions frees the disk space of superseded bundles while
-// keeping the active one and the rollback target.
 func pruneObsoleteVersions(
 	installRoot string,
 	active autoupdate.CurrentState,

@@ -1,11 +1,5 @@
 import 'app_strings.dart' as base;
 
-/// Übersetzungen für den Marketplace-Hauptbildschirm.
-///
-/// Modell-, Provider- und Backend-Daten werden bewusst nicht in diesem
-/// Katalog nachgebildet. Sie stammen aus den jeweiligen Datenquellen und
-/// bleiben unverändert sichtbar; nur die von der Oberfläche selbst erzeugten
-/// Texte werden hier übersetzt.
 const Map<String, String> marketplaceScreenStringsDe = {
   'marketplaceScreen.searchHint': 'Suche nach Modellen, Anbietern oder Tags...',
   'marketplaceScreen.search.submit': 'Suche ausführen',
@@ -276,10 +270,6 @@ const Map<String, String> marketplaceScreenStringsEn = {
   'marketplaceScreen.filterHelp.default': 'Filters for the model list.',
 };
 
-/// Translates a Marketplace-screen key for the active application language.
-///
-/// German is the local fallback, so this screen never exposes a localization
-/// key if an English entry is inadvertently missing.
 String tr(String key, [Map<String, String>? params]) {
   final strings = base.appLanguage == 'en'
       ? marketplaceScreenStringsEn

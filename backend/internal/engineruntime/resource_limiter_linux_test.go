@@ -51,11 +51,7 @@ func TestNativeLimiterEnforcesAddressSpaceBeforeWorkerExec(t *testing.T) {
 	if err != nil {
 		t.Skip("python3 is required for the native limiter smoke test")
 	}
-	// RLIMIT_AS counts virtual address space (GPU BAR mappings, mmap'd GGUF
-	// weights, Python arenas), so the enforced cap must be budget + a large
-	// headroom acting only as a runaway stop. The old behavior (cap == RAM
-	// budget) killed healthy GPU workers during model load. cgroup memory.max
-	// remains the precise RAM enforcement where delegation is available.
+
 	command := exec.Command(python, "-c",
 		"import resource; print(resource.getrlimit(resource.RLIMIT_AS)[0])")
 	command.Env = os.Environ()
@@ -207,8 +203,7 @@ func TestLinuxLimiterParentProcess(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	// Deliberately bypass limiter cleanup: process exit kernel-closes the
-	// lifetime writer, which must kill the launcher, worker and grandchild.
+
 	os.Exit(0)
 }
 

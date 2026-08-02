@@ -14,8 +14,7 @@ import (
 )
 
 func TestHuggingFaceBundlePublishesManifestBeforeModelDownloadedEvent(t *testing.T) {
-	// The event bus is process-global. Do not run this test in parallel with
-	// other tests that may also assert model download events.
+
 	const (
 		modelID  = "bundle-event-test/tiny"
 		commit   = "deadbeef-event-test"

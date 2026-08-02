@@ -1,18 +1,9 @@
+// Package webtools gives assistants a guarded way to fetch and summarise public
+// web pages.
 package webtools
 
 import "strings"
 
-// PromptSection liefert die Werkzeug-Anleitung fuer den System-Prompt.
-//
-// Der Text ist der eigentliche Hebel dafuer, dass ein Modell die
-// Websuche sinnvoll einsetzt: er nennt nicht nur die Aufrufsyntax,
-// sondern vor allem die Entscheidungskriterien. Ohne explizite
-// Nicht-Faelle suchen kleinere Modelle bei jeder Frage, was Zeit
-// kostet und schlechtere Antworten liefert als ihr eigenes Wissen.
-//
-// hasFileTools steuert, wohin das Modell bei Fragen zum Code des
-// Nutzers verwiesen wird: auf die Datei-Werkzeuge (Projekt-Modus)
-// oder auf eine ehrliche Absage (Chat ohne Projekt).
 func PromptSection(hasFileTools bool) string {
 	var b strings.Builder
 	b.WriteString("## Web-Werkzeuge\n")

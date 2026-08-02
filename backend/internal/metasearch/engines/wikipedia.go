@@ -9,10 +9,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// wikipediaEngine implementiert Engine direkt (ohne XPath). Das
-// Wikipedia-Opensearch-API liefert JSON, und via zweitem Request
-// ueber die query-API wird noch der Extract (Kurzinhalt)
-// nachgezogen. Entspricht ddgs/engines/wikipedia.py.
 type wikipediaEngine struct {
 	client *metasearch.HttpClient
 	meta   metasearch.EngineInfo
@@ -32,9 +28,6 @@ func newWikipedia(client *metasearch.HttpClient) metasearch.Engine {
 
 func (e *wikipediaEngine) Info() metasearch.EngineInfo { return e.meta }
 
-// wikipediaLanguages sind die Sprachausgaben, die wir direkt ansteuern.
-// Die Liste deckt die grossen Wikipedias ab; alles andere landet auf
-// der englischen Ausgabe.
 var wikipediaLanguages = map[string]struct{}{
 	"ar": {}, "cs": {}, "da": {}, "de": {}, "el": {}, "en": {}, "es": {},
 	"fa": {}, "fi": {}, "fr": {}, "he": {}, "hi": {}, "hu": {}, "id": {},
@@ -43,13 +36,6 @@ var wikipediaLanguages = map[string]struct{}{
 	"zh": {},
 }
 
-// wikipediaLang bildet den Sprachteil einer Region auf eine existierende
-// Wikipedia-Ausgabe ab.
-//
-// Ohne diese Abbildung wird aus der DuckDuckGo-Konvention "wt-wt"
-// (weltweit, keine Region) der Host "wt.wikipedia.org", den es nicht
-// gibt - die Engine lief dann bei jeder regionsfreien Suche in einen
-// DNS-Fehler.
 func wikipediaLang(lang string) string {
 	lang = strings.ToLower(strings.TrimSpace(lang))
 	if _, ok := wikipediaLanguages[lang]; ok {
@@ -58,9 +44,6 @@ func wikipediaLang(lang string) string {
 	return "en"
 }
 
-// Search ruft das Opensearch-API auf und liefert als Einzel-Treffer den
-// fungibelsten Wikipedia-Artikel; optional wird der Extract per Zweit-
-// Request ueber die query-API geladen.
 func (e *wikipediaEngine) Search(ctx context.Context, p metasearch.SearchParams) ([]metasearch.Result, error) {
 	if p.Region == "" {
 		p.Region = "us-en"
@@ -79,8 +62,6 @@ func (e *wikipediaEngine) Search(ctx context.Context, p metasearch.SearchParams)
 		return nil, nil
 	}
 
-	// Wikipedia-Opensearch liefert ein Array mit 4 Eintraegen:
-	// [query, [titles], [descriptions], [urls]].
 	var raw []json.RawMessage
 	if err := json.Unmarshal([]byte(resp.Text), &raw); err != nil {
 		return nil, metasearch.NewError(err, "wikipedia opensearch json decode")
@@ -107,7 +88,6 @@ func (e *wikipediaEngine) Search(ctx context.Context, p metasearch.SearchParams)
 	result.Set("title", titles[0])
 	result.Set("href", hrefs[0])
 
-	// Zweiter Request ueber die query-API fuer den Extract.
 	encodedTitle := url.QueryEscape(titles[0])
 	queryURL := "https://" + lang + ".wikipedia.org/w/api.php?action=query&format=json&prop=extracts&titles=" +
 		encodedTitle + "&explaintext=0&exintro=0&redirects=1"
@@ -123,8 +103,7 @@ func (e *wikipediaEngine) Search(ctx context.Context, p metasearch.SearchParams)
 		if err := json.Unmarshal([]byte(qResp.Text), &doc); err == nil {
 			for _, page := range doc.Query.Pages {
 				if page.Extract != "" {
-					// Wikipedia liefert HTML im Extract-Feld; wir
-					// normalisieren ueber metasearch.NormalizeText.
+
 					result.Set("body", page.Extract)
 				}
 				break
@@ -132,7 +111,6 @@ func (e *wikipediaEngine) Search(ctx context.Context, p metasearch.SearchParams)
 		}
 	}
 
-	// "X may refer to:" -> Disambiguation: ueberspringen.
 	if strings.Contains(result.Body, "may refer to:") {
 		return nil, nil
 	}

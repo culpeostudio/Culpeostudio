@@ -6,20 +6,12 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// newDuckduckgo erzeugt den DuckDuckGo-Text-Engine.
-// Der Engine fragt das vereinfachte HTML-Interface
-// https://html.duckduckgo.com/html/ via POST ab. Der Python-Code nutzt
-// dafuer einen HTTP/2-Fingerprint-Worker httpx+Patching, weil der
-// Hauptendpunkt nicht-fingerprintete Clients zunehmend blockt. Wir
-// nehmen den html-Endpoint mit normalem HTTP; das funktioniert
-// erfahrungsgemaess in den meisten Faellen, ist aber im Gegensatz zu
-// primp nicht robust gegenueber Rate-Limiting.
 func newDuckduckgo(client *metasearch.HttpClient) metasearch.Engine {
 	return &metasearch.XPathEngine{
 		Meta: metasearch.EngineInfo{
 			Name:     "duckduckgo",
 			Category: "text",
-			Provider: "bing", // DuckDuckGo nutzt Bing als Backend
+			Provider: "bing",
 			Priority: 1.0,
 		},
 		Client:     client,
@@ -48,7 +40,7 @@ func newDuckduckgo(client *metasearch.HttpClient) metasearch.Engine {
 		PostProcessResults: func(results []metasearch.Result) []metasearch.Result {
 			out := make([]metasearch.Result, 0, len(results))
 			for _, r := range results {
-				// Ad-Links ueberspringen
+
 				if len(r.Href) > 0 && hasPrefix(r.Href, "https://duckduckgo.com/y.js?") {
 					continue
 				}
@@ -59,7 +51,6 @@ func newDuckduckgo(client *metasearch.HttpClient) metasearch.Engine {
 	}
 }
 
-// hasPrefix ist ein schmeller strings.HasPrefix-Wrapper, duerfen inline.
 func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }

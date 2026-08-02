@@ -15,12 +15,6 @@ func buildRuntimeSystemPrompt(base, thinking, style string) string {
 
 const philoBotMemoryPreamble = "Langzeit-Gedaechtnis dieses Nutzers (aus frueheren Unterhaltungen). Nutze diese Fakten nur, wenn sie fuer die aktuelle Frage relevant sind; erfinde nichts hinzu und widersprich ihnen nicht ungefragt:"
 
-// appendMemoryRecall haengt Recall aus dem Projektgedaechtnis an den
-// System-Prompt an, damit PhiloBot dauerhafte Fakten (z. B. den Namen des
-// Nutzers) auch in einer brandneuen Unterhaltung kennt. Gehoert die Session zu
-// einem Projekt, zieht der Recall aus dessen Grid (plus globaler Nutzer-Fakten);
-// sonst nutzerweit. Ohne angebundenes Gedaechtnis oder ohne Treffer bleibt der
-// Prompt unveraendert.
 func (m *PhiloBotModule) appendMemoryRecall(userID, project, message, systemPrompt string) string {
 	if m.memory == nil {
 		return systemPrompt
@@ -36,15 +30,11 @@ func (m *PhiloBotModule) appendMemoryRecall(userID, project, message, systemProm
 		log.Printf("[philobot] Memory-Recall leer (user=%s, %s, %s)", userID, scope, elapsed)
 		return systemPrompt
 	}
-	// Diagnose-Hilfe: im laufenden System sichtbar machen, dass und wie schnell
-	// Recall greift – so laesst sich Recall-Zeit von Modell-Zeit trennen.
+
 	log.Printf("[philobot] Memory-Recall injiziert (user=%s, %s, %d Zeichen, %s)", userID, scope, len(recall), elapsed)
 	return systemPrompt + "\n\n" + philoBotMemoryPreamble + "\n" + recall
 }
 
-// buildBotRuntimeSystemPrompt makes the selected bot's persisted identity
-// authoritative for this request. This is deliberately added by the runtime,
-// rather than relying on every user-authored bot prompt to repeat it.
 func buildBotRuntimeSystemPrompt(bot BotConfig, thinking, style string) string {
 	var builder strings.Builder
 	name := strings.TrimSpace(bot.Name)

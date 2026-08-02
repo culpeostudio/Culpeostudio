@@ -7,9 +7,6 @@ import (
 	"testing"
 )
 
-// TestWebOnlyLoopRejectsFileTools stellt sicher, dass ein Modell ohne
-// Projekt-Kontext keine Datei-Werkzeuge bekommt: der Aufruf muss als
-// Fehler zurueckkommen, nicht auf die Platte durchschlagen.
 func TestWebOnlyLoopRejectsFileTools(t *testing.T) {
 	var results []string
 	callCount := 0
@@ -18,7 +15,7 @@ func TestWebOnlyLoopRejectsFileTools(t *testing.T) {
 		if callCount == 1 {
 			return `<tool_call>{"name":"read_file","arguments":{"path":"/etc/passwd"}}</tool_call>`, nil
 		}
-		// Das Tool-Ergebnis der ersten Runde steckt in der letzten Nachricht.
+
 		results = append(results, convo[len(convo)-1].Content)
 		return "Ich kann ohne Projekt keine Dateien lesen.", nil
 	}
@@ -38,8 +35,6 @@ func TestWebOnlyLoopRejectsFileTools(t *testing.T) {
 	}
 }
 
-// TestWebOnlyLoopPassesThroughPlainAnswer prueft den Normalfall: das Modell
-// entscheidet, dass keine Recherche noetig ist, und antwortet direkt.
 func TestWebOnlyLoopPassesThroughPlainAnswer(t *testing.T) {
 	var visible strings.Builder
 	chatTurn := func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error) {
@@ -67,8 +62,6 @@ func TestWebOnlyLoopPassesThroughPlainAnswer(t *testing.T) {
 	}
 }
 
-// TestWebOnlySystemPromptStructure sichert die Bestandteile, auf die sich das
-// Modell verlaesst: Werkzeugliste, Abwaege-Kriterien und Aufruf-Protokoll.
 func TestWebOnlySystemPromptStructure(t *testing.T) {
 	prompt := buildWebOnlySystemPrompt("Du bist PhiloBot.")
 	for _, want := range []string{"Du bist PhiloBot.", "web_search", "web_fetch", "Wann du NICHT suchen sollst", toolCallOpen} {
@@ -78,7 +71,6 @@ func TestWebOnlySystemPromptStructure(t *testing.T) {
 	}
 }
 
-// TestProjectPromptOffersBothToolsets: im Projekt-Modus muss beides drinstehen.
 func TestProjectPromptOffersBothToolsets(t *testing.T) {
 	prompt := buildToolLoopSystemPrompt("Basis", []string{"/tmp/projekt"})
 	for _, want := range []string{"read_file", "web_search", "/tmp/projekt"} {
@@ -88,8 +80,6 @@ func TestProjectPromptOffersBothToolsets(t *testing.T) {
 	}
 }
 
-// TestToolLoopBrichtBeiWiederholtemFehlerAb: ein Modell, das dreimal am
-// selben Werkzeug scheitert, verbraucht sonst das ganze Rundenbudget.
 func TestToolLoopBrichtBeiWiederholtemFehlerAb(t *testing.T) {
 	calls := 0
 	chatTurn := func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error) {
@@ -112,8 +102,6 @@ func TestToolLoopBrichtBeiWiederholtemFehlerAb(t *testing.T) {
 	}
 }
 
-// TestToolLoopZaehlerSetztBeiErfolgZurueck: vereinzelte Fehlschlaege
-// zwischen erfolgreichen Aufrufen duerfen nicht zum Abbruch fuehren.
 func TestToolLoopZaehlerSetztBeiErfolgZurueck(t *testing.T) {
 	calls := 0
 	chatTurn := func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error) {
@@ -124,7 +112,7 @@ func TestToolLoopZaehlerSetztBeiErfolgZurueck(t *testing.T) {
 		return `<tool_call>{"name":"wechselhaft","arguments":{}}</tool_call>`, nil
 	}
 	dispatch := func(name string, args map[string]interface{}) map[string]interface{} {
-		// Jeder zweite Aufruf klappt.
+
 		return map[string]interface{}{"ok": calls%2 == 0, "error": "mal so mal so"}
 	}
 
@@ -133,8 +121,6 @@ func TestToolLoopZaehlerSetztBeiErfolgZurueck(t *testing.T) {
 	}
 }
 
-// TestToolLoopMeldetIterationslimit stellt sicher, dass das Rundenlimit als
-// Abbruch erkennbar ist — ein Planschritt darf dann nicht als erledigt gelten.
 func TestToolLoopMeldetIterationslimit(t *testing.T) {
 	chatTurn := func(convo []chatMessage, systemPrompt string, filterEmit func(string) error) (string, error) {
 		return `<tool_call>{"name":"endlos","arguments":{}}</tool_call>`, nil
@@ -149,7 +135,6 @@ func TestToolLoopMeldetIterationslimit(t *testing.T) {
 	}
 }
 
-// TestSwallowExhausted: im freien Chat ist ein Abbruch kein Fehler.
 func TestSwallowExhausted(t *testing.T) {
 	reply, err := swallowExhausted("teilergebnis", errToolLoopExhausted)
 	if err != nil || reply != "teilergebnis" {

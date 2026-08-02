@@ -13,9 +13,6 @@ import (
 	"github.com/fillyengine/backend/internal/apimodels"
 )
 
-// TestMarktplatzAPI_StartAPIModelLimitReached startet MaxActiveModels
-// Modelle und verlangt, dass der naechste Start mit 400 + Limit-Hinweis
-// beantwortet wird – nicht als 500er Internal Error.
 func TestMarktplatzAPI_StartAPIModelLimitReached(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.json")
@@ -47,7 +44,6 @@ func TestMarktplatzAPI_StartAPIModelLimitReached(t *testing.T) {
 		}
 	}
 
-	// (MaxActiveModels+1).start -> 400 mit Limit-Hinweis
 	overflowReq := httptest.NewRequest("POST", "/api/marktplatz/api-models/start",
 		strings.NewReader(`{"provider":"openrouter","model_id":"v/overflow"}`))
 	overflowReq.Header.Set("Content-Type", "application/json")

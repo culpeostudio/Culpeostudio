@@ -90,8 +90,6 @@ type EngineModule struct {
 	maintenanceStopOnce       sync.Once
 }
 
-// New accepts the settings file optionally to retain source compatibility with
-// the former stub while allowing server/main to share the configured store.
 func New(settingsFile ...string) *EngineModule {
 	path := appsettings.DefaultSettingsFile
 	if len(settingsFile) > 0 && strings.TrimSpace(settingsFile[0]) != "" {
@@ -181,8 +179,7 @@ func (m *EngineModule) Initialize() error {
 	if cleanupErr := cleanupStagedModelDeletions(absModelDir); cleanupErr != nil {
 		log.Printf("engine model deletion cleanup will be retried later: %v", cleanupErr)
 	}
-	// Provider-Tokens bleiben ausschliesslich im Management-Prozess. Bereits
-	// existierende Settings werden auf Benutzerzugriff eingeschraenkt.
+
 	if _, err := os.Stat(m.settingsFile); err == nil {
 		_ = os.Chmod(m.settingsFile, 0o600)
 	}
@@ -204,16 +201,11 @@ func (m *EngineModule) Initialize() error {
 		if err != nil {
 			return err
 		}
-		// The low-priority scheduling gate in startRuntimeInstall prevents new
-		// jobs from being admitted under pressure. This second gate is attached
-		// to every real pip/venv command so a queued job is revalidated at the
-		// exact cmd.Start boundary as well.
+
 		m.installer.SetSpawnAdmission(m.acquireWorkerSpawn)
 	}
 	m.supervisor = engineruntime.NewSupervisor(engineruntime.SupervisorOptions{
-		// 10 minutes base: a large model from a cold disk easily exceeds the
-		// former 2 minutes; the supervisor additionally extends the timeout
-		// while the worker's memory keeps growing (active weight loading).
+
 		HealthTimeout: 10 * time.Minute, HealthInterval: 300 * time.Millisecond, GracePeriod: 30 * time.Second,
 		ResourceLimiter: engineruntime.NewNativeResourceLimiter(),
 	})

@@ -1,7 +1,4 @@
-/// English UI texts. Key schema: `screen.context.key`.
-/// Placeholders are written as `{name}` and replaced via `tr(key, {...})`.
 const Map<String, String> appStringsEn = {
-  // Common
   'common.ok': 'OK',
   'common.cancel': 'Cancel',
   'common.save': 'Save',
@@ -12,7 +9,6 @@ const Map<String, String> appStringsEn = {
   'common.error': 'Error',
   'common.retry': 'Retry',
 
-  // Onboarding
   'onboarding.title': 'Welcome!',
   'onboarding.subtitle':
       'Set up your personal preferences. You can change them anytime in the settings.',
@@ -27,7 +23,6 @@ const Map<String, String> appStringsEn = {
       'Only Chat, Engine, Marketplace, News and Benchmark are shown.',
   'onboarding.start': 'Get started',
 
-  // Sidebar / Modules
   'sidebar.chat': 'Chat',
   'sidebar.engine': 'Engine',
   'sidebar.marketplace': 'Marketplace',
@@ -37,7 +32,6 @@ const Map<String, String> appStringsEn = {
   'sidebar.news': 'News',
   'sidebar.benchmark': 'Benchmark',
 
-  // Settings: Appearance
   'settings.appearance': 'Appearance',
   'settings.language': 'Language',
   'settings.frontendVersion': 'Frontend version',
@@ -45,17 +39,9 @@ const Map<String, String> appStringsEn = {
   'settings.frontendVersionLite':
       'Lite (Chat, Engine, Marketplace, News, Benchmark)',
 
-  // Dashboard
   'dashboard.logoutTitle': 'Log out',
   'dashboard.logoutConfirm': 'Do you really want to log out?',
   'dashboard.logoutYes': 'Yes, log out',
-  'dashboard.benchmarkTitle': 'Open external website',
-  'dashboard.benchmarkBody':
-      'You are about to open artificialanalysis.ai in your browser. Do you really want to switch to this page?',
-  'dashboard.benchmarkContinue': 'Continue',
-  'dashboard.benchmarkOpenFailed':
-      'The external benchmark page could not be opened.',
-  'dashboard.benchmarkOpenError': 'Error opening the benchmark page: {error}',
   'dashboard.tooltipSettings': 'Settings',
   'dashboard.tooltipLogout': 'Log out',
   'dashboard.tooltipNewChat': 'Create new chat',
@@ -69,15 +55,12 @@ const Map<String, String> appStringsEn = {
   'dashboard.codeCopied': 'Code copied',
   'dashboard.copy': 'Copy',
 
-  // Errors
   'login.error.invalidCredentials': 'Invalid credentials',
   'login.error.invalidCode': 'Invalid code',
 
-  // Validation
   'login.validation.required': 'Required field',
   'login.validation.codeInvalid': 'Enter the 6-digit code',
 
-  // Authenticator setup
   'login.setup.title': 'Set up authenticator',
   'login.setup.scanHint2fas': 'Open 2FAS, tap "+" and scan the QR code.',
   'login.setup.scanHintGoogle':
@@ -86,11 +69,9 @@ const Map<String, String> appStringsEn = {
   'login.setup.confirm': 'Confirm setup',
   'login.setup.loadError': 'Setup could not be loaded.',
 
-  // Welcome
   'login.welcome.title': 'Welcome back',
   'login.welcome.subtitle': 'Sign in to open your studio.',
 
-  // Form fields
   'login.field.usernameLabel': 'USERNAME',
   'login.field.usernameHint': 'Enter username',
   'login.field.passwordLabel': 'PASSWORD',
@@ -98,7 +79,6 @@ const Map<String, String> appStringsEn = {
   'login.field.showPassword': 'Show password',
   'login.field.hidePassword': 'Hide password',
 
-  // Session
   'login.remember.label': 'Stay signed in',
   'login.remember.duration': 'Session duration',
   'login.duration.8h': '8 hrs.',
@@ -106,17 +86,14 @@ const Map<String, String> appStringsEn = {
   'login.duration.48h': '48 hrs.',
   'login.duration.permanent': 'Permanent',
 
-  // Actions
   'login.action.login': 'Sign in',
   'login.action.createAccount': 'Create account',
   'login.action.forgotPassword': 'Forgot password',
 
-  // Footer
   'login.footer.copyright': '© 2026 fillystudio. All rights reserved.',
   'login.footer.credits':
       'Powered by PhiloEngine • Design & Development by fillystudio',
 
-  // Account dialog
   'login.dialog.passwordUpdated': 'Password has been updated.',
   'login.dialog.accountCreated': 'Account has been created.',
   'login.dialog.actionFailed': 'Action failed.',
@@ -128,7 +105,6 @@ const Map<String, String> appStringsEn = {
   'login.dialog.codeFromApp': 'Code from {app}',
   'login.dialog.create': 'Create',
 
-  // Navigation
   'settings.nav.title': 'SETTINGS',
   'settings.nav.general': 'General',
   'settings.nav.serverApi': 'Server / API',
@@ -137,7 +113,6 @@ const Map<String, String> appStringsEn = {
   'settings.nav.chatBot': 'Chat Bot',
   'settings.nav.skills': 'Skills',
 
-  // General
   'settings.general.title': 'General Studio Configuration',
   'settings.general.modelDirLabel': 'MODEL DOWNLOAD PATH',
   'settings.general.modelDirDescription':
@@ -155,13 +130,11 @@ const Map<String, String> appStringsEn = {
   'settings.general.saveButton': 'Save settings',
   'settings.save.success': 'Settings saved successfully',
 
-  // Provider health
   'settings.health.reachable': 'Reachable',
   'settings.health.unreachable': 'Not reachable',
   'settings.health.httpResponse': 'Responds with HTTP {code}',
   'settings.health.error': 'Error',
 
-  // Server & API
   'settings.serverApi.title': 'Server & API Interfaces',
   'settings.serverApi.subtitle':
       'Manage connections to local servers and cloud model providers',
@@ -169,7 +142,6 @@ const Map<String, String> appStringsEn = {
   'settings.serverApi.addNode': 'Add node',
   'settings.serverApi.localServer': 'Local Server',
 
-  // Custom node dialogs
   'settings.customNode.fallbackName': 'Custom Node',
   'settings.customNode.addTitle': 'Add custom node',
   'settings.customNode.addDescription':
@@ -188,13 +160,11 @@ const Map<String, String> appStringsEn = {
   'settings.customNode.delete': 'Delete node',
   'settings.customNode.save': 'Save',
 
-  // Custom Nodes - Phase 2 note
   'settings.serverApi.phaseNote.title': 'Coming in Phase 2',
   'settings.serverApi.phaseNote.body':
       'Custom API nodes can already be added and checked for reachability, but are not yet usable as an active connection in chat/engine. Full functionality arrives with Phase 2.',
   'settings.customNode.phaseBadge': 'Phase 2',
 
-  // Token dialog
   'settings.token.setupTitle': 'Set up {title}',
   'settings.token.replaceDescription':
       'A token is already configured. You can overwrite it by entering a new '
@@ -207,13 +177,11 @@ const Map<String, String> appStringsEn = {
   'settings.token.delete': 'Delete token',
   'settings.token.updated': 'Token updated successfully',
 
-  // Provider card
   'settings.provider.enabled': 'Enabled',
   'settings.provider.keySet': 'Key configured',
   'settings.provider.keyMissing': 'Key missing',
   'settings.provider.checking': 'Checking...',
 
-  // Chat bot
   'settings.chatBot.title': 'Chat Bot',
   'settings.chatBot.description':
       'Decide whether new chats use a specific bot or automatically select '
@@ -221,7 +189,6 @@ const Map<String, String> appStringsEn = {
   'settings.chatBot.defaultLabel': 'DEFAULT FOR NEW CHATS',
   'settings.chatBot.note': 'Running chats keep their previously used bot.',
 
-  // Skills
   'settings.skills.title': 'Agent Skills',
   'settings.skills.description':
       'Imported skills are strictly validated against the Agent Skills '
@@ -239,7 +206,6 @@ const Map<String, String> appStringsEn = {
   'settings.skills.invalid': 'invalid',
   'settings.skills.fileCount': '{count} files',
 
-  // Shortcuts
   'settings.shortcuts.title': 'Keyboard Shortcuts',
   'settings.shortcuts.description':
       'Click a shortcut to re-record it. Then press the desired key combination.',
@@ -262,7 +228,6 @@ const Map<String, String> appStringsEn = {
   'settings.shortcuts.action.focusSearch': 'Focus search',
   'settings.shortcuts.action.showHelp': 'Show shortcut help',
 
-  // System info & help
   'settings.systemInfo.title': 'System Information',
   'settings.systemInfo.noGpu': 'No GPU detected',
   'settings.systemInfo.cpuDetecting': 'Detecting CPU …',
@@ -279,7 +244,6 @@ const Map<String, String> appStringsEn = {
       'Make sure the myphiloengine backend is running before performing '
       'operations. By default it listens on port 8080.',
 
-  // Plus menu (file/action)
   'chat.plusMenu.webSearch': 'Web search',
   'chat.plusMenu.webSearchDesc': 'Real-time information',
   'chat.plusMenu.restart': 'Restart',
@@ -287,14 +251,12 @@ const Map<String, String> appStringsEn = {
   'chat.plusMenu.uploadFile': 'Upload file',
   'chat.plusMenu.uploadFileDesc': 'Select local file',
 
-  // Model choice / working indicator
   'chat.modelChoice.localReady': 'Local • Ready',
   'chat.working.modelLoading': 'Loading model',
   'chat.working.thinking': 'PhiloBot is thinking',
   'chat.noActiveChat': 'No active chat',
   'chat.header.showFileTree': 'Show file tree',
 
-  // Notifications
   'chat.notification.modelSwitched': 'Model switched: {label}',
   'chat.notification.startModelFirst':
       'Please start a local engine or API model first',
@@ -304,24 +266,20 @@ const Map<String, String> appStringsEn = {
   'chat.notification.memoryCompressed': 'Memory has been compressed',
   'chat.notification.replyCopied': 'Reply copied',
 
-  // Errors
   'chat.error.modelSwitchFailed': 'Model switch failed',
   'chat.error.sessionStartFailed': 'Could not start chat session',
   'chat.error.settingsAction': 'Settings',
   'chat.error.responseFailed': 'Response could not be generated',
 
-  // Model warmup
   'chat.warmup.modelUnavailable': 'The local model is no longer available.',
   'chat.warmup.modelReady': 'Model is ready',
   'chat.warmup.queueTimeout': 'The model start took too long.',
   'chat.warmup.startFailed': 'The local model could not be started: {error}',
   'chat.warmup.localModelFallback': 'Local model',
 
-  // Bot test
   'chat.botTest.newBotFallback': 'the new bot',
   'chat.botTest.prompt': '{keyword}: Test {name} with a short sample response.',
 
-  // Loading / empty states
   'chat.loading.preparing': 'Preparing chat …',
   'chat.loading.initNewChat': 'Initializing new chat...',
   'chat.empty.noModelReady': 'No model ready yet',
@@ -330,7 +288,6 @@ const Map<String, String> appStringsEn = {
   'chat.empty.startLocalModel': 'Start local model',
   'chat.empty.chooseApiModel': 'Choose API model',
 
-  // Agentic events
   'chat.events.toolStartedGeneric': 'Tool started',
   'chat.events.toolStarted': '{tool} started',
   'chat.events.toolFinishedGeneric': 'Tool finished',
@@ -348,45 +305,36 @@ const Map<String, String> appStringsEn = {
   'chat.events.fileModified': 'File modified',
   'chat.events.memoryCompressed': 'Memory compressed',
 
-  // File tree
   'chat.fileTree.title': 'Files',
   'chat.fileTree.refresh': 'Refresh',
 
-  // File changes
   'chat.fileChange.new': 'New',
   'chat.fileChange.deleted': 'Deleted',
   'chat.fileChange.moved': 'Moved',
   'chat.fileChange.modified': 'Modified',
 
-  // Plan approval
   'chat.planApproval.title': 'Plan approval',
   'chat.planApproval.reject': 'Reject',
   'chat.planApproval.approve': 'Approve',
   'chat.planApproval.approvedMessage': 'Plan approved',
 
-  // Permission request
   'chat.permission.requestClosed': 'Access request was no longer open',
 
-  // Created bot
   'chat.createdBot.nameFallback': 'New bot',
   'chat.createdBot.saved': '{name} saved',
   'chat.createdBot.test': 'Test',
   'chat.createdBot.edit': 'Edit',
 
-  // Inline editor
   'chat.editor.hint': 'Edit message …',
   'chat.editor.cancel': 'Cancel',
   'chat.editor.resend': 'Resend',
 
-  // Message navigator
   'chat.navigator.jumpToMessage': 'Jump to your message',
 
-  // Message actions
   'chat.messageActions.edit': 'Edit',
   'chat.messageActions.copy': 'Copy text',
   'chat.messageActions.actions': 'Actions',
 
-  // Quick prompts
   'chat.quickPrompt.shorter': 'Rephrase the last response much more concisely.',
   'chat.quickPrompt.critical':
       'Review the last response more critically and point out weaknesses.',
@@ -398,14 +346,12 @@ const Map<String, String> appStringsEn = {
   'chat.quickPrompt.rule':
       'Botbuilder: Rework {bot} so that this response quality is permanently adopted as a bot rule.',
 
-  // Message menu
   'chat.menu.shorter': 'Shorter',
   'chat.menu.critical': 'More critical',
   'chat.menu.moreStructure': 'More structure',
   'chat.menu.tune': 'Fine-tune',
   'chat.menu.asRule': 'As rule',
 
-  // Input bar
   'chat.input.hint': 'Message...',
   'chat.input.addTooltip': 'File or chat action',
   'chat.input.modelBoundToBot':
@@ -413,18 +359,15 @@ const Map<String, String> appStringsEn = {
   'chat.input.modelWarmingUp': 'The model is currently warming up',
   'chat.input.voiceMessage': 'Voice message',
 
-  // Send button
   'chat.send.selectModelFirst': 'Please select a model first',
   'chat.send.botWorking': 'PhiloBot is still working …',
   'chat.send.waitForModel': 'Waiting for the model to be ready',
   'chat.send.sendMessage': 'Send message',
 
-  // Thinking slider
   'chat.thinkingSlider.faster': 'Faster',
   'chat.thinkingSlider.smarter': 'Smarter',
   'chat.thinkingSlider.inDevelopment': 'In development',
 
-  // Chat history: rename / delete
   'chatHistory.rename.title': 'Rename chat',
   'chatHistory.rename.hint': 'Title',
   'chatHistory.rename.cancel': 'Cancel',
@@ -439,7 +382,6 @@ const Map<String, String> appStringsEn = {
   'chatHistory.deleteProject.cancel': 'Cancel',
   'chatHistory.deleteProject.confirm': 'Delete',
 
-  // Chat history: panel
   'chatHistory.newFolder': 'New folder',
   'chatHistory.sectionProjects': 'Projects',
   'chatHistory.sectionHistory': 'History',
@@ -447,7 +389,6 @@ const Map<String, String> appStringsEn = {
   'chatHistory.empty':
       'No chats yet — start a new conversation or create a folder.',
 
-  // Chat history: project dialog
   'chatHistory.projectDialog.titleEdit': 'Edit folder',
   'chatHistory.projectDialog.titleNew': 'New folder',
   'chatHistory.projectDialog.nameHint': 'Project name',
@@ -464,7 +405,6 @@ const Map<String, String> appStringsEn = {
   'chatHistory.projectDialog.save': 'Save',
   'chatHistory.projectDialog.create': 'Create',
 
-  // Chat history: row actions
   'chatHistory.projectRow.newChat': 'New chat in folder',
   'chatHistory.projectRow.edit': 'Edit folder',
   'chatHistory.projectRow.delete': 'Delete folder',
@@ -474,7 +414,6 @@ const Map<String, String> appStringsEn = {
   'chatHistory.chatRow.rename': 'Rename',
   'chatHistory.chatRow.delete': 'Delete',
 
-  // Philox tab
   'philox.header.agentSession': 'Agent session: {id}',
   'philox.header.sessionConfig': 'Session configuration',
   'philox.header.toggleParams': 'Show/hide parameters',
@@ -493,7 +432,6 @@ const Map<String, String> appStringsEn = {
   'philox.input.hint': 'Instruct the agent...',
   'philox.input.voiceControl': 'Voice control',
 
-  // News
   'news.title': 'AI & Tech Feed',
   'news.subtitle': 'Live news aggregated from leading hardware and AI sources.',
   'news.refresh': 'Refresh',
@@ -502,15 +440,155 @@ const Map<String, String> appStringsEn = {
   'news.categoryAll': 'All',
   'news.categoryReleases': 'AI Releases',
   'news.categoryHardware': 'Hardware',
+  'news.categorySoftware': 'Software & Dev',
+  'news.categorySecurity': 'Security',
   'news.categoryOpenSource': 'Open Source',
   'news.categoryResearch': 'Research',
   'news.noResults': 'No matching articles found.',
   'news.empty': 'No articles available at the moment.',
   'news.resetFilters': 'Reset filters',
+  'news.sourceLabel': 'PROVIDER:',
+  'news.sourceAll': 'All providers',
+  'news.savedFilter': 'Saved',
+  'news.save': 'Save article',
+  'news.unsave': 'Remove from saved',
+  'news.savedEmpty': 'You have not saved any articles yet.',
+  'news.savedLoadError': 'Could not load saved articles: {error}',
   'news.loadError': 'Error loading news: {error}',
   'news.readMore': 'Read more',
 
-  // Bots Management
+  'benchmark.title': 'Benchmark',
+  'benchmark.subtitle':
+      'Daily ratings from LMArena: real people compare two answers and vote.',
+  'benchmark.tabOverview': 'Overview',
+  'benchmark.tabLeaderboard': 'Leaderboard',
+  'benchmark.tabCompare': 'Compare',
+
+  'benchmark.board.arena_text': 'LMArena · Text',
+
+  'benchmark.refreshAction': 'Refresh',
+  'benchmark.refreshStarted': 'Sync running — this takes a moment.',
+  'benchmark.loadingTitle': 'Loading the leaderboard',
+  'benchmark.loadingProgress': '{loaded} of {total} runs',
+  'benchmark.loadingHint':
+      'The first sync pulls the whole dataset and stores it locally.',
+  'benchmark.loadFailed': 'Benchmark data could not be loaded.',
+
+  'benchmark.statModels': 'Models',
+  'benchmark.statEntries': 'Evaluated runs',
+  'benchmark.statMetrics': 'Categories',
+  'benchmark.statTop': 'Best overall score',
+  'benchmark.typeShareTitle': 'How the field splits',
+  'benchmark.behindLeader': '{diff} behind first place',
+
+  'benchmark.metricsTitle': 'What is actually being measured',
+  'benchmark.metricsSubtitle':
+      'Each category probes a different ability; the headline rating sums up all votes.',
+  'benchmark.metricMedian': 'Median {value}',
+  'benchmark.metricBest': 'Best {value}',
+  'benchmark.orgTitle': 'Providers in this leaderboard',
+
+  'benchmark.metric.hard_prompts.desc':
+      'Only the most demanding arena prompts — this is where the top models separate.',
+  'benchmark.metric.coding.desc':
+      'Votes on programming tasks: whose code do people actually prefer?',
+  'benchmark.metric.math.desc': 'Votes on arithmetic and proof questions.',
+  'benchmark.metric.creative_writing.desc':
+      'Open writing: stories, copy, style — judged by people in head-to-head comparisons.',
+  'benchmark.metric.instruction_following.desc':
+      'How closely does the model stick to what was actually asked?',
+  'benchmark.metric.multi_turn.desc':
+      'Conversations across several turns — where losing the thread shows.',
+  'benchmark.metric.longer_query.desc':
+      'Long, detailed prompts rather than one-liners.',
+  'benchmark.metric.non_english.desc':
+      'Prompts in languages other than English.',
+
+  'benchmark.family.instruction': 'Instructions',
+  'benchmark.family.reasoning': 'Reasoning',
+  'benchmark.family.math': 'Mathematics',
+  'benchmark.family.coding': 'Coding',
+  'benchmark.family.creative': 'Creative',
+  'benchmark.family.conversation': 'Conversation',
+  'benchmark.family.language': 'Languages',
+
+  'benchmark.topOverall': 'Top overall',
+  'benchmark.metricNoData':
+      'The current snapshot holds no values for this category.',
+  'benchmark.showAll': 'See the full leaderboard',
+  'benchmark.showAllCount': '{count} more models',
+
+  'benchmark.searchHint': 'Search model, provider or architecture…',
+  'benchmark.filterType': 'TYPE:',
+  'benchmark.filterOrg': 'PROVIDER:',
+  'benchmark.filterAll': 'All',
+  'benchmark.filterReset': 'Reset filters',
+  'benchmark.sortLabel': 'SORT BY:',
+  'benchmark.sortAverage': 'Headline score',
+  'benchmark.sortName': 'Name',
+  'benchmark.resultCount': '{count} models',
+  'benchmark.empty': 'No models match these filters.',
+  'benchmark.loadMore': 'Load more',
+
+  'benchmark.columnRank': 'Rank',
+  'benchmark.columnModel': 'Model',
+  'benchmark.columnOrg': 'Provider',
+  'benchmark.columnType': 'Type',
+  'benchmark.metricWindowRange': '{from}–{to} of {total}',
+
+  'benchmark.type.open_weights': 'Open Source',
+  'benchmark.type.proprietary': 'API',
+
+  'benchmark.detailRank': 'Rank {rank} of {total}',
+  'benchmark.detailPercentile': 'Stronger than {value} % of all runs',
+  'benchmark.detailScores': 'Individual scores',
+  'benchmark.detailVsMedianUp': '{diff} above the median',
+  'benchmark.detailVsMedianDown': '{diff} below the median',
+  'benchmark.detailRankShort': 'Rank {rank}',
+  'benchmark.detailRuns': 'Evaluated runs',
+  'benchmark.detailFacts': 'Key facts',
+  'benchmark.factLicense': 'License',
+  'benchmark.factType': 'Type',
+  'benchmark.factOrg': 'Provider',
+  'benchmark.factSubmitted': 'Evaluated',
+
+  'benchmark.detail.votes': 'Votes',
+  'benchmark.detail.confidence': 'Confidence interval',
+  'benchmark.detail.variance': 'Rating spread',
+  'benchmark.detail.arena_rank': 'Rank per arena',
+
+  'benchmark.hubTitle': 'Live from the Hugging Face hub',
+  'benchmark.hubDownloads': 'Downloads (30 days)',
+  'benchmark.hubDownloadsTotal': 'Downloads all time',
+  'benchmark.hubLikes': 'Likes',
+  'benchmark.hubTrending': 'Trending score',
+  'benchmark.hubUpdated': 'Last modified',
+  'benchmark.hubGated': 'Gated access',
+  'benchmark.hubProviders': 'Providers with API',
+  'benchmark.hubParams': 'Parameters from the weights',
+  'benchmark.hubMissing':
+      'This repository is no longer on the hub — deleted or renamed.',
+  'benchmark.cardResults': 'Vendor numbers from the model card',
+  'benchmark.cardResultsNote': 'Self-reported, not independently verified.',
+  'benchmark.peers': 'Comparable models',
+  'benchmark.openOnHub': 'Open the model source',
+  'benchmark.openLinkFailed': 'The link could not be opened: {url}',
+  'benchmark.addToCompare': 'Add to comparison',
+  'benchmark.noLeaderboardEntry':
+      'The arena has no entry for this model — it has not been rated there yet. The live hub numbers are below.',
+
+  'benchmark.compareEmpty':
+      'Pick up to four models from the leaderboard for a head-to-head view.',
+  'benchmark.compareRemove': 'Remove from comparison',
+  'benchmark.compareCount': '{count} models compared',
+  'benchmark.compareClear': 'Clear comparison',
+  'benchmark.compareLimit': 'Twelve models is the maximum for a comparison.',
+  'benchmark.compareAdded': '{model} is now in the comparison.',
+  'benchmark.compareAlready': '{model} is already in the comparison.',
+  'benchmark.compareScores': 'Scores side by side',
+  'benchmark.compareBest': 'Best of the selection',
+  'benchmark.compareNoData': 'No scores available for this model.',
+
   'bots.title': 'Bot Management',
   'bots.subtitle': 'Create and manage specialized AI assistants and bots.',
   'bots.newBot': 'New Bot',
@@ -539,7 +617,6 @@ const Map<String, String> appStringsEn = {
   'bots.deleted': 'Bot "{name}" deleted',
   'bots.lockedBotHint': 'System bot (cannot be edited or deleted)',
 
-  // Training
   'training.title': 'Start Fine-Tuning (Axolotl / Unsloth)',
   'training.subtitle': 'Adapt existing language models to custom datasets.',
   'training.baseModelId': 'BASE MODEL ID',
@@ -549,7 +626,6 @@ const Map<String, String> appStringsEn = {
   'training.queueTitle': 'Training Queue & Jobs',
   'training.emptyJobs': 'No active training jobs.',
 
-  // Quantization
   'quantization.title': 'Quantize Model (llama.cpp)',
   'quantization.subtitle': 'Compress GGUF/Safetensors models for higher speed.',
   'quantization.sourcePath': 'SOURCE MODEL PATH',
@@ -559,7 +635,6 @@ const Map<String, String> appStringsEn = {
   'quantization.queueTitle': 'Quantization Queue & Jobs',
   'quantization.emptyJobs': 'No active quantization jobs.',
 
-  // GenStudio
   'genstudio.imageGenTab': 'Image Generation',
   'genstudio.videoGenTab': 'Video Generation',
   'genstudio.imageTitle': 'Generate Image',
@@ -573,7 +648,6 @@ const Map<String, String> appStringsEn = {
   'genstudio.submitImage': 'Generate Image',
   'genstudio.submitVideo': 'Generate Video',
 
-  // Marketplace
   'marketplace.title': 'Model Marketplace',
   'marketplace.searchHint': 'Search models, providers or tags...',
   'marketplace.providerAll': 'All Providers',
@@ -592,7 +666,6 @@ const Map<String, String> appStringsEn = {
   'marketplace.details': 'Show Details',
   'marketplace.noResults': 'No matching models found.',
 
-  // Engine
   'engine.title': 'Engine & Instances',
   'engine.subtitle': 'Manage local model instances and server workload.',
   'engine.syncStatus': 'SYSTEM DATA IS AUTOMATICALLY SYNCHRONIZED',

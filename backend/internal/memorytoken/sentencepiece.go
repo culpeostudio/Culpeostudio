@@ -7,8 +7,6 @@ import (
 	"github.com/eliben/go-sentencepiece"
 )
 
-// sentencePieceTokenizer wraps a real SentencePiece model (the tokenizer.model
-// format used by Gemma and the Llama-2 family) for exact token counts.
 type sentencePieceTokenizer struct {
 	proc *sentencepiece.Processor
 }

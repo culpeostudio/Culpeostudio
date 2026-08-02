@@ -1,5 +1,3 @@
-// Integrates the external whichllm v0.5.15 package (MIT).
-// This bridge is PhiloEngine code; see NOTICE for dependency provenance.
 package marktplatz
 
 import (
@@ -44,9 +42,6 @@ type philoEngineProbeResult struct {
 	Error         string                `json:"error"`
 }
 
-// detectHardwareProfileWithPhiloEngine runs the PhiloEngine hardware bridge in
-// a short-lived local process. It has no network access and its result is
-// cached by detectHardwareProfile, so it cannot affect request throughput.
 func detectHardwareProfileWithPhiloEngine() (HardwareProfile, error) {
 	python, err := philoEnginePythonExecutable()
 	if err != nil {
@@ -105,8 +100,7 @@ func detectHardwareProfileWithPhiloEngine() (HardwareProfile, error) {
 			entry.ComputeCapability = fmt.Sprintf("%d.%d", gpu.ComputeCapability[0], gpu.ComputeCapability[1])
 		}
 		profile.GPUs = append(profile.GPUs, entry)
-		// Integrated GPUs may correctly report no dedicated VRAM. They are
-		// still useful to show to the user and to classify the machine.
+
 		if profile.GPUName == "" && entry.Name != "" {
 			profile.GPUName = entry.Name
 			profile.GPUVendor = entry.Vendor
@@ -123,10 +117,6 @@ func detectHardwareProfileWithPhiloEngine() (HardwareProfile, error) {
 	return profile, nil
 }
 
-// The upstream detector reports the vendor, VRAM and driver capabilities from
-// sysfs. Some very new Linux PCI IDs are still printed by lspci as "Device
-// 7550" though. Enrich only that unambiguous device-ID form; never replace a
-// real driver-provided model name with a guess.
 func normalizePhiloEngineGPUName(vendor, name string) string {
 	trimmed := strings.TrimSpace(name)
 	parts := strings.Fields(strings.ToLower(trimmed))

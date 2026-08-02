@@ -22,8 +22,6 @@ var (
 	errInvalidModelBinding = errors.New("ungueltige Modellbindung")
 )
 
-// ModelBinding pins a bot either to one local Engine instance or to an API
-// provider model. A binding is authoritative when the bot is selected.
 type ModelBinding struct {
 	Kind        string `json:"kind"`
 	ModelRef    string `json:"model_ref,omitempty"`
@@ -33,7 +31,6 @@ type ModelBinding struct {
 	DisplayName string `json:"display_name,omitempty"`
 }
 
-// BotConfig defines the configuration for a philobot personality.
 type BotConfig struct {
 	ID             string        `json:"id"`
 	Name           string        `json:"name"`
@@ -51,8 +48,6 @@ type botStoreUser struct {
 }
 
 type botStoreMigration struct {
-	// PendingLegacyBots is only present when a v1 array was migrated before
-	// any login account existed. The first real user receives this seed once.
 	PendingLegacyBots []BotConfig `json:"pending_legacy_bots,omitempty"`
 }
 
@@ -62,7 +57,6 @@ type botStoreFile struct {
 	Migration *botStoreMigration      `json:"migration,omitempty"`
 }
 
-// BotStore manages per-login bot persistence and lookup.
 type BotStore struct {
 	path          string
 	mu            sync.RWMutex
@@ -72,22 +66,16 @@ type BotStore struct {
 	loaded        bool
 }
 
-// NewBotStore creates a new BotStore.
 func NewBotStore(path string) *BotStore {
 	return &BotStore{path: strings.TrimSpace(path), users: make(map[string][]BotConfig)}
 }
 
-// SetExistingUsers supplies login accounts for one-time v1 migration. It must
-// normally be configured before Load; setting it later is still safe and will
-// be applied on the next Load.
 func (s *BotStore) SetExistingUsers(provider func() []string) {
 	s.mu.Lock()
 	s.existingUsers = provider
 	s.mu.Unlock()
 }
 
-// Load reads schema v2 or migrates the legacy top-level bot array. The exact
-// v1 bytes are backed up before the v2 file is written.
 func (s *BotStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -157,8 +145,6 @@ func (s *BotStore) Load() error {
 	return s.saveLocked()
 }
 
-// seedExistingUsersLocked ensures every currently known account has a bot
-// namespace. legacySeed is copied only during migration, never to later users.
 func (s *BotStore) seedExistingUsersLocked(legacySeed []BotConfig) (bool, error) {
 	if s.existingUsers == nil {
 		return false, nil
@@ -194,9 +180,7 @@ func (s *BotStore) defaultBots() []BotConfig {
 			Keywords:       []string{"philobot", "philo", "philosophie", "philosoph"},
 			ResponseStyle:  "balanced",
 			AgenticEnabled: false,
-			// Keine Vorgabe-Wurzeln: welche Ordner ein Bot lesen darf, ergibt
-			// sich aus dem Projekt, dem die Sitzung zugeordnet ist. Feste Pfade
-			// waeren auf einem fremden Rechner ohnehin ungueltig.
+
 			AllowedRoots: nil,
 			IsDefault:    true,
 		},
@@ -207,9 +191,7 @@ func (s *BotStore) defaultBots() []BotConfig {
 			Keywords:       []string{"botbuilder", "bot erstellen", "bot bauen", "bot entwerfen", "assistenten erstellen", "neuer bot"},
 			ResponseStyle:  "steps",
 			AgenticEnabled: false,
-			// Keine Vorgabe-Wurzeln: welche Ordner ein Bot lesen darf, ergibt
-			// sich aus dem Projekt, dem die Sitzung zugeordnet ist. Feste Pfade
-			// waeren auf einem fremden Rechner ohnehin ungueltig.
+
 			AllowedRoots: nil,
 			IsDefault:    false,
 		},
@@ -240,10 +222,7 @@ func (s *BotStore) normalizeBots(input []BotConfig) ([]BotConfig, bool) {
 			if err == nil {
 				bot.ModelBinding = binding
 			}
-			// Invalid persisted bindings stay intact. Erasing them here would turn
-			// a pinned bot into an unbound bot and silently route it through the
-			// session's normal model. The request path validates the preserved
-			// binding and returns model_binding_invalid instead.
+
 		}
 		if bot.ID == "philobot" {
 			hasPhiloBot = true
@@ -301,9 +280,6 @@ func (s *BotStore) saveLocked() error {
 	return writeBotFileAtomic(s.path, data)
 }
 
-// EnsureUser creates a namespace for a new login. Only the first user after a
-// no-account v1 migration receives the legacy seed; all later users get the two
-// system bots.
 func (s *BotStore) EnsureUser(rawUserID string) error {
 	userID := normalizeBotUserID(rawUserID)
 	if userID == "" {
@@ -326,7 +302,6 @@ func (s *BotStore) EnsureUser(rawUserID string) error {
 	return s.saveLocked()
 }
 
-// GetBotsForUser returns a deep copy of one login's bots.
 func (s *BotStore) GetBotsForUser(rawUserID string) []BotConfig {
 	userID := normalizeBotUserID(rawUserID)
 	s.mu.RLock()
@@ -348,7 +323,6 @@ func (s *BotStore) GetBotForUser(rawUserID, id string) (BotConfig, bool) {
 	return BotConfig{}, false
 }
 
-// SaveBotForUser inserts or updates only the caller's bot namespace.
 func (s *BotStore) SaveBotForUser(rawUserID string, bot BotConfig) error {
 	userID := normalizeBotUserID(rawUserID)
 	if userID == "" {
@@ -416,7 +390,6 @@ func (s *BotStore) SaveBotForUser(rawUserID string, bot BotConfig) error {
 	return s.saveLocked()
 }
 
-// DeleteBotForUser deletes a custom bot only for the caller.
 func (s *BotStore) DeleteBotForUser(rawUserID, id string) error {
 	userID := normalizeBotUserID(rawUserID)
 	id = strings.TrimSpace(id)
@@ -451,8 +424,6 @@ func (s *BotStore) DeleteBotForUser(rawUserID, id string) error {
 	return s.saveLocked()
 }
 
-// MatchBotByKeywordForUser prefers custom/non-default bots and otherwise
-// returns the user's default bot.
 func (s *BotStore) MatchBotByKeywordForUser(rawUserID, message string) (BotConfig, bool) {
 	bots := s.GetBotsForUser(rawUserID)
 	msgLower := strings.ToLower(message)
@@ -479,7 +450,6 @@ func (s *BotStore) MatchBotByKeywordForUser(rawUserID, message string) (BotConfi
 	return s.defaultBots()[0], false
 }
 
-// Backward-compatible helpers use the local test/standalone namespace.
 func (s *BotStore) GetBots() []BotConfig        { return s.GetBotsForUser("local") }
 func (s *BotStore) SaveBot(bot BotConfig) error { return s.SaveBotForUser("local", bot) }
 func (s *BotStore) DeleteBot(id string) error   { return s.DeleteBotForUser("local", id) }
@@ -565,11 +535,7 @@ func decodeAPIModelRef(modelRef string) (string, string) {
 }
 
 func normalizeBotUserID(value string) string {
-	// Bot namespaces are JSON object keys, not filesystem paths. Keep the full
-	// login identity and use the exact same case-insensitive normalization as
-	// AccountStore. Sanitizing characters here would merge distinct accounts
-	// such as "alice" and "alice!", and could collapse Unicode-only names to an
-	// empty/shared namespace.
+
 	return strings.ToLower(strings.TrimSpace(value))
 }
 

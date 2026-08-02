@@ -34,8 +34,6 @@ func TestParsePlanAcceptsPlainJSON(t *testing.T) {
 	}
 }
 
-// TestParsePlanToleriertVerpackung: Modelle liefern JSON gern im
-// Markdown-Block oder mit Einleitung davor.
 func TestParsePlanToleriertVerpackung(t *testing.T) {
 	cases := map[string]string{
 		"markdown-block": "Hier ist mein Plan:\n```json\n{\"summary\":\"S\",\"steps\":[{\"title\":\"A\"}]}\n```\n",
@@ -55,9 +53,6 @@ func TestParsePlanToleriertVerpackung(t *testing.T) {
 	}
 }
 
-// TestParsePlanKlammerImText deckt den Fall ab, dass eine geschweifte
-// Klammer im Fliesstext eines Feldes steht - die Klammerzaehlung darf
-// sich davon nicht verschieben.
 func TestParsePlanKlammerImText(t *testing.T) {
 	reply := `{"summary":"Nutze {} als Platzhalter","steps":[{"title":"A","detail":"schreibe {\"k\":1}"}]}`
 	plan, err := ParsePlan("Ziel", reply)
@@ -89,8 +84,6 @@ func TestParsePlanFehlerfaelle(t *testing.T) {
 	}
 }
 
-// TestParsePlanDeckeltSchritte haelt die Zerlegung in einem Umfang, den
-// ein Nutzer noch freigeben mag.
 func TestParsePlanDeckeltSchritte(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`{"summary":"S","steps":[`)
@@ -157,8 +150,6 @@ func TestShorten(t *testing.T) {
 	}
 }
 
-// TestParseErkenntRueckfragen: fehlen Angaben, soll das Modell fragen
-// duerfen statt einen Plan zu erfinden.
 func TestParseErkenntRueckfragen(t *testing.T) {
 	reply := `{"reason":"Mir fehlt das Zielformat","questions":["JSON oder YAML?","Wohin soll die Datei?"]}`
 	result, err := Parse("Export bauen", reply)
@@ -179,7 +170,6 @@ func TestParseErkenntRueckfragen(t *testing.T) {
 	}
 }
 
-// TestParseRueckfragenHabenVorrang: liefert ein Modell beides, gilt die Frage.
 func TestParseRueckfragenHabenVorrang(t *testing.T) {
 	reply := `{"summary":"S","steps":[{"title":"Raten"}],"questions":["Was genau?"]}`
 	result, err := Parse("Ziel", reply)
@@ -217,13 +207,12 @@ func TestParseErgaenztFehlendenGrund(t *testing.T) {
 }
 
 func TestParseIgnoriertLeereFragen(t *testing.T) {
-	// Nur leere Fragen: das ist keine Rueckfrage, sondern ein kaputter Plan.
+
 	if _, err := Parse("Ziel", `{"reason":"R","questions":["  ",""]}`); !errors.Is(err, ErrNoPlan) {
 		t.Fatalf("erwartete ErrNoPlan, bekam %v", err)
 	}
 }
 
-// TestParsePlanLehntRueckfragenAb: der alte Einstiegspunkt liefert nur Plaene.
 func TestParsePlanLehntRueckfragenAb(t *testing.T) {
 	if _, err := ParsePlan("Ziel", `{"reason":"R","questions":["Was?"]}`); !errors.Is(err, ErrNoPlan) {
 		t.Fatalf("erwartete ErrNoPlan, bekam %v", err)

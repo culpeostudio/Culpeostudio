@@ -1,6 +1,9 @@
 // Portions adapted from whichllm v0.5.15.
 // Copyright (c) 2026 Andyyyy64; original portions are MIT-licensed.
 // PhiloEngine modifications are AGPL-3.0-only. See NOTICE.
+
+// Package recommender estimates what a model will need at runtime and ranks
+// candidates against the detected hardware.
 package recommender
 
 import (
@@ -83,7 +86,6 @@ func bestGPU(gpus []GPU, available []int64) *GPU {
 	return &gpus[best]
 }
 
-// Check returns a deterministic estimate for a specific model artifact.
 func Check(model Model, variant *Variant, hardware Hardware, context int) Result {
 	if context <= 0 {
 		context = 4096
@@ -121,9 +123,7 @@ func Check(model Model, variant *Variant, hardware Hardware, context int) Result
 		result.Warnings = append(result.Warnings, "Der angeforderte Kontext ist größer als der Modellkontext.")
 	}
 	if hardware.DiskFreeBytes > 0 && estimateWeightBytes(model, variant) > hardware.DiskFreeBytes {
-		// Same reasoning as the switch's default case above: CanRun=false
-		// must never leave Fit on a "runs fine" value, or the UI shows a
-		// green/positive label for a model that cannot actually be used.
+
 		result.CanRun = false
 		result.Fit = FitUnsupported
 		result.Warnings = append(result.Warnings, "Nicht genügend Speicherplatz für das Modell.")

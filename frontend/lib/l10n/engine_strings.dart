@@ -1,8 +1,3 @@
-/// Ergänzende Übersetzungen für die Engine-Bedienoberfläche.
-///
-/// Die Datei bleibt bewusst nach UI-Bereich getrennt, damit die umfangreichen
-/// technischen Texte nicht unübersichtlich mit Login-, Chat- und
-/// Marketplace-Texten vermischt werden.
 const Map<String, String> engineStringsDe = {
   'engineWidget.status': 'Status: {label}',
   'engineWidget.status.ready': 'Bereit',

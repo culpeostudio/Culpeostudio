@@ -44,25 +44,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   bool _hasMore = true;
   bool _isSearching = false;
   String _error = '';
-  // C1: Seperate Fehleranzeige fuer page>1 – statt die Liste zu loeschen
-  // wird ein Retry-Tile angehaengt.
+
   bool _pageError = false;
-  // H4: Such-Generation – jeder neue Filter/Suchbegriff inkrementiert sie;
-  // ein spaet ankommendes Resultat einer alten Generation wird verworfen.
+
   int _searchGeneration = 0;
-  // H2: Backend-Fehler fuer Seitenleiste sichtbar machen.
+
   String _hardwareError = '';
   String _jobsError = '';
-  // C3: In-Flight-Guard fuer Download/Start-Buttons (Mehrfach-Tap erzeugt
-  // sonst mehrere Jobs / API-Starts).
+
   final Set<String> _pendingActions = {};
-  // M9: Pro Aktion ein Timeout-Timer. Wenn der Backend-Request haengt oder
-  // das Widget unmounted wird, wuerde der In-Flight-Guard sonst ewig aktiv
-  // bleiben – der Button zeigt einen endlosen Spinner. Nach ~30s Timeout
-  // wird der Key automatisch entfernt und ein Hinweis angezeigt.
+
   final Map<String, Timer> _actionTimeouts = {};
   static const Duration _actionTimeout = Duration(seconds: 30);
-  // H1: Debounce-Timer fuer onChanged im Suchfeld.
+
   Timer? _debounce;
 
   List<dynamic> _searchResults = [];
@@ -87,12 +81,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     FilterOption(tr('marketplaceScreen.filter.embedding'), 'embedding'),
   ];
 
-  // C5: Preissortierung filtert im Backend alle Modelle ohne bekannten
-  // Preis heraus – lokal-Modelle (HuggingFace) und "Alle" verschwinden
-  // dadurch unbemerkt. Wir bieten Preis-Sortiermodi nur explizit fuer
-  // Cloud-Provider (OpenRouter/Featherless) an, damit User nicht in eine
-  // scheinbar leere Marketplace-Liste starren, wenn sie von HuggingFace auf
-  // "Alle" wechseln.
   List<FilterOption> get _baseSortOptions => <FilterOption>[
     FilterOption(tr('marketplaceScreen.sort.popularity'), 'popularity'),
     FilterOption(
@@ -109,15 +97,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       FilterOption(tr('marketplaceScreen.sort.priceHighLow'), 'price_high_low');
 
   List<FilterOption> _sortOptionsForProvider() {
-    // sort=price ist nur fuer reine Cloud-Provider sinnvoll.
     if (_provider == 'openrouter' || _provider == 'featherless') {
       return [..._baseSortOptions, _priceLowHighSort, _priceHighLowSort];
     }
     final selected = _sort;
     final base = [..._baseSortOptions];
-    // Behalte die aktuelle Auswahl als sichtbaren Eintrag, auch wenn sie
-    // fuer den neuen Provider nicht angeboten wird – sonst springt der
-    // Dropdown still von "price_low_high" auf "popularity".
+
     if (selected == 'price_low_high' || selected == 'price_high_low') {
       base.add(
         selected == 'price_low_high' ? _priceLowHighSort : _priceHighLowSort,
@@ -137,7 +122,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // H3: App-Lifecycle beobachten
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
     _actionSubscription = AppState().actionStream.listen((action) {
       if (!mounted) return;
@@ -161,9 +146,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     _scrollController.dispose();
     _searchController.dispose();
     _refreshTimer?.cancel();
-    // M9: Beim Verlassen des Screens alle Action-Timeouts abbrechen – sonst
-    // wuerde ein noch laufender Timer nach dem dispose ein State-Update auf
-    // ein nicht mehr vorhandenes Widget ausloesen.
+
     for (final timer in _actionTimeouts.values) {
       timer.cancel();
     }
@@ -172,9 +155,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     super.dispose();
   }
 
-  // Auf Desktop bedeutet "inactive" meist nur, dass ein anderes Fenster den
-  // Fokus hat. Der Download-Timer muss dann weiterlaufen, damit der sichtbare
-  // Fortschritt nicht einfriert. Nur echtes Pausieren/Beenden stoppt ihn.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
@@ -182,7 +162,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       _refreshTimer?.cancel();
       _refreshTimer = null;
     } else if (state == AppLifecycleState.resumed) {
-      _fetchDownloadJobs(); // beim Zurueckkehren sofort pruefen
+      _fetchDownloadJobs();
     }
   }
 
@@ -192,10 +172,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     setState(() => _backendSettings = res);
   }
 
-  // C4: localOnly / GPU-fit / Quantisation sind nur fuer HuggingFace sinnvoll.
-  // Bei Cloud-Providern wuerde localOnly (Backend filtert alle Cloud-Modelle
-  // heraus) garantiert leere Ergebnisse liefern. Bei "Alle" ist der Toggle
-  // sichtbar, weil der Backend dann automatisch auf HuggingFace schaltet.
   bool get _localControlsVisible =>
       _provider == 'huggingface' || _provider == 'all';
 
@@ -205,9 +181,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final res = await _api.getHardwareProfile();
     if (!mounted) return;
     setState(() {
-      // H2: Backend-Fehler sichtbar machen – früher wurde eine
-      // {'error': ...}-Map still in _hardwareProfile geparkt und in der
-      // Karte als "Keine GPU" angezeigt.
       if (res.containsKey('error')) {
         _hardwareError = res['error'].toString();
       } else {
@@ -235,9 +208,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           job is Map &&
           (job['status'] == 'queued' || job['status'] == 'running'),
     );
-    // Aktive Downloads werden sekündlich aktualisiert. Dadurch ist die
-    // Geschwindigkeitsanzeige wirklich live, ohne im Leerlauf Requests zu
-    // erzeugen: der Timer läuft nur bei queued/running Jobs.
+
     if (hasActiveJobs && _refreshTimer == null) {
       _refreshTimer = Timer.periodic(
         const Duration(seconds: 1),
@@ -252,11 +223,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    // M16: Frueher 260px Schwelle – auf Desktop mit grossen Cards
-    // reicht das nicht, um rechtzeitig nachzuladen.  Wir vergroessern
-    // die Schwelle auf 600px, so dass schon beim sichtbaren Naeheren
-    // der letzte Kartenreihe der Reload triggert; der "Weitere laden"
-    // Button bleibt als Fallback falls onScroll nie feuert.
+
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 600) {
       if (!_isSearching && _hasMore) {
@@ -265,8 +232,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     }
   }
 
-  // H1: Debounce-Callback fuer onChanged im Suchfeld. Tippt der User,
-  // wird 350ms nach der letzten Aenderung eine neue Suche ausgeloest.
   void _onSearchChanged(String _) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), _triggerSearch);
@@ -278,8 +243,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       _searchFocusNode.unfocus();
       setState(() => _searchExpanded = false);
     }
-    final gen =
-        ++_searchGeneration; // H4: spaet eintreffende alte Antworten verwerfen
+    final gen = ++_searchGeneration;
     setState(() {
       _isSearching = true;
       _error = '';
@@ -298,9 +262,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   Future<void> _loadNextPage() async {
     if (_isSearching || !_hasMore) return;
-    // C2: _page wird erst nach erfolgreichem Load erhoeht – schlaegt die
-    // Anfrage fehl, bleibt _page bei der letzten erfolgrechen Seite und
-    // onScroll kann erneut feuern (mit _hasMore=true via _pageError).
+
     final gen = _searchGeneration;
     setState(() {
       _isSearching = true;
@@ -326,24 +288,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
     if (!mounted) return;
 
-    // H4: Antwort gehoert zu einer alten Suche (Filter zwischenzeitlich
-    // geaendert) – still verwerfen, kein setState mit veralteten Daten.
     if (generation != _searchGeneration) return;
 
     setState(() {
       if (res.containsKey('error')) {
-        // C1: bei page>1 die bereits angezeigte Liste nicht loeschen,
-        // sondern ein Retry-Tile anzeigen.
         if (page == 1) {
           _error = res['error'].toString();
           _searchResults = [];
           _hasMore = false;
         } else {
           _pageError = true;
-          _hasMore = true; // erlaubt onScroll, erneut zu probieren
+          _hasMore = true;
         }
       } else {
-        // C2: _page erst nach Erfolg commiten.
         _page = page;
         _searchResults.addAll(res['models'] ?? []);
         _hasMore = res['has_more'] ?? false;
@@ -352,9 +309,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       _isSearching = false;
     });
 
-    // Eine große Desktop-Ansicht kann die erste Seite vollständig anzeigen,
-    // ohne dass ein Scroll-Event entsteht. Dann laden wir automatisch weiter,
-    // bis wirklich gescrollt werden kann oder keine Seite mehr existiert.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
           _isSearching ||
@@ -371,20 +325,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   void _setProvider(String provider) {
     setState(() {
       _provider = provider;
-      // C4 + M2: localOnly/GPU-fit/Quantisation sind nur fuer HuggingFace
-      // relevant. Bei Cloud-Providern wuerde localOnly garantiert leere
-      // Ergebnisse liefern (Backend filtert alle Cloud-Modelle heraus);
-      // bei "Alle" setzen wir ebenfalls zurueck, damit "Alle" wirklich alle
-      // Provider anzeigt (sonst wuerde der Backend verdeckt auf HF schalten).
+
       if (provider != 'huggingface') {
         _localOnly = false;
         _quantization = '';
         _gpuFit = false;
       }
-      // C5: Preissortierung verschluckt HF-Modelle im Backend. Beim Wechsel
-      // vom Cloud-Provider auf HuggingFace/Alle setzen wir sie still auf den
-      // Default zurueck, so dass nicht eine scheinbar leere Liste
-      // zurueckkommt.
+
       final isCloudProvider =
           provider == 'openrouter' || provider == 'featherless';
       if (!isCloudProvider &&
@@ -406,8 +353,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     _fetchDownloadJobs();
   }
 
-  // M8: User-lesbare Fehlermeldung aus Backend-Fehlern / Netzwerk-Ausfaellen
-  // erzeugen, statt rohe "ClientException"-Texte anzuzeigen.
   String _humanizeError(dynamic error) {
     final msg = error?.toString() ?? '';
     final lower = msg.toLowerCase();
@@ -427,7 +372,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         lower.contains('gated')) {
       return tr('marketplaceScreen.error.huggingFaceToken');
     }
-    // Bekannte Backend-Strings etwas lesbarer machen.
+
     if (lower.contains('ungueltiger')) {
       return tr('marketplaceScreen.error.invalidInput');
     }
@@ -441,8 +386,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     Map<String, dynamic> model, {
     Map<String, dynamic>? selectedOption,
   }) async {
-    // H5: typsichere Map-Zugriffe – frueher wurde dynamic null direkt an
-    // String-Parameter gereicht (Crash unter Null-Safety).
     final modelId =
         (model['model_id'] ?? model['id'] ?? model['name'])?.toString() ?? '';
     if (modelId.isEmpty) {
@@ -453,9 +396,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       return;
     }
     final provider = (model['provider'] ?? _provider).toString();
-    // M7: 'all' als Provider an den Backend schicken wuerde mit 400
-    // abgewiesen ("provider muss gesetzt sein"); bevor wir den Request
-    // abschicken, pruefen.
+
     if (provider.isEmpty || provider == 'all') {
       _showSnack(
         tr('marketplaceScreen.error.concreteProvider'),
@@ -464,14 +405,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       return;
     }
     final options = model['download_options'];
-    // M10: Provider mit mehreren Download-Varianten (vor allem HuggingFace:
-    // Q4_K_M, Q5_K_S, Q8_0, FP16, ...) zeigten frueher einen impliziten
-    // "ersten Treffer" — der User sah nie, welche Option gewaehlt wurde.
-    // Jetzt gibt es einen BottomSheet, falls >1 Option verfuegbar ist.
-    // M14: Die gewaehlte Option wird danach samt size_bytes an downloadModel
-    // weitergereicht, damit der Backend einen Disk-Space Pre-Check machen
-    // kann – so wird der User nicht erst nach langem Warten eine "failed"-
-    // Meldung sehen.
+
     String assetId = '';
     List<String> assetIds = const [];
     int sizeBytes = 0;
@@ -500,7 +434,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       sizeBytes = _asInt(chosen['size_bytes']);
     }
 
-    // C3: In-Flight-Guard – Mehrfach-Tap wuerde mehrere Jobs erzeugen.
     final key = 'dl:$provider:$modelId';
     if (!_beginPendingAction(key)) return;
 
@@ -519,7 +452,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     if (res.containsKey('error')) {
       _showSnack(_humanizeError(res['error']), Colors.redAccent);
     } else if (res['existing'] == true) {
-      // M10+M11: Backend-Dedup hat reagiert – derselbe Job laeuft schon.
       _showSnack(
         tr('marketplaceScreen.notification.alreadyDownloading', {
           'jobId': res['job_id']?.toString() ?? '',
@@ -527,8 +459,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         Colors.orangeAccent,
       );
     } else {
-      // M5: cloud-Branch ist tot (Karte ruft fuer cloud _startApiModel),
-      // deshalb reicht die "Download gestartet"-Meldung.
       _showSnack(
         tr('marketplaceScreen.notification.downloadStarted', {
           'modelId': modelId,
@@ -538,14 +468,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     }
   }
 
-  // M10: BottomSheet zum Auswaehlen einer konkreten Download-Option. Bei
-  // HuggingFace liefern Backend/Provider oft Q4_K_M/Q5/Q8/FP16 nebeneinander;
-  // ohne Auswahlscreen sah der User nie, was mit "Download" ueberhaupt
-  // gezogen wurde. Rueckgabewert == null == User hat abgebrochen.
-  // M10: BottomSheet zum Auswaehlen einer konkreten Download-Option. Bei
-  // HuggingFace liefern Backend/Provider oft Q4_K_M/Q5/Q8/FP16 nebeneinander;
-  // ohne Auswahlscreen sah der User nie, was mit "Download" ueberhaupt
-  // gezogen wurde. Rueckgabewert == null == User hat abgebrochen.
   Future<Map<String, dynamic>?> _showDownloadOptionPicker(
     String modelId,
     List<Map> options,
@@ -821,10 +743,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     _pendingActions.add(actionKey);
     _actionTimeouts[actionKey]?.cancel();
     _actionTimeouts[actionKey] = Timer(_actionTimeout, () {
-      // Bindung an this.mounted passiert via setState-Check im caller,
-      // aber wir muessen hier trotzdem sicherheitshalber pruefen, weil
-      // der Timer auch nach dispose noch feuern koennte (klar via dispose,
-      // aber defensiv gegenuber unvorhergesehenen Reihenfolgen).
       if (!mounted) {
         _pendingActions.remove(actionKey);
         _actionTimeouts.remove(actionKey);
@@ -918,10 +836,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               .clamp(210.0, 520.0)
               .toDouble();
 
-          // Die Suche ist Teil der Desktop-Kopfzeile wie in der Referenz.
-          // Nur in sehr schmalen Fenstern bleibt die bekannte einklappbare
-          // Variante erhalten, damit die vorhandenen Toolbar-Aktionen nicht
-          // gequetscht werden.
           if (constraints.maxWidth >= 470) {
             return Row(
               children: [
@@ -970,9 +884,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         decoration: InputDecoration(
           hintText: tr('marketplaceScreen.searchHint'),
           hintStyle: const TextStyle(color: Colors.white30),
-          // Der Rahmen kommt allein vom umgebenden Panel. Ohne das explizite
-          // Abschalten setzt das globale inputDecorationTheme zusaetzlich einen
-          // eigenen (enger gerundeten) Rahmen und es entsteht ein Doppelrand.
+
           filled: false,
           contentPadding: const EdgeInsets.fromLTRB(0, 14, 12, 14),
           prefixIcon: const Icon(Icons.search_rounded, size: 19),
@@ -1354,10 +1266,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   );
                 }
 
-                // Auf breiten Desktop-Flaechen entspricht die Leiste der
-                // horizontalen Referenz: Gruppen links, Schnellfilter rechts.
-                // Darunter faellt sie kontrolliert in eine mehrzeilige Wrap-
-                // Anordnung statt einen RenderFlex-Overflow zu erzeugen.
                 if (constraints.maxWidth >= 2100) {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -2017,8 +1925,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         itemCount:
             _searchResults.length + (_hasMore ? 1 : 0) + (_pageError ? 1 : 0),
         itemBuilder: (context, index) {
-          // C1: bei page>1-Fehler ein Retry-Tile ans Ende haengen, statt
-          // die ganze Liste zu verwerfen.
           if (_pageError && index == _searchResults.length) {
             return _buildRetryTile();
           }
@@ -2055,9 +1961,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // C1: Retry-Tile, das bei einem page>1-Fehler angezeigt wird. onScroll
-  // oder Tap ruft _loadNextPage erneut auf; die bisherige Liste bleibt
-  // sichtbar.
   Widget _buildRetryTile() {
     return Center(
       child: Padding(
@@ -2087,13 +1990,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // M16: Smartes "Mehr laden"-Tile.  Zeigt drei Zustaende:
-  //   1) Suche laeuft gerade -> Spinner "Weitere Modelle werden geladen …"
-  //   2) Suche idle, hat_more=true -> klickbarer Button "Weitere Modelle
-  //      laden", der _loadNextPage ausloest.  Wird auch genutzt, wenn
-  //      onScroll wegen zu kurzer Liste nie feuert.
-  //   3) hat_more=false -> Container ohne Ui (wird oben durch itemCount
-  //      ohnehin nie gezeichnet), aber defensiv kein Spinner.
   Widget _buildLoadMoreTile() {
     if (_isSearching) {
       return Center(
@@ -2140,8 +2036,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   }
 
   Widget _buildModelCard(dynamic model, {required bool compact}) {
-    // H6: bei nicht-Map-Eintraegen (z.B. malformed backend response) nicht
-    // mit TypeError abstuerzen, sondern eine leere Box rendern.
     if (model is! Map) return const SizedBox.shrink();
     final map = Map<String, dynamic>.from(model);
     final provider = map['provider']?.toString() ?? _provider;
@@ -2175,18 +2069,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final capabilityTags = marketplaceNonQuantizationTags(tags);
     final providerColor = _getProviderColor(provider);
     final cloud = _isCloudProvider(provider);
-    // C3: Action-Key fuer den In-Flight-Guard.
+
     final actionKey =
         '${cloud ? 'api' : 'dl'}:$provider:${map['model_id'] ?? id}';
     final pending = _pendingActions.contains(actionKey);
 
-    // Cloud- und lokale Modelle nutzen dasselbe Kartengeruest; nur die
-    // Akzentfarbe bleibt an den Anbieter gebunden (lokale Modelle tragen das
-    // Gold der Engine), damit die Herkunft weiter auf einen Blick sichtbar ist.
     final accent = cloud ? providerColor : const Color(0xFFC9A24A);
 
-    // Erste Kennzahlenzeile direkt unter der Beschreibung: Cloud-Modelle zeigen
-    // dort den Preis, lokale Modelle die Hardware-Passung (VRAM und Laufzeit).
     final primaryPills = <Widget>[
       if (local) ...[
         if (estimatedVram > 0)
@@ -2224,9 +2113,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         ),
     ];
 
-    // Zweite Zeile: Kontextlaenge und Intelligenz-Score sitzen wie Ein-/
-    // Ausgabepreis in einer geteilten Pille. Zwei getrennte Kaesten passten in
-    // schmalen Spalten nicht nebeneinander und rutschten aus der Zeile.
     final secondaryPills = <Widget>[
       if (contextLength > 0)
         _splitPill([
@@ -2269,9 +2155,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Jeder Block hat eine feste Hoehe. Dadurch liegen Beschreibung,
-          // Kennzahlen, Tags und Aktion auf allen Karten auf derselben Linie –
-          // unabhaengig davon, wie viel ein Modell an Daten mitbringt.
           _cardSlot(
             _cardHeaderHeight,
             Row(
@@ -2320,8 +2203,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           const SizedBox(height: 8),
           _cardSlot(_cardPillRowHeight, _pillRow(secondaryPills)),
           if (compact) const Spacer() else const SizedBox(height: 16),
-          // Tags sitzen direkt ueber der Aktion – auf jeder Karte an derselben
-          // Stelle, egal wie viele Kennzahlen darueber stehen.
+
           _cardSlot(
             _cardTagsHeight,
             _buildTagRow(
@@ -2337,9 +2219,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 child: SizedBox(
                   height: 36,
                   child: ElevatedButton.icon(
-                    // C3: Button deaktiviert + Spinner, solange die Aktion
-                    // laeuft; verhindert Mehrfach-Tap und damit mehrere Jobs
-                    // / API-Starts.
                     onPressed: pending
                         ? null
                         : () => cloud
@@ -2373,10 +2252,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              // M12: Detail-Button oeffnet einen Dialog mit den kompletten
-              // vom Backend gelieferten Metadaten (Beschreibung, Tags,
-              // Download-Optionen, Preise). Frueher ruhte
-              // getMarketplaceModelDetail ungenutzt im ApiService.
+
               IconButton(
                 tooltip: tr('marketplaceScreen.model.details'),
                 icon: Icon(
@@ -2393,20 +2269,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // Gemeinsame Mindesthoehen der Kartenbloecke halten alle Karten ausgerichtet,
-  // lassen bei groesserer Schrift aber den noetigen vertikalen Spielraum.
   static const double _cardHeaderHeight = 26;
   static const double _cardDescriptionHeight = 52;
-  // 11.5px Text mit der App-Line-Height 1.4, 6px Innenabstand und 1px
-  // Rahmen pro Seite braucht gut 30px. 32px lassen die Rundung vollständig
-  // sichtbar, statt die unteren zwei Pixel abzuschneiden.
+
   static const double _cardPillRowHeight = 32;
   static const double _cardTagsHeight = 28;
 
-  /// Tag-Zeile mit gemessener Breite. Ein Wrap haette die nicht mehr passenden
-  /// Tags in eine verdeckte zweite Zeile geschoben; ein hartes `take(3)` haette
-  /// sie stillschweigend verschluckt. Stattdessen wird gezaehlt, was in eine
-  /// Zeile passt – der Rest steckt sichtbar in einem "+N"-Tag mit Tooltip.
   Widget _buildTagRow({
     required List<String> tags,
     required MarketplaceQuantizationSummary summary,
@@ -2444,8 +2312,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         var visible = fitting(budget);
         String? moreLabel;
         if (visible.length < tags.length) {
-          // Platz fuer den Zaehler freihalten – im ungueltigsten Fall traegt er
-          // die Gesamtzahl der Tags, deshalb wird damit gemessen.
           final counterWidth = _tagWidth(context, '+${tags.length}') + gap;
           visible = fitting(budget - counterWidth);
           moreLabel = '+${tags.length - visible.length}';
@@ -2474,8 +2340,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  /// Breite eines Tag-Chips inklusive Innenabstand und Rahmen – muss zu den
-  /// Massen in [_tag] passen.
   double _tagWidth(BuildContext context, String text, {bool withIcon = false}) {
     final textStyle = DefaultTextStyle.of(
       context,
@@ -2486,14 +2350,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       textScaler: MediaQuery.textScalerOf(context),
       maxLines: 1,
     )..layout();
-    // 9px Innenabstand je Seite + 1px Rahmen je Seite, Icon 12px + 5px Abstand.
+
     return painter.width + 20 + (withIcon ? 17 : 0);
   }
 
-  /// Eine Kennzahlenzeile. Bewusst eine Row statt eines Wrap: die Pillen
-  /// schrumpfen und kuerzen ihren Text, wenn die Spalte schmal wird. Ein Wrap
-  /// haette die zweite Pille in eine verdeckte zweite Zeile geschoben – sie
-  /// war dann schlicht abgeschnitten.
   Widget _pillRow(List<Widget> pills) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2506,9 +2366,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  /// Hält die Kartenblöcke auf einer gemeinsamen Mindesthöhe, lässt sie bei
-  /// größerer Schrift aber vollständig wachsen. Der Spacer der kompakten Karte
-  /// nimmt diese wenigen Pixel auf; ein ClipRect würde sie lautlos abschneiden.
   Widget _cardSlot(double minHeight, Widget child) {
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight),
@@ -2516,10 +2373,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // M12: Detail-Dialog, der die reichhaltigen Metadaten des Backend-Endpoints
-  // /marktplatz/model/:id anzeigt. Frueher war getMarketplaceModelDetail zwar
-  // im ApiService deklariert, wurde aber nirgends aufgerufen – die
-  // Backend-Schnittstelle war also per Code-Review "isolated".
   Future<void> _showModelDetail(
     Map<String, dynamic> summary,
     String provider,
@@ -2545,9 +2398,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       _downloadModel(summary, selectedOption: option);
     }
 
-    // Wir zeigen zuerst eine synchrone Vorschau aus den Such-Daten und
-    // reichern sie danach mit den Detail-Werten an. So spart der User eine
-    // Wartezeit und sieht zumindest die Basis-Metadaten sofort.
     showDialog<void>(
       context: context,
       builder: (ctx) {
@@ -2561,14 +2411,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
     final detail = await _api.getMarketplaceModelDetail(modelId, provider);
     if (!mounted) return;
-    // Replace laufenden Dialog durch angereicherte Version, wenn die
-    // Detail-Anfrage erfolgreich war; sonst bleibt die Basis-Vorschau
-    // sichtbar.
+
     if (detail.containsKey('error')) {
       _showSnack(_humanizeError(detail['error']), Colors.orangeAccent);
       return;
     }
-    // Stack manipulieren: bisherigen Dialog anzeigen, durch Detail austauschen
+
     Navigator.of(context).pop();
     showDialog<void>(
       context: context,
@@ -2622,11 +2470,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // Kennzahlen der Modellkarte sitzen in eigenen Pillen statt in einer losen
-  // Icon-Text-Reihe: farbiger Inhalt auf neutralem Grund, damit Preis, Kontext
-  // und Score als eigenstaendige Bloecke lesbar bleiben.
-  // Die Pille traegt einen Hauch ihrer eigenen Farbe, statt neutral grau zu
-  // bleiben – dadurch heben sich Preis, Kontext und Score deutlicher ab.
   BoxDecoration _pillDecoration(Color color) {
     return BoxDecoration(
       color: color.withValues(alpha: 0.14),
@@ -2649,8 +2492,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 6),
-          // Flexible statt fester Breite: auf schmalen Karten kuerzt die Pille
-          // ihren Text, statt ueber den Kartenrand zu laufen.
+
           Flexible(
             child: Text(
               text,
@@ -2683,9 +2525,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // Preis-Pille mit getrennten Segmenten fuer Ein- und Ausgabe-Tokens. Liefert
-  // das Backend keine getrennten Werte, faellt sie auf das vorhandene
-  // Sammel-Label zurueck (z.B. "Lokal" oder "Gratis").
   Widget _pricePill(double input, double output, String fallbackLabel) {
     if (input <= 0 && output <= 0) {
       return _statPill(
@@ -2708,9 +2547,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     ]);
   }
 
-  /// Pille mit zwei Segmenten, getrennt durch einen duennen Strich. Der
-  /// Farbverlauf im Hintergrund nimmt beide Segmentfarben auf, sodass die
-  /// Werte zusammengehoeren, aber unterscheidbar bleiben.
   Widget _splitPill(List<_PillSegment> segments) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2804,12 +2640,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // Kept temporarily for state migration compatibility; the hardware profile
-  // is rendered in Settings and is no longer part of the marketplace layout.
   // ignore: unused_element
   Widget _buildHardwareCard() {
-    // H2: Frueher wurde eine {'error': ...}-Antwort still als
-    // "Keine GPU" angezeigt; jetzt gibt es einen klaren Fehlerhinweis.
     if (_hardwareError.isNotEmpty) {
       return Container(
         padding: const EdgeInsets.all(18),
@@ -2987,7 +2819,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           const SizedBox(height: 12),
           _buildBackendAccessSummary(),
           const SizedBox(height: 14),
-          // H2: Backend-Fehler beim Laden der Job-Liste sichtbar machen.
+
           if (_jobsError.isNotEmpty) ...[
             Text(
               tr('marketplaceScreen.downloads.jobsLoadFailed'),
@@ -3110,9 +2942,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final status = (j['status'] ?? 'queued').toString();
     final progress = _asInt(j['progress']);
     final color = _getProviderColor(provider);
-    // H5: job['id'] als String sichern – sonst Crash bei null.
+
     final jobId = j['id']?.toString() ?? '';
-    // M16: Live-Stats vom Backend – bytes/sec + gesamt-Bytes zaehler.
+
     final downloaded = _asInt(j['downloaded_bytes']).toDouble();
     final total = _asInt(j['total_bytes']).toDouble();
     final speed = _asInt(j['speed_bytes_per_sec']).toDouble();
@@ -3190,8 +3022,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           ],
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            // L8: progress auf [0,100] begrenzen, damit der Balken nicht
-            // visuell ueberlaeuft, falls der Backend mal >100 liefert.
             value: status == 'running'
                 ? (progress < 0
                       ? 0.0
@@ -3206,8 +3036,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
-  // M16: Formatiert Bytes/s als "5.2 MB/s" etc.  Wird fuer die
-  // Download-Speed-Anzeige im aktiven Job genutzt.
   String _formatSpeed(double bytesPerSec) {
     if (bytesPerSec <= 0) return '0 B/s';
     if (bytesPerSec < 1024) return '${bytesPerSec.round()} B/s';
@@ -3387,8 +3215,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return fallback;
   }
 
-  // Sammel-Label fuer Karten ohne getrennte Token-Preise. Liegen Ein- und
-  // Ausgabepreis vor, zeigt die Karte stattdessen die zweigeteilte Preis-Pille.
   String _formatPriceMetric(String rawPrice) {
     final value = rawPrice.trim();
     if (value.isEmpty || value == '-') return '-';
@@ -3407,9 +3233,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
 
   List<String> _stringList(dynamic raw) {
     if (raw is! List) return const [];
-    // M1: null-Elemente herausfiltern – frueher wurde item.toString() auf
-    // null aufgerufen und ergab den literalen String "null", der dann als
-    // Tag gerendert wurde.
+
     return raw
         .whereType<Object>()
         .map((item) => item.toString())
@@ -3458,10 +3282,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         return tr('marketplaceScreen.filterHelp.default');
     }
   }
-} // Ende _MarketplaceScreenState
+}
 
-/// Ein Wert innerhalb einer geteilten Kennzahlen-Pille (z.B. "IN $5.00" oder
-/// "1.0M ctx").
 class _PillSegment {
   const _PillSegment(this.icon, this.text, this.color);
 

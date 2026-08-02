@@ -207,10 +207,6 @@ func (client *Client) Install(ctx context.Context, installRoot string, manifest 
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339),
 	}
 
-	// The directory name carries the asset checksum, so an intact bundle under
-	// that name is byte-for-byte the update being installed. Checking before the
-	// download keeps a rollback-and-retry cycle from re-fetching gigabytes on
-	// every start.
 	installed, err := bundleAlreadyInstalled(target, state, asset)
 	if err != nil {
 		return CurrentState{}, err
@@ -228,9 +224,6 @@ func (client *Client) Install(ctx context.Context, installRoot string, manifest 
 	return state, nil
 }
 
-// bundleAlreadyInstalled reports whether target holds a complete, startable
-// bundle for exactly this state. A directory holding anything else is an error
-// rather than something to overwrite.
 func bundleAlreadyInstalled(target string, state CurrentState, asset Asset) (bool, error) {
 	info, err := os.Stat(target)
 	if errors.Is(err, os.ErrNotExist) {

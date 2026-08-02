@@ -184,9 +184,9 @@ class ContractTests(unittest.TestCase):
         return root
 
     def test_run_resolves_the_tool_through_path_lookup(self) -> None:
-        # Windows ships flutter as flutter.bat and CreateProcess does not search
-        # PATHEXT, so passing the bare name never finds it. The resolved name
-        # has to reach subprocess.
+
+
+
         resolved = "C:\\hostedtoolcache\\flutter\\bin\\flutter.bat"
         with mock.patch.object(build_release.shutil, "which", return_value=resolved):
             with mock.patch.object(build_release.subprocess, "run") as run:
@@ -217,8 +217,8 @@ class ContractTests(unittest.TestCase):
         self.assertNotIn("backend/engineworker/README.md", paths)
 
     def test_backend_payload_accepts_the_former_hardware_probe_name(self) -> None:
-        # The launcher looks for either name, so a checkout from before the
-        # rename must still produce a buildable release.
+
+
         paths = build_release.backend_payload_paths(
             build_release.TARGETS["linux-x64"],
             self._checkout_with_probe("whichllm_hardware_probe.py"),

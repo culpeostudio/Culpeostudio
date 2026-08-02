@@ -19,10 +19,6 @@ type stagedModelPath struct {
 	staged   string
 }
 
-// deleteModel stages every target below an os.Root before it updates the
-// catalog. os.Root keeps path traversal and concurrent symlink swaps confined
-// to model_dir. Dedicated Marketplace and SafeTensors bundles are removed as a
-// whole so manifests, custom Python and other model-owned assets cannot remain.
 func (m *EngineModule) deleteModel(ctx context.Context, id string) ([]modelcatalog.ModelRecord, error) {
 	release, err := m.acquireLifecycle(ctx, false)
 	if err != nil {
@@ -274,7 +270,7 @@ func pruneEmptyModelParents(rootFS *os.Root, staged []stagedModelPath) {
 				break
 			}
 			if err := rootFS.Remove(directory); err != nil {
-				break // non-empty directories belong to another model or user files
+				break
 			}
 		}
 	}

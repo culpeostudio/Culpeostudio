@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-// checkNativeBuildTools fails fast when a source build (llama-cpp-python has
-// no prebuilt PyPI wheels) would die after many minutes because CMake or a
-// C/C++ compiler is missing. The returned error carries an actionable,
-// platform-specific installation hint.
 func checkNativeBuildTools() error {
 	missing := []string{}
 	if _, err := exec.LookPath("cmake"); err != nil {

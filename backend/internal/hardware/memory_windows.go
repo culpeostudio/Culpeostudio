@@ -12,9 +12,6 @@ import (
 
 var globalMemoryStatusEx = windows.NewLazySystemDLL("kernel32.dll").NewProc("GlobalMemoryStatusEx")
 
-// memoryStatusEx mirrors Windows MEMORYSTATUSEX. Keeping this probe native is
-// important for the 400 ms pressure-sampler budget; starting PowerShell is not
-// a bounded hardware read.
 type memoryStatusEx struct {
 	Length                   uint32
 	MemoryLoad               uint32

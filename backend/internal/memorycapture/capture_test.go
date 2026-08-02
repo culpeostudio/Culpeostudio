@@ -37,9 +37,6 @@ func newCaptureService(t *testing.T) (*Service, *memory.Service) {
 	return captureService, memService
 }
 
-// TestChatMemoryRecallAcrossSession exercises the exact PhiloBot production
-// path: a chat message is captured via the event bus (CaptureChatMessage) and
-// must be recallable in a brand-new session through BuildUserContext.
 func TestChatMemoryRecallAcrossSession(t *testing.T) {
 	capture, mem := newCaptureService(t)
 
@@ -184,7 +181,6 @@ func TestCaptureChatMessageRefinedRedaction(t *testing.T) {
 	}
 	narrative := session.ActiveObservations[0].Narrative
 
-	// Non-sensitive context MUST be preserved
 	if !strings.Contains(narrative, "The secret to clean code is modularity") {
 		t.Errorf("expected non-sensitive text to be preserved, but was lost or redacted. Narrative: %q", narrative)
 	}
@@ -192,7 +188,6 @@ func TestCaptureChatMessageRefinedRedaction(t *testing.T) {
 		t.Errorf("expected non-sensitive reply text to be preserved, but was lost or redacted. Narrative: %q", narrative)
 	}
 
-	// Sensitive parts MUST be redacted
 	if strings.Contains(narrative, "super-secret-123") {
 		t.Errorf("expected password to be redacted, got %q", narrative)
 	}

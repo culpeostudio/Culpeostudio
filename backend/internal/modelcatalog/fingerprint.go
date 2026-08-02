@@ -1,3 +1,6 @@
+// Package modelcatalog reads model files on disk, recognises GGUF and
+// safetensors, and fingerprints them so the same weights are not catalogued
+// twice.
 package modelcatalog
 
 import (
@@ -14,10 +17,6 @@ import (
 
 const fingerprintSampleSize int64 = 64 * 1024
 
-// VerifyFingerprint recomputes the sampled fingerprint for the record's files
-// and reports whether it still matches the cached record. A mismatch means the
-// user replaced, changed, or removed model files after the last scan, so any
-// cached metadata (sizes, context limits, memory plans) may be stale.
 func VerifyFingerprint(root string, record ModelRecord) bool {
 	if strings.TrimSpace(record.Fingerprint) == "" || len(record.Files) == 0 {
 		return true
@@ -25,10 +24,6 @@ func VerifyFingerprint(root string, record ModelRecord) bool {
 	return sampledFingerprint(root, record.Files) == record.Fingerprint
 }
 
-// sampledFingerprint deliberately hashes complete small files and the first
-// and last 64 KiB of large weight files. This makes repeated scans practical
-// for hundred-gigabyte models while still binding the fingerprint to names,
-// exact sizes, headers and trailing tensor data.
 func sampledFingerprint(root string, relativeFiles []string) string {
 	files := append([]string(nil), relativeFiles...)
 	sort.Strings(files)

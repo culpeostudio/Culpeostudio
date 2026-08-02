@@ -111,9 +111,7 @@ func TestGatewayPropagatesClientCancellationToWorker(t *testing.T) {
 	started := make(chan struct{})
 	cancelled := make(chan struct{})
 	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		// The real workers parse the complete JSON body before inference. Reading
-		// it here is also required for net/http to observe a later peer close and
-		// cancel the worker request context.
+
 		_, _ = io.Copy(io.Discard, request.Body)
 		close(started)
 		<-request.Context().Done()

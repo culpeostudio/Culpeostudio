@@ -1,3 +1,4 @@
+// Package memorycapture derives storable memories from a conversation turn.
 package memorycapture
 
 import (

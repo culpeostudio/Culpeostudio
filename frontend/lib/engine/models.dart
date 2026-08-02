@@ -832,8 +832,6 @@ class EngineFallback {
   }
 }
 
-/// One-click remediation offered by the backend next to a failure
-/// (e.g. automatically shrink the context after an out-of-memory start).
 class SuggestedFix {
   final String action;
   final String label;

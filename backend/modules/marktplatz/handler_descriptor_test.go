@@ -10,10 +10,6 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// TestRunDownloadJobDescriptorFileName verlangt, dass der Deskriptor fuer
-// API-Modelle nach der letzten Pfadkomponente benannt wird, nicht nach dem
-// vollen ModelID-String mit Provider-Prefix.
-// "openrouter/openai/gpt-4o" -> "gpt-4o.json", nicht einen 30-Zeichen-Slug.
 func TestRunDownloadJobDescriptorFileName(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -37,8 +33,7 @@ func TestRunDownloadJobDescriptorFileName(t *testing.T) {
 			if err := module.Initialize(); err != nil {
 				t.Fatalf("init: %v", err)
 			}
-			// Provider OpenRouter -> Deskriptor-Pfad wird in das lokale
-			// ModelDir geschrieben; wir lauschen dort.
+
 			job := module.jobs.Create(types.ProviderOpenRouter, tc.modelID, "", filepath.Join(tmpDir, "downloads"))
 			go module.runDownloadJob(job.ID)
 

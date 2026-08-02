@@ -4,8 +4,6 @@ package engineruntime
 
 import "golang.org/x/sys/windows"
 
-// freeDiskBytes returns the number of bytes available to the current user on
-// the volume containing path.
 func freeDiskBytes(path string) (int64, error) {
 	pointer, err := windows.UTF16PtrFromString(path)
 	if err != nil {

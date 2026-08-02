@@ -1,7 +1,6 @@
-// Package memoryembed provides pluggable embedding backends for the memory
-// vector index. The backend is chosen via config; every deployment always has
-// the deterministic hash backend available as fallback and for scoring legacy
-// vectors that were written before a model switch.
+// Package memoryembed provides the embedding backends for memory search. The
+// default is a deterministic local hash; an ONNX or hosted backend can be
+// configured instead.
 package memoryembed
 
 import (
@@ -21,15 +20,11 @@ const (
 	BackendAPIRemote    = "api_remote"
 )
 
-// Backend turns text into a vector. Model() identifies the concrete model so
-// stored embeddings can be told apart after a backend switch; embeddings from
-// different models are never compared against each other.
 type Backend interface {
-	// Name is the backend kind: hash | onnx_local | ollama_remote | api_remote.
 	Name() string
-	// Model is the persisted model identifier (e.g. "hash-v1", "nomic-embed-text").
+
 	Model() string
-	// Dim is the vector dimensionality; 0 until discovered for remote backends.
+
 	Dim() int
 	Embed(text string) ([]float32, error)
 }
@@ -49,9 +44,6 @@ type Config struct {
 	TimeoutSeconds int
 }
 
-// Select builds the active backend plus the always-available hash backend.
-// Non-hash backends are health-checked once; if the check or the resource
-// gate fails, the selection falls back to hash so the service stays usable.
 func Select(cfg Config) (active Backend, hash Backend) {
 	hash = NewHashBackend(cfg.HashDims)
 	requested := strings.ToLower(strings.TrimSpace(cfg.Backend))
@@ -88,8 +80,6 @@ func probeOrFallback(backend Backend, hash Backend) Backend {
 	return backend
 }
 
-// checkResources gates local model loading on available RAM and CPU cores.
-// Returns an empty string when the machine can carry the model.
 func checkResources(minFreeMemMB, minCores int) string {
 	if minFreeMemMB <= 0 {
 		minFreeMemMB = 1024
@@ -102,7 +92,7 @@ func checkResources(minFreeMemMB, minCores int) string {
 	}
 	availableMB, err := availableMemoryMB()
 	if err != nil {
-		// No /proc/meminfo (non-Linux): do not block, the sidecar probe still runs.
+
 		return ""
 	}
 	if availableMB < minFreeMemMB {

@@ -1,3 +1,4 @@
+// Package philosearch exposes the metasearch and page extraction over HTTP.
 package philosearch
 
 import (
@@ -12,9 +13,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// handleExtract laedt eine URL und liefert den Inhalt in einem
-// konfigurierbaren Format. MVP-Implementierung ueber bluemonday +
-// internen HTML->Markdown-Vereinfacher.
 func (m *Module) handleExtract(c *fiber.Ctx) error {
 	if m.client == nil {
 		return c.Status(503).JSON(fiber.Map{"error": "philosearch: client nicht initialisiert"})
@@ -40,8 +38,6 @@ func (m *Module) handleExtract(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.Context(), 20*time.Second)
 	defer cancel()
 
-	// GetGuarded statt Get: die Ziel-URL kommt vom Nutzer, ohne
-	// SSRF-Pruefung waere jeder Dienst auf dem Host erreichbar.
 	resp, err := m.client.GetGuarded(ctx, target, nil)
 	if err != nil {
 		if errors.Is(err, metasearch.ErrBlockedURL) {
@@ -49,8 +45,7 @@ func (m *Module) handleExtract(c *fiber.Ctx) error {
 		}
 		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
 	}
-	// Der Upstream-Status wird nicht durchgereicht: Seiten antworten
-	// auch mit Codes ausserhalb des gueltigen HTTP-Bereichs (z.B. 999).
+
 	if resp.StatusCode != 200 {
 		return c.Status(502).JSON(fiber.Map{
 			"error":  "fetch failed",
@@ -76,8 +71,6 @@ func (m *Module) handleExtract(c *fiber.Ctx) error {
 	}
 }
 
-// contextWithTimeout ist ein schmeller Wrapper, der c.Context() nutzt
-// und einen Cancel retour gibt.
 func contextWithTimeout(c *fiber.Ctx, d time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(c.Context(), d)
 }

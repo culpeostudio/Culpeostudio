@@ -31,8 +31,6 @@ type ggufGroup struct {
 	issues     []ValidationIssue
 }
 
-// Scan recursively scans exactly the configured root. It never consults
-// historical paths or follows a symlink outside that root.
 func (s *Scanner) Scan(ctx context.Context) ([]ModelRecord, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -70,10 +68,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]ModelRecord, error) {
 				}
 				return nil
 			}
-			// WalkDir never follows a directory symlink. Returning SkipDir for a
-			// symlink (which WalkDir reports as a non-directory entry) would skip
-			// every remaining sibling in the containing directory. Ignore the alias;
-			// the physical target below root is visited at its canonical path.
+
 			return nil
 		}
 		if entry.IsDir() {
@@ -99,9 +94,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]ModelRecord, error) {
 		case name == "model.safetensors.index.json":
 			indexDirs[filepath.Dir(path)] = struct{}{}
 		case name == "config.json":
-			// Keep interrupted/legacy SafeTensors snapshots visible even when
-			// their weight files never finished downloading. The record then
-			// carries a concrete weights-missing remediation instead of vanishing.
+
 			configDirs[filepath.Dir(path)] = struct{}{}
 		}
 		return nil

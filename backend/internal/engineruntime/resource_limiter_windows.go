@@ -46,9 +46,7 @@ func (nativeResourceLimiter) Bind(cmd *exec.Cmd, limits ResourceLimits) (func(),
 		windows.JOB_OBJECT_LIMIT_PROCESS_MEMORY |
 		windows.JOB_OBJECT_LIMIT_JOB_MEMORY
 	info.ProcessMemoryLimit = uintptr(limits.MemoryMaxBytes)
-	// PROCESS_MEMORY caps every worker while JOB_MEMORY caps the aggregate of
-	// vLLM/launcher children assigned to the job. Without the latter a worker
-	// tree could multiply the engine's planned RAM budget.
+
 	info.JobMemoryLimit = uintptr(limits.MemoryMaxBytes)
 	if _, err := windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))); err != nil {
 		_ = windows.CloseHandle(job)

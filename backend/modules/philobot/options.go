@@ -20,17 +20,11 @@ func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode st
 		AgenticMode:      mode,
 		AllowedRoots:     normalizeAllowedRoots(allowedRoots),
 		ApprovePlan:      approvePlan,
-		// Der Planungsmodus haengt an einem eigenen Schalter, nicht am
-		// Denk-Level: er laesst sich mit jeder Modell-Einstellung und mit
-		// oder ohne Projekt kombinieren. mode=="planning" bleibt als
-		// zweiter Weg bestehen, damit aeltere Clients weiter funktionieren.
+
 		Planning: planning || mode == "planning",
 	}
 }
 
-// normalizeThinkingLevel maps any raw or legacy thinking value onto PhiloBot's
-// internal domain: none, medium, max, deep (Dual), agentic (Agent). The
-// "agentic" value stays intact so the dedicated agentic flow keeps gating on it.
 func normalizeThinkingLevel(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "none", "off", "aus":
@@ -83,7 +77,7 @@ func philoBotRequestUserID(c *fiber.Ctx) string {
 			}
 		}
 	}
-	// Standalone module tests do not install the global JWT middleware.
+
 	return "local"
 }
 
@@ -96,10 +90,6 @@ func (m *PhiloBotModule) sessionOwnedBy(sessionID, userID string) bool {
 	return owned
 }
 
-// acquireSessionMutation provides a single serialization point shared by the
-// JSON and SSE message routes. Model generation happens outside m.mu, so a
-// dedicated per-session bit prevents two requests from snapshotting the same
-// history and later appending responses in completion order.
 func (m *PhiloBotModule) acquireSessionMutation(sessionID, userID string) error {
 	userID = normalizeBotUserID(userID)
 	m.mu.Lock()

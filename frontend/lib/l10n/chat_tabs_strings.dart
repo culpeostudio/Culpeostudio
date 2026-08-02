@@ -1,9 +1,5 @@
 import 'app_strings.dart' show appLanguage;
 
-/// Translations owned by the two full chat-tab screens.
-///
-/// Keeping this table separate lets those large screens migrate without
-/// expanding the central localization maps during the broader rollout.
 const Map<String, String> chatTabsStringsDe = {
   'common.webSearch': 'Websuche',
   'common.realtimeInformation': 'Echtzeit-Informationen',
@@ -250,8 +246,6 @@ const Map<String, String> chatTabsStringsEn = {
   'philobot.sendMessage': 'Send message',
 };
 
-/// Looks up one chat-tab string in the active language, with German as a
-/// stable fallback. `{name}` placeholders are replaced from [params].
 String chatTabsText(String key, [Map<String, String>? params]) {
   final strings = appLanguage == 'en' ? chatTabsStringsEn : chatTabsStringsDe;
   var value = strings[key] ?? chatTabsStringsDe[key] ?? key;

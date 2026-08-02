@@ -60,8 +60,6 @@ func TestStaleStopCompletionCannotStopReplacementGeneration(t *testing.T) {
 	marker.instance = markedInstance
 	module.instances["model"] = markedInstance
 
-	// This terminal old handle represents a stop that was still unconfirmed
-	// when the reaper was scheduled but whose watcher completed afterwards.
 	stopCtx, cancelOld := context.WithTimeout(context.Background(), 3*time.Second)
 	if err := module.forceStopSupervisorConfirmed(stopCtx, "model"); err != nil {
 		cancelOld()
@@ -112,8 +110,7 @@ func TestStaleStopCompletionCannotStopReplacementGeneration(t *testing.T) {
 	module.mu.Unlock()
 
 	t.Run("background reaper", func(t *testing.T) {
-		// Deterministically execute the stale tick after the supervisor entry and
-		// engine state have both moved to the new generation.
+
 		module.stopReaperMu.Lock()
 		module.stopReapers["stale-test"] = true
 		module.stopReaperMu.Unlock()
@@ -121,8 +118,7 @@ func TestStaleStopCompletionCannotStopReplacementGeneration(t *testing.T) {
 	})
 
 	t.Run("direct finalizer", func(t *testing.T) {
-		// forceStopSupervisorConfirmed captured this receipt before the
-		// replacement generation was committed.
+
 		module.finalizeConfirmedStop("model", "guard_emergency", "old worker stopped")
 	})
 
@@ -158,7 +154,6 @@ func TestConfirmedStopReceiptExpiryIsBoundedAndGenerationSafe(t *testing.T) {
 		t.Fatalf("receipt map is not bounded/generation-tagged: count=%d first=%d second=%d", count, firstID, secondID)
 	}
 
-	// An old timer must not remove a newer receipt for the same instance ID.
 	module.expireConfirmedStop("model", firstID)
 	module.confirmedStopMu.Lock()
 	remaining, exists := module.confirmedStops["model"]
@@ -220,9 +215,6 @@ func TestScopedMultiRestartRestoresUntouchedWorkerWithoutDuplicateSpawn(t *testi
 	operation, _ := module.newOperationLocked("restart", "untouched", "test")
 	module.mu.Unlock()
 
-	// No old worker was confirmed stopped before the second stop failed.
-	// If rollback attempted startOne for untouched, the nil Supervisor would
-	// expose the duplicate-spawn bug immediately.
 	module.failTransactionScoped(
 		operation.ID,
 		"untouched",

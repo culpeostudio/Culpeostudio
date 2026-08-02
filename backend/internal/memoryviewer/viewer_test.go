@@ -16,9 +16,6 @@ func TestPageRendersWithoutFormatArtifacts(t *testing.T) {
 	}
 }
 
-// The viewer renders untrusted memory content. Building HTML by concatenating
-// data into innerHTML is how the stored-XSS hole originally entered the code,
-// so this test locks the door: innerHTML may only be used to clear containers.
 func TestPageDoesNotConcatenateIntoInnerHTML(t *testing.T) {
 	page := Page("t")
 	assignments := regexp.MustCompile(`\.innerHTML\s*=\s*([^;\n]+)`).FindAllStringSubmatch(page, -1)

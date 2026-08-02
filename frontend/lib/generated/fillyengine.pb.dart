@@ -1,7 +1,3 @@
-// This is a generated file - do not edit.
-//
-// Generated from fillyengine.proto.
-
 // @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references

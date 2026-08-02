@@ -13,7 +13,7 @@ from unittest import mock
 
 try:
     from . import transformers_worker as worker
-except ImportError:  # unittest discovery with engineworker as its top-level dir
+except ImportError:
     import transformers_worker as worker
 
 
@@ -144,7 +144,7 @@ class StreamEncodingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_disconnect_cancels_generation_without_done(self) -> None:
         stream, cancel_event = _finished_stream(["must not be sent"])
-        # Pretend the producer is still running so cancellation is observable.
+
         stream._finished_event.clear()
 
         events = await _collect(
@@ -338,7 +338,7 @@ class LifecycleTests(unittest.IsolatedAsyncioTestCase):
         model.tokenizer = object()
         model.model = FakeModel()
         model.torch = FakeTorch()
-        model._slots = asyncio.Semaphore(0)  # owned by this generation
+        model._slots = asyncio.Semaphore(0)
         prepared = worker.PreparedGeneration(
             encoded={}, prompt_tokens=2, max_tokens=5, generation={}
         )

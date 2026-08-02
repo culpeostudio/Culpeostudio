@@ -1,6 +1,4 @@
-// delete-user-data permanently removes the local data owned by one login.
-// Stop the backend before running it so SQLite and JSON stores are not changed
-// concurrently with the server process.
+// Command delete-user-data removes all stored data of a single user.
 package main
 
 import (

@@ -42,9 +42,7 @@ func (l *nativeResourceLimiter) Prepare(cmd *exec.Cmd, limits ResourceLimits) er
 	if err := prepareRlimitLauncher(cmd, limits.MemoryMaxBytes); err != nil {
 		return err
 	}
-	// The supervised launcher must stay alive long enough to observe lifetime
-	// EOF and kill the whole process group. PR_SET_PDEATHSIG would kill only the
-	// launcher first and could orphan non-inheriting runtime grandchildren.
+
 	if cmd.SysProcAttr != nil {
 		cmd.SysProcAttr.Pdeathsig = 0
 	}
@@ -81,9 +79,6 @@ func (l *nativeResourceLimiter) Bind(cmd *exec.Cmd, limits ResourceLimits) (func
 		return nil, fmt.Errorf("release parent copy of backend-lifetime descriptor: %w", err)
 	}
 
-	// Moving the waiting launcher before releasing it ensures every later
-	// runtime child inherits aggregate cgroup accounting. Missing delegation is
-	// acceptable because the supervised RLIMIT_AS fallback is already active.
 	cgroupCleanup, _ := bindCgroupV2Memory(cmd.Process.Pid, limits.MemoryMaxBytes)
 	if cgroupCleanup == nil {
 		cgroupCleanup = func() {}
@@ -136,7 +131,7 @@ func bindCgroupV2Memory(pid int, maximum int64) (func(), error) {
 	if err := os.WriteFile(filepath.Join(directory, "memory.max"), []byte(strconv.FormatInt(maximum, 10)), 0o600); err != nil {
 		return fail(err)
 	}
-	// Swap must not silently turn a RAM ceiling into host-wide thrashing.
+
 	if err := os.WriteFile(filepath.Join(directory, "memory.swap.max"), []byte("0"), 0o600); err != nil {
 		return fail(err)
 	}

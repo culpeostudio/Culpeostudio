@@ -19,7 +19,7 @@ func signalProcessGroup(cmd *exec.Cmd, force bool) error {
 	if force {
 		signal = syscall.SIGKILL
 	}
-	// Negative PID addresses the process group created with Setpgid.
+
 	return syscall.Kill(-cmd.Process.Pid, signal)
 }
 

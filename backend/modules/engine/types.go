@@ -52,9 +52,6 @@ type ContextPlanView struct {
 	Preflight                PreflightReport                 `json:"preflight"`
 }
 
-// PreflightReport is the user-facing evidence for a memory recommendation.
-// It deliberately separates a calculated plan from the checks that are still
-// performed immediately before and after a worker starts.
 type PreflightReport struct {
 	HardwareSnapshotID string           `json:"hardware_snapshot_id,omitempty"`
 	ModelFingerprint   string           `json:"model_fingerprint,omitempty"`
@@ -140,9 +137,7 @@ type EngineInstance struct {
 
 	BaseURL      string `json:"-"`
 	WorkerSecret string `json:"-"`
-	// workerGeneration changes only when a newly verified worker is committed.
-	// Inference leases use it together with WorkerSecret to ignore stale
-	// releases from a stopped/deleted/recreated worker generation.
+
 	workerGeneration uint64
 }
 
@@ -178,9 +173,6 @@ type persistedEngineState struct {
 	Operations    []*EngineOperation `json:"operations,omitempty"`
 }
 
-// SuggestedFix describes a one-click remediation the UI can offer next to a
-// failure. Action is machine-readable; Label is the ready-to-render button
-// text.
 type SuggestedFix struct {
 	Action string `json:"action"`
 	Label  string `json:"label"`
@@ -188,9 +180,6 @@ type SuggestedFix struct {
 
 const fixRetryWithRAM = "retry_with_ram"
 
-// suggestedFixForCode derives the automatic remediation for a stable error
-// code. It is recomputed on every clone so it can never disagree with
-// ErrorCode.
 func suggestedFixForCode(code string) *SuggestedFix {
 	if code == "" {
 		return nil

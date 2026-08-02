@@ -24,8 +24,6 @@ type SourceUpdateResult struct {
 	After   string
 }
 
-// UpdateSource performs a safe fast-forward update. It intentionally refuses
-// to overwrite local changes, switch branches, rebase, or reset commits.
 func UpdateSource(
 	ctx context.Context,
 	root string,

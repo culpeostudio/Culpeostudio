@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Kleine, zustandslose Bausteine der Chat-Oberflaeche: Aktionsknopf an einer
-// Nachricht, Eintrag im Nachrichten-Menue und Aktions-Chip. `enabled` ist
-// false, solange eine Antwort laeuft.
-
 Widget messageActionButton({
   required String tooltip,
   required IconData icon,

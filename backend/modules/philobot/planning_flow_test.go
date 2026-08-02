@@ -19,8 +19,6 @@ func newPlanTestModule(t *testing.T) (*PhiloBotModule, string) {
 	return module, settings
 }
 
-// TestPendingPlanZyklus deckt den Kern der Freigabe ab: der Plan ueberlebt
-// zwischen den beiden Anfragen und wird genau einmal eingeloest.
 func TestPendingPlanZyklus(t *testing.T) {
 	module, _ := newPlanTestModule(t)
 	plan := &agentplan.Plan{
@@ -35,13 +33,12 @@ func TestPendingPlanZyklus(t *testing.T) {
 	if got == nil || got.Goal != "Ziel" {
 		t.Fatalf("Plan wurde nicht zurueckgeliefert: %+v", got)
 	}
-	// Eine Freigabe gilt genau einmal.
+
 	if again := module.takePendingPlan("local", "chat-plan-1"); again != nil {
 		t.Error("zweiter Abruf sollte nichts mehr liefern")
 	}
 }
 
-// TestPendingPlanFremderNutzer: ein Plan gehoert zu genau einem Nutzer.
 func TestPendingPlanFremderNutzer(t *testing.T) {
 	module, _ := newPlanTestModule(t)
 	module.storePendingPlan("local", "chat-plan-1", &agentplan.Plan{Goal: "Ziel"})
@@ -52,14 +49,12 @@ func TestPendingPlanFremderNutzer(t *testing.T) {
 	if got := module.takePendingPlan("local", "unbekannte-session"); got != nil {
 		t.Error("unbekannte Session darf keinen Plan liefern")
 	}
-	// Der rechtmaessige Besitzer bekommt ihn weiterhin.
+
 	if got := module.takePendingPlan("local", "chat-plan-1"); got == nil {
 		t.Error("Besitzer sollte den Plan bekommen")
 	}
 }
 
-// TestPendingPlanUeberlebtNeustart: eine offene Freigabe darf durch ein
-// Neuladen der Oberflaeche nicht verlorengehen.
 func TestPendingPlanUeberlebtNeustart(t *testing.T) {
 	module, settings := newPlanTestModule(t)
 	module.storePendingPlan("local", "chat-plan-1", &agentplan.Plan{
@@ -79,8 +74,6 @@ func TestPendingPlanUeberlebtNeustart(t *testing.T) {
 	}
 }
 
-// TestRunPlanningFlowUebergeht: ohne Planungsmodus soll der normale
-// Chat-Ablauf weiterlaufen.
 func TestRunPlanningFlowUebergeht(t *testing.T) {
 	module, _ := newPlanTestModule(t)
 	cases := map[string]chatOptions{
@@ -103,8 +96,6 @@ func TestRunPlanningFlowUebergeht(t *testing.T) {
 	}
 }
 
-// TestResolveToolRootsKombiniert prueft, dass Projekt-Ordner und in der
-// Nachricht genannte Ordner zusammen freigegeben werden.
 func TestResolveToolRootsKombiniert(t *testing.T) {
 	projekt := t.TempDir()
 	genannt := t.TempDir()

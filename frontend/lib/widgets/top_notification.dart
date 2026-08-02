@@ -5,9 +5,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 
-/// Shows a compact, automatically dismissing notification at the top of the
-/// app. A new notification replaces the previous one, so rapid actions do not
-/// leave a stack of stale messages on screen.
 void showTopNotification(
   BuildContext context,
   String message, {

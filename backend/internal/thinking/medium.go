@@ -2,8 +2,6 @@ package thinking
 
 import "strings"
 
-// ModeMedium — "Fast Thinking": balanced everyday reasoning. This is the
-// default mode.
 func init() {
 	register(definition{
 		mode:            ModeMedium,
@@ -12,7 +10,7 @@ func init() {
 		reasoningEffort: "medium",
 		temperature:     0.5,
 		topP:            0.9,
-		chat:          "- Thinking: Medium. Antworte mit normaler Sorgfalt und guter Struktur. Denke kurz nach, bevor du antwortest.",
+		chat:            "- Thinking: Medium. Antworte mit normaler Sorgfalt und guter Struktur. Denke kurz nach, bevor du antwortest.",
 		agent: strings.TrimSpace(`## Arbeitsmodus: Ausgewogen
 Arbeite gruendlich aber pragmatisch:
 1. Lies zuerst relevante Dateien um den Kontext zu verstehen.

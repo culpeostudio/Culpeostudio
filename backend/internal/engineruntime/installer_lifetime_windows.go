@@ -39,8 +39,7 @@ func prepareCommandLifetime(cmd *exec.Cmd) (preparedCommandLifetime, error) {
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &windows.SysProcAttr{}
 	}
-	// The process must execute no user/runtime code before it belongs to the
-	// kill-on-close Job Object. Bind resumes it only after assignment succeeds.
+
 	cmd.SysProcAttr.CreationFlags |= windows.CREATE_SUSPENDED
 	return &windowsCommandLifetime{job: job}, nil
 }

@@ -22,7 +22,7 @@ func TestUnifiedDiffShowsChange(t *testing.T) {
 	if !strings.Contains(diff, "@@ -") {
 		t.Fatalf("Hunk-Header fehlt:\n%s", diff)
 	}
-	// Kontext: Nachbarzeilen sichtbar, aber nicht die ganze Datei.
+
 	if !strings.Contains(diff, " zeile 2\n") {
 		t.Fatalf("Kontextzeile fehlt:\n%s", diff)
 	}

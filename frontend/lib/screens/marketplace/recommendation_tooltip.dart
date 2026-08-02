@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/marketplace_detail_strings.dart';
 
-// Tooltip mit der Hardware-Empfehlung zu einem Modell.
-
 class RecommendationTooltip extends StatelessWidget {
   final bool isRecommended;
   final bool isMaxQuality;

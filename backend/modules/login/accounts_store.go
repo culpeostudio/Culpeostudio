@@ -1,3 +1,5 @@
+// Package login handles accounts, authentication and per-user preferences such
+// as interface language and layout.
 package login
 
 import (
@@ -107,9 +109,6 @@ func (s *AccountStore) ValidateCredentials(username, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) == nil
 }
 
-// CanonicalUsername resolves a case-insensitive login name to the spelling
-// stored for the account. JWT subjects and per-user stores must not depend on
-// how the user happened to capitalize the login form.
 func (s *AccountStore) CanonicalUsername(username string) (string, bool) {
 	key := normalizeUsername(username)
 	if key == "" {

@@ -19,9 +19,6 @@ import (
 	"github.com/fillyengine/backend/internal/security"
 )
 
-// Fiber route values normally reference fasthttp's reusable request buffer.
-// Engine operations outlive the request, so every identifier crossing that
-// boundary must own its bytes even when the top-level app is misconfigured.
 func stableRouteParam(c *fiber.Ctx, name string) string {
 	return strings.Clone(c.Params(name))
 }
@@ -59,7 +56,6 @@ func (m *EngineModule) RegisterRoutes(router fiber.Router) {
 	g.Post("/keys/:id/rotate", m.handleRotateKey)
 	g.Delete("/keys/:id", m.handleRevokeKey)
 
-	// Legacy-Wrapper bleiben auf genau eine Instanz mit stabiler ID begrenzt.
 	g.Post("/start", m.handleLegacyStart)
 	g.Post("/load", m.handleLegacyStart)
 	g.Post("/stop", m.handleLegacyStop)
@@ -232,10 +228,6 @@ func (m *EngineModule) handleInstance(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"instance": m.instanceForUser(instance, engineRequestUserID(c))})
 }
 
-// handleInstanceMetrics serves live monitoring data for one instance:
-// tokens/sec and time-to-first-token from recent requests, worker process
-// memory, the planned budget, and current host headroom. Clients poll it
-// while a model is in use.
 func (m *EngineModule) handleInstanceMetrics(c *fiber.Ctx) error {
 	instance, ok := m.getInstance(stableRouteParam(c, "id"))
 	if !ok {
@@ -259,9 +251,7 @@ func (m *EngineModule) handlePatchInstance(c *fiber.Ctx) error {
 		if !valid {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{"message": "show_in_chat_picker muss ein Boolean sein", "code": "invalid_request"}})
 		}
-		// Picker visibility is user-owned state in a separate private store. Keep
-		// this mutation isolated so a later invalid engine action cannot leave a
-		// successful partial preference change behind.
+
 		delete(body, "show_in_chat_picker")
 		if len(body) != 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fiber.Map{
@@ -355,13 +345,11 @@ func (m *EngineModule) handlePatchInstance(c *fiber.Ctx) error {
 	}
 }
 
-// configForFix translates a one-click remediation into a concrete restart
-// configuration for the instance.
 func (m *EngineModule) configForFix(instance *EngineInstance, fix string) (EngineConfig, error) {
 	config := cloneEngineConfig(instance.RequestedConfig)
 	switch fix {
 	case engineruntime.FixReduceContext:
-		// Halve the last planned context, never below a still-useful minimum.
+
 		current := 0
 		if instance.Plan != nil {
 			current = instance.Plan.EffectiveContextTokens

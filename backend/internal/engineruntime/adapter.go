@@ -1,3 +1,5 @@
+// Package engineruntime installs and supervises the local inference runtimes and
+// reports the disk space their installation needs.
 package engineruntime
 
 import (
@@ -9,8 +11,6 @@ import (
 	"strings"
 )
 
-// PortPlaceholder is replaced by Supervisor.Start after reserving a random
-// loopback port. Adapters always bind workers to 127.0.0.1.
 const (
 	PortPlaceholder     = "{port}"
 	InstancePlaceholder = "{instance_id}"
@@ -21,8 +21,6 @@ type AdapterPaths struct {
 	TransformersWorker string
 }
 
-// AdapterCommand is ready to pass to the Supervisor after adding an instance
-// ID. Argv is fixed and shell-free.
 type AdapterCommand struct {
 	Argv           []string          `json:"-"`
 	Env            map[string]string `json:"-"`
@@ -32,9 +30,6 @@ type AdapterCommand struct {
 	Effective      EffectiveConfig   `json:"effective_config"`
 }
 
-// ProcessSpec preserves the private worker credential without exposing it in
-// serialized requested/effective configuration. The management service should
-// retain this spec only in memory and use the same key when proxying inference.
 func (c AdapterCommand) ProcessSpec(instanceID string) ProcessSpec {
 	return ProcessSpec{
 		InstanceID:    strings.Clone(instanceID),
@@ -45,8 +40,6 @@ func (c AdapterCommand) ProcessSpec(instanceID string) ProcessSpec {
 	}
 }
 
-// DefaultCapability documents launch-time fields and conservative cache modes.
-// Hardware probes should narrow GPUBackends and KVCaches before calling Build.
 func DefaultCapability(kind RuntimeKind) RuntimeCapability {
 	fields := map[string]ChangeMode{
 		"context_length":    ChangeRestartRequired,
@@ -78,9 +71,6 @@ func DefaultCapability(kind RuntimeKind) RuntimeCapability {
 	return capability
 }
 
-// BuildAdapterCommand resolves a requested cache policy and emits backend-native
-// arguments. It intentionally has no weight quantization option and never emits
-// --quantization, --load-in-4bit, or equivalent weight-conversion arguments.
 func BuildAdapterCommand(capability RuntimeCapability, requested RequestedConfig, paths AdapterPaths) (AdapterCommand, error) {
 	if requested.Runtime == "" {
 		requested.Runtime = capability.Kind
@@ -168,9 +158,7 @@ func BuildAdapterCommand(capability RuntimeCapability, requested RequestedConfig
 }
 
 func runtimeHealthPath(kind RuntimeKind) string {
-	// llama-cpp-python 0.3.33 does not expose /health. /v1/models is cheap,
-	// authenticated and only succeeds after the OpenAI-compatible worker is up.
-	// vLLM exposes the same stable endpoint across supported versions.
+
 	if kind == RuntimeLlamaCPP || kind == RuntimeVLLM {
 		return "/v1/models"
 	}
@@ -210,9 +198,7 @@ func canonicalKVCacheDType(kind RuntimeKind, value string) string {
 	value = strings.TrimSpace(value)
 	switch strings.ToLower(value) {
 	case "q4", "q4_0", "quanto_4bit", "turboquant_4bit_nc":
-		// Four-bit cache names are backend-specific. Treat every known name as
-		// the same policy-level request so persisted configurations keep using
-		// four-bit KV storage when the automatic runtime changes.
+
 		switch kind {
 		case RuntimeLlamaCPP:
 			return "q4_0"
@@ -279,14 +265,11 @@ func llamaCPPArgv(python, internalAPIKey string, cfg EffectiveConfig) []string {
 	argv = appendIntFlag(argv, "--n_gpu_layers", cfg.GPULayers)
 	argv = appendIntFlag(argv, "--n_threads", cfg.Threads)
 	if cfg.KVCacheDType != "" {
-		// llama-cpp-python 0.3.33 exposes these options as --type_k and
-		// --type_v and expects numeric ggml_type enum values. Textual values
-		// and the older cache_type flags are rejected by its CLI parser.
+
 		cacheType := llamaCPPTypeCode(cfg.KVCacheDType)
 		argv = append(argv, "--type_k", cacheType, "--type_v", cacheType)
 		if strings.EqualFold(strings.TrimSpace(cfg.KVCacheDType), "q4_0") || strings.EqualFold(strings.TrimSpace(cfg.KVCacheDType), "q4") {
-			// llama.cpp requires flash attention for a quantized V cache. This
-			// is supported by the confirmed CPU smoke test as well as GPU builds.
+
 			argv = append(argv, "--flash_attn", "True")
 		}
 	}
@@ -304,8 +287,7 @@ func llamaCPPTypeCode(value string) string {
 	case "q8_0", "q8":
 		return "8"
 	default:
-		// Capability validation normally prevents unknown values. Preserve a
-		// numeric expert value for forward-compatible ggml enum additions.
+
 		if _, err := strconv.Atoi(strings.TrimSpace(value)); err == nil {
 			return strings.TrimSpace(value)
 		}

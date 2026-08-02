@@ -9,38 +9,28 @@ import (
 	"github.com/fillyengine/backend/internal/memory"
 )
 
-// isHashModel reports whether a model identifier belongs to the built-in hash
-// embedding family. Hash vectors live in vec_hash (sized to the hash dim); real
-// embeddings live in vec_active. Matching by prefix keeps routing correct across
-// hash model version bumps (hash-v1, hash-v2, …) instead of pinning one version.
 func isHashModel(model string) bool {
 	return strings.HasPrefix(model, "hash-")
 }
 
-// EmbeddingRecord is one embedding write (used solo and in reindex batches).
 type EmbeddingRecord struct {
 	DocID     string
 	Embedding []float32
 	Model     string
 }
 
-// EmbeddedDocument is a search document together with its stored vector.
 type EmbeddedDocument struct {
 	Document  memory.SearchDocument
 	Embedding []float32
 	Model     string
 }
 
-// UpsertEmbedding stores the vector, its model metadata and the ANN virtual table
-// rows for one document in a single write transaction.
 func (s *SQLiteStore) UpsertEmbedding(record EmbeddingRecord) error {
 	return s.withImmediateTx(func(tx *writeTx) error {
 		return upsertEmbedding(tx, record)
 	})
 }
 
-// UpsertEmbeddingBatch writes one reindex batch in a single short commit so
-// the write lock is released between batches and live captures interleave.
 func (s *SQLiteStore) UpsertEmbeddingBatch(records []EmbeddingRecord) error {
 	if len(records) == 0 {
 		return nil
@@ -65,11 +55,10 @@ func upsertEmbedding(tx *writeTx, record EmbeddingRecord) error {
 		return fmt.Errorf("embedding update failed: %w", err)
 	}
 	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
-		// Document vanished (deleted between embed and store): nothing to do.
+
 		return nil
 	}
 
-	// Clear legacy entries in both virtual tables to ensure clean state
 	if _, err := tx.Exec(`DELETE FROM vec_active WHERE doc_id = ?`, record.DocID); err != nil {
 		return err
 	}
@@ -89,7 +78,6 @@ func upsertEmbedding(tx *writeTx, record EmbeddingRecord) error {
 	return err
 }
 
-// DeleteEmbedding clears vector data for a document from standard and virtual tables.
 func (s *SQLiteStore) DeleteEmbedding(docID string) error {
 	return s.withImmediateTx(func(tx *writeTx) error {
 		if _, err := tx.Exec(`DELETE FROM vec_active WHERE doc_id = ?`, docID); err != nil {
@@ -107,8 +95,6 @@ func (s *SQLiteStore) DeleteEmbedding(docID string) error {
 	})
 }
 
-// CandidateDocuments returns scoring candidates for one model using sqlite-vec
-// virtual table search.
 func (s *SQLiteStore) CandidateDocuments(model string, queryVector []float32, filters memory.SearchFilters, fillLimit int) ([]EmbeddedDocument, error) {
 	if fillLimit <= 0 {
 		fillLimit = 256
@@ -147,8 +133,6 @@ func (s *SQLiteStore) CandidateDocuments(model string, queryVector []float32, fi
 	return scanEmbeddedDocuments(rows)
 }
 
-// CountDocsNotEmbeddedWith is the reindex progress metric:
-// count(*) WHERE embedding_model != <active model>.
 func (s *SQLiteStore) CountDocsNotEmbeddedWith(model string) (int, error) {
 	var count int
 	err := s.db.QueryRow(`
@@ -157,8 +141,6 @@ func (s *SQLiteStore) CountDocsNotEmbeddedWith(model string) (int, error) {
 	return count, err
 }
 
-// ListDocsForReindex returns the next batch of documents whose stored
-// embedding does not come from the given model (including never-embedded).
 func (s *SQLiteStore) ListDocsForReindex(model string, limit int) ([]memory.SearchDocument, error) {
 	if limit <= 0 {
 		limit = 64
@@ -177,8 +159,6 @@ func (s *SQLiteStore) ListDocsForReindex(model string, limit int) ([]memory.Sear
 	return scanDocuments(rows)
 }
 
-// ImportLegacyVectors is the atomic one-time migration of the old JSON
-// sidecar index into SQLite.
 func (s *SQLiteStore) ImportLegacyVectors(vectors map[string][]float32, model string) (int, error) {
 	imported := 0
 	err := s.withImmediateTx(func(tx *writeTx) error {
@@ -199,7 +179,6 @@ func (s *SQLiteStore) ImportLegacyVectors(vectors map[string][]float32, model st
 				continue
 			}
 
-			// Clear legacy entries in both virtual tables to ensure clean state
 			if _, err := tx.Exec(`DELETE FROM vec_active WHERE doc_id = ?`, docID); err != nil {
 				return err
 			}
@@ -230,8 +209,6 @@ func (s *SQLiteStore) ImportLegacyVectors(vectors map[string][]float32, model st
 	return imported, nil
 }
 
-// CountEmbeddingsByModel reports how many documents carry which model —
-// useful to watch the hash-vs-embedding split of the stored corpus.
 func (s *SQLiteStore) CountEmbeddingsByModel() (map[string]int, error) {
 	rows, err := s.db.Query(`
 		SELECT embedding_model, COUNT(*) FROM vector_documents GROUP BY embedding_model

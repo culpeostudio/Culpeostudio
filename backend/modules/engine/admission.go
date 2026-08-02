@@ -1,3 +1,5 @@
+// Package engine starts, supervises and stops local model instances, admits or
+// refuses a start based on available memory, and streams engine events.
 package engine
 
 import (
@@ -16,9 +18,6 @@ type startAdmissionEntry struct {
 	ready    chan struct{}
 }
 
-// startAdmissionQueue serializes memory-changing starts. Unlike a mutex it
-// exposes deterministic queue positions, supports cancellation before spawn,
-// and can pause admission while the host is under memory pressure.
 type startAdmissionQueue struct {
 	mu      sync.Mutex
 	active  *startAdmissionEntry
@@ -81,9 +80,7 @@ func (q *startAdmissionQueue) wait(ctx context.Context, id string) error {
 		return nil
 	case <-ctx.Done():
 		q.mu.Lock()
-		// Promotion and cancellation can become ready simultaneously. Once the
-		// entry is active, admission owns the lifecycle slot and the caller must
-		// run its deferred done path instead of stranding q.active forever.
+
 		if q.active == entry {
 			q.mu.Unlock()
 			return nil

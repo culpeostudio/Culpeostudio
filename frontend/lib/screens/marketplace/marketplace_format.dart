@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 
-// Gemeinsame Formatierhelfer des Marktplatzes.
-
 final RegExp _marketplaceQuantizationPattern = RegExp(
   r'^(?:i?q[1-8](?:_[0-9])?(?:_[a-z0-9]{1,3}){0,2}|int[348]|fp(?:8|16|32)|bf16|nf4|gptq|awq)$',
   caseSensitive: false,
 );
 
-/// Die kompakte Darstellung der technischen Download-Varianten einer
-/// Modellkarte. Die vollständigen Varianten bleiben für Tooltip, Details und
-/// Download-Auswahl erhalten.
 class MarketplaceQuantizationSummary {
   const MarketplaceQuantizationSummary({
     required this.variants,
@@ -21,8 +16,6 @@ class MarketplaceQuantizationSummary {
 
   bool get isEmpty => variants.isEmpty;
 
-  /// Zeigt höchstens drei Familien; weitere Einzelvarianten werden gezählt.
-  /// Beispiel: Q4_K_M, Q4_0, Q8_0 wird zu `Q4 · Q8 · +1`.
   String get label {
     if (variants.isEmpty) return '';
     if (variants.length == 1) return variants.single;
@@ -38,7 +31,6 @@ class MarketplaceQuantizationSummary {
   String get tooltip => variants.join(' · ');
 }
 
-/// Ein einheitlicher, kompakter Hinweis für mehrere Download-Varianten.
 class MarketplaceQuantizationSummaryTag extends StatelessWidget {
   const MarketplaceQuantizationSummaryTag({super.key, required this.summary});
 
@@ -49,8 +41,7 @@ class MarketplaceQuantizationSummaryTag extends StatelessWidget {
     const color = Color(0xFFDFC077);
     return Tooltip(
       message: summary.tooltip,
-      // Gleiche Masse wie die uebrigen Karten-Tags, damit die zusammengefasste
-      // Quantisierung nicht als Fremdkoerper in der Tag-Zeile sitzt.
+
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
@@ -78,16 +69,12 @@ class MarketplaceQuantizationSummaryTag extends StatelessWidget {
   }
 }
 
-/// Erkennt die Quantisierungsnamen, die der Marketplace-Backend liefert.
 bool isMarketplaceQuantization(String rawValue) {
   return _marketplaceQuantizationPattern.hasMatch(
     _normalizeMarketplaceQuantization(rawValue),
   );
 }
 
-/// Fasst Varianten derselben Bit-Familie zusammen, ohne die Rohwerte zu
-/// verlieren. So bleiben Karten ruhig, während der Tooltip weiterhin jede
-/// konkrete Variante aufführt.
 MarketplaceQuantizationSummary summarizeMarketplaceQuantizations(
   Iterable<String> rawValues,
 ) {
@@ -111,8 +98,6 @@ MarketplaceQuantizationSummary summarizeMarketplaceQuantizations(
   );
 }
 
-/// Filtert die bereits im Backend duplizierten Quantisierungs-Tags aus den
-/// allgemeinen Fähigkeiten. Sie erscheinen stattdessen als ein Summary-Chip.
 List<String> marketplaceNonQuantizationTags(Iterable<String> tags) {
   return [
     for (final tag in tags)
@@ -154,7 +139,6 @@ String _marketplaceQuantizationFamily(String normalized) {
   return (exactFamily?.group(0) ?? normalized).toUpperCase();
 }
 
-// Hilfsfunktion: formatiert eine Byte-Groesse lesbarer (KB/MB/GB).
 String formatBytes(int bytes) {
   if (bytes <= 0) return '-';
   const unit = 1024;

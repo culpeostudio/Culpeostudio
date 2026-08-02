@@ -30,11 +30,6 @@ type installerLifetimePayload struct {
 	Args []string `json:"args"`
 }
 
-// init is a shell-free, backend-lifetime supervisor for installer, compiler,
-// and runtime-prewarm commands. The requested argv is serialized before fork;
-// the wrapper waits on a kernel pipe barrier, then starts it in the wrapper's
-// dedicated process group. EOF on that pipe means the backend disappeared and
-// SIGKILLs the complete group, including grandchildren.
 func init() {
 	if os.Getenv(installerLifetimeFlag) != "1" {
 		return
@@ -83,9 +78,7 @@ func prepareCommandLifetime(cmd *exec.Cmd) (preparedCommandLifetime, error) {
 	lifetime := &posixCommandLifetime{reader: reader, writer: writer}
 	fd := 3 + len(cmd.ExtraFiles)
 	cmd.ExtraFiles = append(cmd.ExtraFiles, reader)
-	// Linux's direct-child PDEATHSIG must be disabled for this wrapper. It has
-	// to survive backend death long enough to observe pipe EOF and atomically
-	// kill the complete process group rather than only the direct child.
+
 	disableDirectParentDeathSignal(cmd)
 	cmd.Path = executable
 	cmd.Args = []string{executable}
@@ -105,8 +98,7 @@ func (l *posixCommandLifetime) Bind(_ *exec.Cmd) error {
 	if l == nil || l.reader == nil || l.writer == nil {
 		return errors.New("installer lifetime pipe is unavailable")
 	}
-	// Only the wrapper may retain the read end. Otherwise backend death would
-	// leave this parent copy open and suppress the EOF notification.
+
 	if err := l.reader.Close(); err != nil {
 		return fmt.Errorf("close parent lifetime reader: %w", err)
 	}
@@ -149,8 +141,7 @@ func runInstallerLifetimeSupervisor(payload installerLifetimePayload) (int, erro
 		return installerLifetimeExitFailed, errors.New("invalid backend-lifetime descriptor")
 	}
 	defer lifetime.Close()
-	// The requested command and all descendants must not inherit the lifetime
-	// descriptor. Only this supervisor watches it for backend death.
+
 	unix.CloseOnExec(fd)
 	start := []byte{0}
 	count, readErr := io.ReadFull(lifetime, start)
@@ -199,9 +190,7 @@ func runInstallerLifetimeSupervisor(payload installerLifetimePayload) (int, erro
 		}
 		return installerLifetimeExitFailed, waitErr
 	case lifetimeErr := <-lifetimeEnded:
-		// The wrapper and requested command intentionally share one dedicated
-		// group. Killing the negative group ID therefore includes compiler/pip
-		// grandchildren even when the backend itself was SIGKILLed.
+
 		if unix.Getpgrp() != group || group != os.Getpid() {
 			_ = worker.Process.Kill()
 			return installerLifetimeExitFailed, errors.New("installer process group changed unexpectedly")

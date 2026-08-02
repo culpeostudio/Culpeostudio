@@ -1,3 +1,5 @@
+// Package memoryviewer publishes memory changes to connected clients so the
+// viewer can follow them live.
 package memoryviewer
 
 import (
@@ -5,8 +7,6 @@ import (
 	"time"
 )
 
-// UserIDProvider is implemented by event payloads that carry a user ID.
-// This allows eventUserID filtering without reflection.
 type UserIDProvider interface {
 	GetUserID() string
 }
@@ -65,8 +65,6 @@ func (h *Hub) Unsubscribe(channel chan Event) {
 	h.mu.Unlock()
 }
 
-// Close unsubscribes and closes all active subscriber channels, causing their
-// SSE goroutines to exit cleanly. Call this during graceful shutdown.
 func (h *Hub) Close() {
 	h.closeOnce.Do(func() {
 		h.mu.Lock()

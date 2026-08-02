@@ -1,3 +1,5 @@
+// Package middleware provides the HTTP authentication filter shared by the API
+// modules.
 package middleware
 
 import (
@@ -18,9 +20,6 @@ func AuthMiddleware(secret string, activeUser ...func(string) bool) fiber.Handle
 			return c.Next()
 		}
 
-		// Memory-Routen: JWT ist optional. Ohne gueltiges JWT laeuft der
-		// Request weiter und das Memory-Modul erzwingt seine eigene
-		// Bearer-Token-Auth (MEMORY_API_TOKEN) — nie unauthentifiziert.
 		memoryRoute := isMemoryRoute(c.Path())
 
 		auth := c.Get("Authorization")
@@ -83,16 +82,12 @@ func isPublicAuthRoute(method, path string) bool {
 		"POST /api/auth/setup/confirm",
 		"POST /api/accounts",
 		"POST /api/password/reset",
-		// Memory-Viewer: statische HTML-Seite ohne Nutzerdaten;
-		// der SSE-Feed schuetzt sich selbst ueber Einmal-Tickets
-		// (POST /api/memory/events/ticket erfordert Auth).
+
 		"GET /memory/view",
 		"GET /memory/events":
 		return true
 	default:
-		// EventSource kann keinen Authorization-Header setzen. Dieser eine GET-
-		// Endpoint ist nur mit einem kurzlebigen, einmalig konsumierbaren Ticket
-		// nutzbar, das zuvor ueber den JWT-geschuetzten POST-Endpunkt erstellt wird.
+
 		return method == "GET" && path == "/api/engine/events"
 	}
 }

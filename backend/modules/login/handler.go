@@ -57,8 +57,6 @@ func (m *LoginModule) Initialize() error {
 
 func (m *LoginModule) Shutdown() error { return nil }
 
-// ListUserIDs returns the currently configured login accounts. It is used by
-// user-scoped modules for one-time migrations of formerly global data.
 func (m *LoginModule) ListUserIDs() []string {
 	if err := m.accountStore.Load(); err != nil {
 		return nil
@@ -66,16 +64,10 @@ func (m *LoginModule) ListUserIDs() []string {
 	return m.accountStore.ListUsers()
 }
 
-// UserExists is used by the JWT middleware to reject a token after its login
-// account has been removed. It makes account deletion revoke even permanent
-// local sessions on the next server start.
 func (m *LoginModule) UserExists(username string) bool {
 	return m.accountStore.UserExists(username)
 }
 
-// SetUserCreatedHook registers a post-persistence hook for user-scoped stores.
-// Account creation and this hook are serialized so the first created account
-// deterministically receives any one-time legacy seed.
 func (m *LoginModule) SetUserCreatedHook(hook func(string) error) {
 	m.userCreatedMu.Lock()
 	m.userCreatedHook = hook
@@ -109,7 +101,6 @@ func (m *LoginModule) handleLogin(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Username und Passwort sind erforderlich"})
 	}
 
-	// Reload from disk so new scripted accounts are effective immediately.
 	if err := m.accountStore.Load(); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Konnte Accounts nicht laden"})
 	}
@@ -264,11 +255,6 @@ func (m *LoginModule) handleCreateAccount(c *fiber.Ctx) error {
 	return c.Status(201).JSON(fiber.Map{"username": username})
 }
 
-// handlePasswordReset ist ein oeffentlicher Endpoint (siehe isPublicAuthRoute) —
-// ohne den TOTP-Code waere er eine Kontouebernahme fuer JEDEN Account per
-// Username-Rateraten. Verlangt daher denselben Authenticator-Code wie
-// handleCreateAccount, statt sich auf ein altes Passwort zu verlassen (das der
-// Angreifer im Verlust-/Vergessen-Fall ja gerade nicht hat).
 func (m *LoginModule) handlePasswordReset(c *fiber.Ctx) error {
 	var body struct {
 		Username    string `json:"username"`
@@ -294,9 +280,6 @@ func (m *LoginModule) handlePasswordReset(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"username": strings.TrimSpace(body.Username), "password_reset": true})
 }
 
-// handleGetUserPreferences returns UI preferences for the authenticated login.
-// A missing entry deliberately reports configured=false so the client can show
-// its first-login flow without creating a profile before the user confirms it.
 func (m *LoginModule) handleGetUserPreferences(c *fiber.Ctx) error {
 	userID, ok := authenticatedUserID(c)
 	if !ok {

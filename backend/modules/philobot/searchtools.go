@@ -10,9 +10,6 @@ import (
 	"strings"
 )
 
-// skippedDirNames werden bei allen Verzeichnis-Durchlaeufen (grep_search,
-// find_files, Dateibaum) ignoriert: VCS-Metadaten, Abhaengigkeiten und
-// Build-Outputs, die das Ergebnis nur aufblaehen.
 var skippedDirNames = map[string]struct{}{
 	".git":         {},
 	"node_modules": {},
@@ -29,21 +26,18 @@ func shouldSkipDir(name string) bool {
 }
 
 const (
-	// maxSearchFileSize ueberspringt grosse Dateien bei der Volltextsuche.
-	maxSearchFileSize = 1 << 20 // 1 MB
-	// maxSearchResults deckelt die Trefferanzahl, damit der Tool-Loop und
-	// das Modell nicht in Ergebnissen ertrinken.
+	maxSearchFileSize = 1 << 20
+
 	maxSearchResults     = 200
 	maxSearchResultsHard = 1000
-	// maxMatchLineRunes kuerzt einzelne Trefferzeilen.
+
 	maxMatchLineRunes = 200
 )
 
-// isBinaryFile heuristisch: ein NUL-Byte in den ersten 8 KB gilt als binaer.
 func isBinaryFile(path string) bool {
 	f, err := os.Open(path)
 	if err != nil {
-		return true // nicht lesbar -> lieber ueberspringen
+		return true
 	}
 	defer f.Close()
 	buf := make([]byte, 8192)
@@ -51,8 +45,6 @@ func isBinaryFile(path string) bool {
 	return strings.ContainsRune(string(buf[:n]), '\x00')
 }
 
-// searchRoot loest das optionale path-Argument der Such-Tools auf; ohne Angabe
-// wird der erste freigegebene Root durchsucht.
 func (e *fileToolExecutor) searchRoot(args map[string]interface{}) (string, error) {
 	rawPath, _ := args["path"].(string)
 	if strings.TrimSpace(rawPath) == "" {
@@ -64,7 +56,6 @@ func (e *fileToolExecutor) searchRoot(args map[string]interface{}) (string, erro
 	return e.resolvePath(rawPath, false)
 }
 
-// clampMaxResults liest das optionale max_results-Argument.
 func clampMaxResults(args map[string]interface{}) int {
 	maxResults := maxSearchResults
 	if raw, ok := args["max_results"].(float64); ok && int(raw) > 0 {
@@ -76,8 +67,6 @@ func clampMaxResults(args map[string]interface{}) int {
 	return maxResults
 }
 
-// matchGlobPattern matcht ein Glob-Pattern mit **-Unterstuetzung: * und ?
-// wirken pro Pfad-Segment, ** steht fuer beliebig viele Segmente.
 func matchGlobPattern(pattern, name string) bool {
 	pSeg := strings.Split(filepath.ToSlash(pattern), "/")
 	nSeg := strings.Split(filepath.ToSlash(name), "/")
@@ -107,8 +96,6 @@ func matchGlobSegments(p, n []string) bool {
 	return len(n) == 0
 }
 
-// grepSearch durchsucht Dateien im Sandbox-Bereich nach einem Literal oder
-// Regex und liefert Treffer als {path, line, text} zurueck.
 func (e *fileToolExecutor) grepSearch(args map[string]interface{}) (map[string]interface{}, error) {
 	pattern, _ := args["pattern"].(string)
 	isRegex, _ := args["is_regex"].(bool)
@@ -134,7 +121,7 @@ func (e *fileToolExecutor) grepSearch(args map[string]interface{}) (map[string]i
 	truncated := false
 
 	scanFile := func(filePath string) bool {
-		// true = Ergebnis-Cap erreicht, Walk abbrechen.
+
 		f, err := os.Open(filePath)
 		if err != nil {
 			return false
@@ -211,8 +198,6 @@ func (e *fileToolExecutor) grepSearch(args map[string]interface{}) (map[string]i
 	}, nil
 }
 
-// findFiles sucht Dateien anhand eines Glob-Musters (z. B. "*.dart" oder
-// "**/test_*.go") und liefert relative Pfade zurueck.
 func (e *fileToolExecutor) findFiles(args map[string]interface{}) (map[string]interface{}, error) {
 	pattern, _ := args["pattern"].(string)
 	maxResults := clampMaxResults(args)
@@ -271,10 +256,9 @@ func (e *fileToolExecutor) findFiles(args map[string]interface{}) (map[string]in
 	}, nil
 }
 
-// dirTreeEntry ist ein Knoten des Dateibaums fuer den Frontend-Endpunkt.
 type dirTreeEntry struct {
 	Name     string          `json:"name"`
-	Path     string          `json:"path"` // relativ zum Projekt-Root
+	Path     string          `json:"path"`
 	IsDir    bool            `json:"is_dir"`
 	Children []*dirTreeEntry `json:"children,omitempty"`
 }
@@ -284,7 +268,6 @@ const (
 	maxTreeEntries = 500
 )
 
-// buildDirTree erzeugt einen tiefen- und eintragsbegrenzten Verzeichnisbaum.
 func buildDirTree(root string) (*dirTreeEntry, bool) {
 	remaining := maxTreeEntries
 	truncated := false

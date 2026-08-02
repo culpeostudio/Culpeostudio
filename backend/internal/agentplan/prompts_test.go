@@ -20,9 +20,6 @@ func TestDecomposePromptNenntAufgabeUndFormat(t *testing.T) {
 	}
 }
 
-// TestStepPromptIsoliertKontext ist die zentrale Eigenschaft der Subagenten:
-// ein Schritt sieht das Ziel, seinen Auftrag und die Ergebnisse davor —
-// aber nicht die Ergebnisse der Schritte danach.
 func TestStepPromptIsoliertKontext(t *testing.T) {
 	plan := Plan{
 		Goal: "Timeout erhoehen",
@@ -65,7 +62,6 @@ func TestStepPromptOhneVorgeschichte(t *testing.T) {
 	}
 }
 
-// TestStepPromptKuerztLangeErgebnisse haelt den Kontext eines Subagenten klein.
 func TestStepPromptKuerztLangeErgebnisse(t *testing.T) {
 	lang := strings.Repeat("x", maxResultChars*3)
 	plan := Plan{

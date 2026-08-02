@@ -64,10 +64,7 @@ func TestBuildHuggingFaceOptionsGroupsSafetensorsShards(t *testing.T) {
 }
 
 func TestBuildHuggingFaceOptionsGroupsGGUFShards(t *testing.T) {
-	// Quantized weights above ~50GB (roughly 70B+ parameter models) are
-	// split across multiple .gguf files using the same "-NNNNN-of-NNNNN"
-	// convention as safetensors. Without grouping, the recommender saw one
-	// shard's size and estimated VRAM for half (or less) of the real model.
+
 	options := BuildHuggfaceFilteredOptions([]HuggingFaceSibling{
 		{RFilename: "Llama-3.3-70B-Instruct-Q5_K_M-00001-of-00002.gguf", Size: 10 * 1024 * 1024 * 1024},
 		{RFilename: "Llama-3.3-70B-Instruct-Q5_K_M-00002-of-00002.gguf", Size: 9 * 1024 * 1024 * 1024},
@@ -86,11 +83,7 @@ func TestBuildHuggingFaceOptionsGroupsGGUFShards(t *testing.T) {
 }
 
 func TestBuildHuggingFaceOptionsGroupsShardsWithMismatchedDigitWidth(t *testing.T) {
-	// DeepSeek-V3-style repos pad the shard index to 5 digits but the total
-	// count to 6 (e.g. "-00012-of-000163"). A fixed \d{5} pattern silently
-	// failed to match this, leaving every shard as its own tiny-looking
-	// option and letting a ~700B-parameter model's real weight file leak in
-	// at 1/163rd of its actual size.
+
 	options := BuildHuggfaceFilteredOptions([]HuggingFaceSibling{
 		{RFilename: "model-00001-of-000163.safetensors", Size: 4 * 1024 * 1024 * 1024},
 		{RFilename: "model-00002-of-000163.safetensors", Size: 4 * 1024 * 1024 * 1024},

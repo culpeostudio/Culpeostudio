@@ -5,19 +5,8 @@ import (
 	"strings"
 )
 
-// truncationSuspicionChars ist die Laenge, ab der ein fehlendes Folgefeld
-// eher an einer abgeschnittenen Modell-Antwort liegt als an Unkenntnis.
 const truncationSuspicionChars = 600
 
-// truncationAwareHint liefert den Argument-Hinweis - und erkennt dabei den
-// haeufigsten Fall: die Antwort des Modells wurde mitten im JSON
-// abgeschnitten.
-//
-// Ein Modell, das eine ganze Funktion als old_text schickt, verbraucht sein
-// Token-Budget, bevor es new_text schreiben kann. Der Aufruf kommt dann ohne
-// new_text an. Der generische Hinweis "Erwarte new_text" hilft da nicht - das
-// Modell weiss das, es kam nur nicht so weit. Es muss stattdessen kleiner
-// schneiden.
 func truncationAwareHint(toolName string, args map[string]interface{}) string {
 	if toolName != "patch_file" && toolName != "write_file" {
 		return fileToolArgumentHint(toolName)
@@ -40,19 +29,6 @@ func truncationAwareHint(toolName string, args map[string]interface{}) string {
 		longest, fileToolArgumentHint(toolName))
 }
 
-// argumentAliases bildet gaengige Feldnamen auf die Namen ab, die die
-// Werkzeuge tatsaechlich erwarten.
-//
-// Kleinere Modelle treffen den Feldnamen oft nicht: sie schicken bei
-// find_files ein "glob" oder "query" statt "pattern", bei read_file ein
-// "file" statt "path". Fachlich meinen sie dasselbe. Ohne diese
-// Uebersetzung scheitert der Aufruf, das Modell versucht es wortgleich
-// noch einmal und verbraucht so das Rundenbudget des Schritts - genau
-// das war in der Praxis zu beobachten.
-//
-// Die Zuordnung ist bewusst eng gehalten: nur eindeutige Synonyme, keine
-// Ratespiele. Ein unbekanntes Feld bleibt ein Fehler, damit echte
-// Missverstaendnisse nicht unter den Teppich geraten.
 var argumentAliases = map[string]map[string]string{
 	"find_files": {
 		"glob": "pattern", "query": "pattern", "name": "pattern",
@@ -97,9 +73,6 @@ var argumentAliases = map[string]map[string]string{
 	},
 }
 
-// normalizeToolArguments uebersetzt bekannte Feldnamen-Varianten auf die
-// erwarteten Namen. Der kanonische Name gewinnt immer: schickt ein Modell
-// beides, bleibt der richtige Wert stehen.
 func normalizeToolArguments(toolName string, args map[string]interface{}) map[string]interface{} {
 	aliases, known := argumentAliases[toolName]
 	if !known || len(args) == 0 {
@@ -116,7 +89,7 @@ func normalizeToolArguments(toolName string, args map[string]interface{}) map[st
 			continue
 		}
 		if existing, hasCanonical := out[canonical]; hasCanonical {
-			// Kanonisches Feld ist gesetzt und nicht leer: Alias verwerfen.
+
 			if text, isText := existing.(string); !isText || strings.TrimSpace(text) != "" {
 				delete(out, alias)
 				continue

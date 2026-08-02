@@ -155,7 +155,7 @@ func TestWeightedFairAllocationAndPinnedContext(t *testing.T) {
 	runtimeBytes := int64(0)
 	requested := 10_000
 	model := Model{ID: "tiny", WeightBytes: 1, ContextLimit: requested, Layers: 1, KVHeads: 1, HeadDimension: 1}
-	// Two weights + two 256-token minima + exactly ten 256-token chunks.
+
 	hardware := Hardware{RAMTotalBytes: 2 + 2*256 + 10*256}
 	requests := []Request{
 		{InstanceID: "low", Model: model, RequestedContext: &requested, MinimumContext: 256, Priority: PriorityLow, RuntimeOverheadBytes: &runtimeBytes},

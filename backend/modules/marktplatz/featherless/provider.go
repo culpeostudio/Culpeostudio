@@ -1,3 +1,5 @@
+// Package featherless adapts the Featherless catalogue to the marketplace
+// provider interface.
 package featherless
 
 import (
@@ -22,23 +24,14 @@ type featherlessResponse struct {
 	Data []featherlessModel `json:"data"`
 }
 
-// catalogCacheTTL: Katalog bleibt 15min gueltig; vermeidet, dass pro Request
-// die gesamte Featherless-Modelliste neu geladen+decodiert wird. Siehe H8.
 const catalogCacheTTL = 15 * time.Minute
 
-// catalogCache haelt die rohe Provider-Antwort mit Zeitstempel vor.
-// Schreibzugriff nur unter catalogMu.
 var (
 	catalogMu     sync.Mutex
 	cachedCatalog []featherlessModel
 	cachedAt      time.Time
 )
 
-// staticPublicFallback ist eine kleine eingebaute Liste fuer den Fall, dass
-// Featherless nur noch Public-Access ermoeglicht (401 mit gespeichertem
-// Token). Frueher wurde bei JEDEM Fehler (5xx, Netzwerk, etc.) dieser Fallback
-// geliefert und der User bekam eine scheinbar aktuelle, in Wahrheit stale
-// Liste – `partial` wurde nie gesetzt. M2.
 func staticPublicFallback() []featherlessModel {
 	return []featherlessModel{
 		{ID: "vicgalle/Roleplay-Llama-3-8B", Name: "Roleplay Llama 3 8B", ModelClass: "llama3-8b"},
@@ -73,10 +66,6 @@ func staticPublicFallback() []featherlessModel {
 	}
 }
 
-// loadCatalog laedt den Featherless-Katalog (mit TTL-Cache) und liefert die
-// rohen Eintraege. Bei 401 wird der staticPublicFallback geliefert; bei
-// anderen Fehlern (5xx, Netzwerk) wird der Fehler durchgereicht, damit der
-// Handler `partial=true` und die Fehlermeldung melden kann. M2.
 func loadCatalog(ctx context.Context, httpClient *http.Client, apiBase, token string) ([]featherlessModel, error) {
 	catalogMu.Lock()
 	if len(cachedCatalog) > 0 && time.Since(cachedAt) < catalogCacheTTL {
@@ -94,14 +83,14 @@ func loadCatalog(ctx context.Context, httpClient *http.Client, apiBase, token st
 
 	var response featherlessResponse
 	if err := common.RequestJSON(ctx, httpClient, "GET", apiURL, headers, &response); err != nil {
-		// Nur 401 (public access limit) -> Fallback; andere Fehler weiterreichen.
+
 		if isUnauthorizedErr(err) {
 			return staticPublicFallback(), nil
 		}
 		return nil, err
 	}
 	if len(response.Data) == 0 {
-		// Kein Fehler, aber leere Antwort – einmalig Fallback, nicht cachen.
+
 		return staticPublicFallback(), nil
 	}
 
@@ -112,8 +101,6 @@ func loadCatalog(ctx context.Context, httpClient *http.Client, apiBase, token st
 	return response.Data, nil
 }
 
-// InvalidateCache ist ein Test-Hook, um den Katalog-Cache zwischen Tests
-// zurueckzusetzen. Produktivcode sollte ihn nicht aufrufen.
 func InvalidateCache() {
 	catalogMu.Lock()
 	cachedCatalog = nil
@@ -141,7 +128,6 @@ func SearchFeatherless(ctx context.Context, httpClient *http.Client, apiBase, qu
 			name = modelID
 		}
 
-		// Filter by query
 		if q != "" {
 			if !strings.Contains(strings.ToLower(modelID), q) && !strings.Contains(strings.ToLower(name), q) {
 				continue
@@ -182,9 +168,6 @@ func SearchFeatherless(ctx context.Context, httpClient *http.Client, apiBase, qu
 	return out, nil
 }
 
-// DetailFeatherless sucht ein einzelnes Modell im (ggf. gecachten) Katalog.
-// Liefert reichere Metadaten als ein teurer Remote-Aufruf und vermeidet,
-// dass fuer jede Detail-Anzeige der komplette Katalog neu geladen wird. H8.
 func DetailFeatherless(ctx context.Context, httpClient *http.Client, apiBase string, modelID string, token string) (types.ModelDetail, error) {
 	list, err := SearchFeatherless(ctx, httpClient, apiBase, modelID, "", 0, token)
 	if err != nil {
@@ -204,8 +187,6 @@ func DetailFeatherless(ctx context.Context, httpClient *http.Client, apiBase str
 	return types.ModelDetail{}, fmt.Errorf("model not found on Featherless: %s", modelID)
 }
 
-// isUnauthorizedErr erkennt 401-Antworten von Featherless (gleicher Stil wie
-// HuggingFace).
 func isUnauthorizedErr(err error) bool {
 	if err == nil {
 		return false

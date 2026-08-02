@@ -41,8 +41,7 @@ func TestGuardPublicURLBlocksInternalTargets(t *testing.T) {
 }
 
 func TestGuardPublicURLAllowsPublicIP(t *testing.T) {
-	// Literale oeffentliche IPs brauchen keinen DNS-Lookup, der Test
-	// bleibt damit netzunabhaengig.
+
 	for _, raw := range []string{"https://8.8.8.8/", "http://1.1.1.1/pfad?q=1", "https://[2606:4700:4700::1111]/"} {
 		if err := GuardPublicURL(context.Background(), raw); err != nil {
 			t.Errorf("GuardPublicURL(%q) = %v, erwartet nil", raw, err)

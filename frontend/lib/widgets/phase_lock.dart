@@ -4,17 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../l10n/remaining_ui_strings.dart';
 
-/// The rollout phase the platform is currently in. Modules that belong to a
-/// later phase are locked with a [PhaseLockOverlay] so users cannot use a
-/// feature that is not part of the current phase yet.
 const int kCurrentPhase = 1;
 
 const Color _kGold = Color(0xFFC9A24A);
 
-/// Wraps a module's UI and makes the whole screen unusable: the real content is
-/// kept mounted only as a blurred, dimmed preview that cannot be clicked, typed
-/// into, or tab-focused, and a full-cover barrier explains that the feature is
-/// reserved for a later rollout phase.
 class PhaseLockOverlay extends StatelessWidget {
   const PhaseLockOverlay({
     super.key,
@@ -23,21 +16,16 @@ class PhaseLockOverlay extends StatelessWidget {
     required this.child,
   });
 
-  /// The rollout phase this module is planned for (e.g. 3 or 4).
   final int phase;
 
-  /// Human-readable subject of the sentence, e.g. 'Das Training'.
   final String feature;
 
-  /// The original, interactive screen content – shown only as a locked preview.
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Real UI as an unreachable preview: removed from pointer AND focus
-        // handling so nothing on it can be clicked, typed into, or tabbed to.
         Positioned.fill(
           child: ExcludeFocus(
             child: IgnorePointer(
@@ -48,7 +36,7 @@ class PhaseLockOverlay extends StatelessWidget {
             ),
           ),
         ),
-        // Full-cover barrier that swallows every gesture.
+
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,

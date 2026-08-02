@@ -1,6 +1,7 @@
 // Tests in this package validate logic adapted from whichllm v0.5.15.
 // Copyright (c) 2026 Andyyyy64; original portions are MIT-licensed.
 // PhiloEngine modifications are AGPL-3.0-only. See NOTICE.
+
 package recommender
 
 import "testing"
@@ -21,11 +22,7 @@ func TestCheckIncludesRuntimeMemoryBeyondArtifactSize(t *testing.T) {
 }
 
 func TestCheckReportsUnsupportedWhenHardwareIsInsufficient(t *testing.T) {
-	// A 70B model on a machine with neither the VRAM nor the RAM to hold it
-	// must not report FitCPUOnly -- that value used to survive from Result's
-	// zero-initialization even when none of the switch cases in Check
-	// matched, making an unrunnable model look identical to one that
-	// genuinely runs (slowly) on the CPU.
+
 	model := Model{ID: "acme/model-70b", ParameterCount: 70_000_000_000, QualityScore: 80}
 	variant := Variant{Quantization: "Q4_K_M", FileSizeBytes: 40 * GiB}
 	result := Check(model, &variant, Hardware{

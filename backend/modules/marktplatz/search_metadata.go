@@ -7,11 +7,6 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// i? erfasst die IQ*-Familie (IQ4_XS, IQ3_M, IQ1_S, ...). Ohne das optionale
-// "i" matchte "IQ4_XS.gguf" nur "q4_xs", was in bytesPerWeight/quantPenalty
-// (recommender/estimate.go) nicht existiert und auf den generischen fp16-
-// Fallback zurueckfaellt -- eine deutlich zu grosse Groessen-/VRAM-Schaetzung
-// fuer Dateien, die tatsaechlich zu den kleinsten Quantisierungen gehoeren.
 var quantizationQPattern = regexp.MustCompile(`(?i)i?q[1-8](?:[_-][0-9])?(?:[_-][a-z0-9]{1,3}){0,2}`)
 var quantizationOtherPattern = regexp.MustCompile(`(?i)\b(int[348]|fp(?:8|16|32)|bf16|nf4|gptq|awq)\b`)
 
@@ -90,7 +85,7 @@ func matchesQuantization(quantizations []string, requested string) bool {
 		if norm == req {
 			return true
 		}
-		// broad filters: q4 should match q4_k_m etc.
+
 		if strings.HasPrefix(req, "q") && !strings.Contains(req, "_") && strings.HasPrefix(norm, req) {
 			return true
 		}

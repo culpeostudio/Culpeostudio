@@ -155,8 +155,7 @@ func TestDarwinLimiterParentProcess(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	// Deliberately bypass cleanup: kernel-closing the lifetime-pipe writer is
-	// the abnormal-backend-death condition under test.
+
 	os.Exit(0)
 }
 

@@ -71,25 +71,10 @@ func (s *Service) BuildContextForUser(userID, sessionID, query string, limit int
 	}, nil
 }
 
-// BuildUserContext assembles a cross-session memory recall for a user. Unlike
-// BuildContextForUser it is not tied to a single session: it searches the
-// user's entire memory (every session) for the query and renders a compact
-// recall block from the matching observations. Chat surfaces such as PhiloBot
-// use it to recall durable user facts (e.g. the user's name) in a brand-new
-// conversation, where no session-scoped memory exists yet. The rendered block
-// intentionally omits the memory-tool hints, because plain chat has no tools to
-// call. An empty query yields an empty envelope rather than an error, and a
-// user without any stored memory simply gets an empty InjectionPrompt.
 func (s *Service) BuildUserContext(userID, query string, limit int) (*ContextEnvelope, error) {
 	return s.BuildScopedContext(userID, "", query, limit)
 }
 
-// BuildScopedContext ist BuildUserContext mit optionalem Projekt-Grid. Ist
-// project gesetzt, werden die generelle und die project_data-Suche auf genau
-// dieses Projekt eingeschraenkt ("Grid") — Wissen aus anderen Projekten bleibt
-// aussen vor. Die user_data-Suche bleibt bewusst ungescoped, damit dauerhafte
-// Nutzer-Fakten (Name, Vorlieben) in jedem Projekt-Chat erinnert werden. Ein
-// leeres project reproduziert exakt das nutzerweite Verhalten (alle Projekte).
 func (s *Service) BuildScopedContext(userID, project, query string, limit int) (*ContextEnvelope, error) {
 	userID = normalizeUserID(userID, s.defaultUserID)
 	project = strings.TrimSpace(project)
@@ -105,19 +90,12 @@ func (s *Service) BuildScopedContext(userID, project, query string, limit int) (
 	if query == "" {
 		return envelope, nil
 	}
-	// Recall darf nicht daran scheitern, dass die Query in einen anderen Layer
-	// routet als der gespeicherte Fakt (routeIntent schiebt "ich/mein"-Fragen
-	// nach user_data). Wir suchen daher die natuerliche (geroutete) Query plus
-	// beide Layer explizit. Ein groesserer Kandidaten-Pool als die Zahl der final
-	// gerenderten Zeilen gibt Reserve, weil renderUserRecall Anti-Fakten und
-	// Duplikate herausfiltert.
+
 	pool := limit
 	if pool < recallCandidatePool {
 		pool = recallCandidatePool
 	}
-	// Die drei Layer-Suchen sind unabhaengig und laufen parallel (SQLite-Reads
-	// sind nebenlaeufig sicher). Projekt-Scope greift nur auf die generelle und
-	// die project_data-Suche; user_data bleibt ungescoped (globale Nutzer-Fakten).
+
 	jobs := []SearchFilters{
 		{UserID: userID, Project: project, Limit: pool},
 		{UserID: userID, Layer: LayerUserData, Limit: pool},
@@ -139,10 +117,7 @@ func (s *Service) BuildScopedContext(userID, project, query string, limit int) (
 			return nil, err
 		}
 	}
-	// Global nach dem (schon recency-/typ-gewichteten) Search-Score ranken statt
-	// die Layer-Ergebnisse bloss aneinanderzuhaengen. So gewinnt der beste
-	// Treffer ueber alle Layer hinweg – der Score ist zwischen den Suchen
-	// vergleichbar, weil dieselbe Formel greift.
+
 	bestByRef := make(map[string]SearchResult)
 	for _, results := range resultsByJob {
 		for _, result := range results {
@@ -171,9 +146,7 @@ func (s *Service) BuildScopedContext(userID, project, query string, limit int) (
 		if err != nil {
 			return nil, err
 		}
-		// GetObservationsByIDs erhaelt die Rang-Reihenfolge nicht zwingend –
-		// wieder in Score-Reihenfolge bringen, damit der Render die besten
-		// Fakten zuerst sieht.
+
 		byID := make(map[string]Observation, len(observations))
 		for _, obs := range observations {
 			byID[obs.ID] = obs
@@ -192,11 +165,6 @@ func (s *Service) BuildScopedContext(userID, project, query string, limit int) (
 	return envelope, nil
 }
 
-// renderUserRecall renders at most userRecallMaxLines observations as compact
-// bullet points within an approximate token budget. It shares the soft-budget
-// idea of renderInjectionPrompt but drops the tool hints and session sections:
-// the output is meant to be appended to a plain-chat system prompt as recalled
-// facts, not fed to a tool-using agent.
 func renderUserRecall(observations []Observation, budgetTokens int) string {
 	if len(observations) == 0 {
 		return ""
@@ -231,12 +199,6 @@ func renderUserRecall(observations []Observation, budgetTokens int) string {
 	return strings.Join(lines, "\n")
 }
 
-// isIgnoranceRecall filtert Q&A-Paare heraus, in denen der Assistent selbst
-// angibt, etwas NICHT zu wissen ("Ich weiß deinen Namen leider nicht"). Solche
-// Anti-Fakten stammen typischerweise aus Unterhaltungen, in denen der Recall
-// noch gar nicht aktiv war; im Kontext wuerden sie das Modell aktiv zur
-// falschen Antwort verleiten. Die Liste ist bewusst eng gehalten, um echte
-// Inhalte nicht faelschlich zu unterdruecken.
 func isIgnoranceRecall(narrative string) bool {
 	lower := strings.ToLower(narrative)
 	for _, phrase := range []string{
@@ -258,9 +220,6 @@ func isIgnoranceRecall(narrative string) bool {
 	return false
 }
 
-// recallDedupKey normalisiert eine Beobachtung auf ihren Anfang, damit mehrfach
-// gespeicherte (nahezu) identische Paare den Recall nicht mit Wiederholungen
-// fluten.
 func recallDedupKey(narrative string) string {
 	return strings.Join(strings.Fields(strings.ToLower(previewText(narrative, 160))), " ")
 }

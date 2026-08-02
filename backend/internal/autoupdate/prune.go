@@ -12,16 +12,10 @@ import (
 const (
 	updateWorkPrefix = ".update-work-"
 	stagingPrefix    = ".staging-"
-	// Leftovers are only removed once they are clearly not in use. An update
-	// holds the install lock for its whole run, so anything older than this was
-	// abandoned by a crashed or killed process.
+
 	staleTemporaryAge = 24 * time.Hour
 )
 
-// PruneVersions removes installed bundles that are neither active nor kept for
-// rollback, plus staging and work directories abandoned by interrupted updates.
-// Without it every update leaves a full backend and frontend build behind
-// forever.
 func PruneVersions(installRoot string, keep ...CurrentState) error {
 	absoluteRoot, err := filepath.Abs(installRoot)
 	if err != nil {
@@ -34,8 +28,7 @@ func PruneVersions(installRoot string, keep ...CurrentState) error {
 		}
 		retained[filepath.Base(filepath.FromSlash(state.Bundle))] = struct{}{}
 	}
-	// Refusing to prune without a known-good bundle avoids wiping the only
-	// installation when the caller could not read current.json.
+
 	if len(retained) == 0 {
 		return nil
 	}

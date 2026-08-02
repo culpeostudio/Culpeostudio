@@ -66,7 +66,7 @@ func TestOpenRouterSearchMapping(t *testing.T) {
 
 	module := New("")
 	module.orAPIBase = server.URL
-	openrouter.InvalidateCache() // frischer Cache pro Test
+	openrouter.InvalidateCache()
 
 	models, err := openrouter.SearchOpenRouter(context.Background(), module.metadataClient, module.orAPIBase, "llama", "", 5, "")
 	if err != nil {

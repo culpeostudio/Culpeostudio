@@ -147,7 +147,6 @@ func TestQueuedInferenceRechecksEmergencyGuardAfterAdmission(t *testing.T) {
 		t.Fatalf("active requests = %d after rejected queued inference", active)
 	}
 
-	// The rejected request must release its gate slot as well.
 	module.mu.Lock()
 	module.guardState = GuardNormal
 	module.mu.Unlock()

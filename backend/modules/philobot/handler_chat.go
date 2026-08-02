@@ -144,9 +144,7 @@ func (m *PhiloBotModule) handleStream(c *fiber.Ctx) error {
 		}, func(progress localinference.WarmupProgress) error {
 			return writeSSE(w, "model_warmup", progress)
 		}, func(eventType string, data interface{}) error {
-			// Projekt-Datei-Tools melden tool_start/tool_result; das Frontend
-			// rendert sie modus-unabhaengig als agentic_events. Vor dem Event
-			// gepufferten Text flushen, damit die Reihenfolge im Stream stimmt.
+
 			if err := textEmitter.Flush(); err != nil {
 				return err
 			}

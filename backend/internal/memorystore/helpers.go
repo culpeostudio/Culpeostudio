@@ -1,3 +1,5 @@
+// Package memorystore is the SQLite layer behind memory, including the full-text
+// index and the schema migrations.
 package memorystore
 
 import (
@@ -93,8 +95,7 @@ func buildFTSQuery(query string) string {
 			}
 		}, token)
 		if filtered != "" {
-			// FTS5 treats '-' and '/' as syntax in bare tokens; quoting keeps
-			// them literal while '*' outside the quotes stays a prefix match.
+
 			clean = append(clean, `"`+filtered+`"*`)
 		}
 	}

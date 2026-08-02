@@ -76,38 +76,28 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   final _msgController = TextEditingController();
   final _editMessageController = TextEditingController();
   final _editMessageFocusNode = FocusNode();
-  // Leer voreingestellt: welche Ordner freigegeben sind, ergibt sich aus dem
-  // gewaehlten Projekt. Ein fest eingetragener Pfad waere auf einem anderen
-  // Rechner ohnehin ungueltig.
+
   final _allowedRootsController = TextEditingController();
   final _scrollController = ScrollController();
   final StringBuffer _pendingAssistantDelta = StringBuffer();
   Timer? _streamRenderTimer;
   bool _scrollFrameScheduled = false;
   bool _isLoading = false;
-  // Treibt die "PhiloBot arbeitet …"-Anzeige samt Sekundenzähler, solange auf
-  // das erste Token gewartet wird (Modell-Warmup + Prompt-Verarbeitung).
+
   DateTime? _pendingSince;
   Timer? _pendingTicker;
   bool _isInitializingChat = true;
   String _thinkingLevel = 'medium';
   bool _webSearchEnabled = false;
-  // Planungsmodus: PhiloBot zerlegt die Aufgabe zuerst in Schritte und legt
-  // sie zur Freigabe vor, statt sofort loszuarbeiten. Die Ausfuehrung startet
-  // erst mit approve_plan aus dem Freigabe-Panel. Der Schalter haengt bewusst
-  // nicht am Denk-Level, sondern laesst sich mit jeder Einstellung und mit
-  // oder ohne geoeffnetes Projekt kombinieren.
+
   bool _planningEnabled = false;
   final String _agenticMode = 'execute';
   bool _showPlanningApproval = false;
   Map<String, dynamic>? _pendingPlanningData;
   String? _pendingAgenticMessage;
-  // Offene Permission-Anfrage des Agenten (Zugriff ausserhalb des
-  // Projektpfads): request_id/tool/path/session_id. Der Stream wartet
-  // blockierend, bis der Nutzer im Panel darunter entscheidet.
+
   Map<String, dynamic>? _pendingPermission;
-  // Dateibaum des aktiven Projekts (rechte Seitenleiste). Wird lazy geladen
-  // und nach file_changed-Events debounced aktualisiert.
+
   bool _showFileTree = false;
   Map<String, dynamic>? _fileTree;
   bool _fileTreeLoading = false;
@@ -286,8 +276,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   void _beginPending() {
     _pendingSince = DateTime.now();
     _pendingTicker?.cancel();
-    // 1s-Ticker aktualisiert Sekundenzähler und Punkte auch dann, wenn gerade
-    // keine Stream-Events kommen (stille Wartephase auf das erste Token).
+
     _pendingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -299,9 +288,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     _pendingSince = null;
   }
 
-  // Anzeige, solange auf das erste Token gewartet wird: macht sichtbar, DASS
-  // die KI arbeitet, WAS gerade passiert (Modell lädt vs. denkt nach) und WIE
-  // LANGE es schon dauert – damit klar wird, dass die Zeit im Modell liegt.
   Widget _buildWorkingIndicator() {
     final elapsed = _pendingSince == null
         ? 0
@@ -344,11 +330,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  // Waehrend eine Antwort noch streamt, zeigen wir ihren Text als reinen
-  // (nicht gerenderten) Markdown-Quelltext. flutter_markdown parst bei jedem
-  // Token via didUpdateWidget neu und wirft bei unvollstaendigem Markdown
-  // (z. B. halb empfangene Tabelle, offener Code-/Latex-Block) die Assertion
-  // '_inlines.isEmpty'. Erst nach Abschluss rendern wir volles Markdown.
   Widget _buildStreamingText(String text) {
     return Text(
       text,
@@ -356,10 +337,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  // Waehrend ein <think>...</think> Block laeuft, treffen die Roh-Denk-Tokens
-  // live hier ein (reasoning_delta), bevor die finale Antwort beginnt. Sobald
-  // Content ankommt, klappt dieselbe Information zu ReasoningDropdown
-  // zusammen, damit sie den Chatverlauf danach nicht vermuellt.
   Widget _buildLiveReasoningPreview(String reasoning) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -399,9 +376,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  // Chat-Kopfzeile: zeigt nur noch den Titel des aktiven Chats. Verlauf und
-  // Projekte leben als Dropdown unter "Chat-Verlauf" im Sidebar-Untermenue
-  // (siehe dashboard_screen.dart), nicht mehr hier.
   Widget _buildChatHistoryBar() {
     final currentId = _sessionId ?? _appState.currentChatSessionId;
     final currentTitle = currentId == null
@@ -487,7 +461,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Web Search Option
           InkWell(
             onTap: () {
               setState(() {
@@ -539,7 +512,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               ),
             ),
           ),
-          // Planungsmodus
+
           InkWell(
             key: const Key('chat-planning-toggle'),
             onTap: () {
@@ -595,7 +568,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               ),
             ),
           ),
-          // New Chat Option
+
           InkWell(
             key: const Key('chat-new-session-action'),
             onTap: _interactionLocked
@@ -639,7 +612,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               ),
             ),
           ),
-          // Datei hochladen Option
+
           InkWell(
             onTap: _pickFile,
             borderRadius: BorderRadius.circular(8),
@@ -766,9 +739,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
   ) async {
     try {
       await stream.cancel();
-    } catch (_) {
-      // Disconnect errors belong to the invalidated request generation.
-    }
+    } catch (_) {}
   }
 
   bool _isCurrentChatRequest(int generation, String sessionId) {
@@ -894,8 +865,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       return;
     }
     target = _latestChoice(target);
-    // Laeuft bereits ein Chat, wird das Modell in-place gewechselt — der
-    // Verlauf bleibt erhalten und es entsteht keine neue (leere) Session.
+
     if (_sessionId != null) {
       final switched = await _switchSessionModel(target);
       if (switched && mounted) {
@@ -919,8 +889,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     }
   }
 
-  /// Wechselt das Modell der aktiven Session ueber das Backend, ohne einen
-  /// neuen Chat anzulegen.
   Future<bool> _switchSessionModel(ChatModelChoice target) async {
     final sessionId = _sessionId;
     if (sessionId == null) return false;
@@ -1082,9 +1050,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         if (lateOperationId.isNotEmpty) {
           try {
             await _api.cancelEngineOperation(lateOperationId);
-          } catch (_) {
-            // The UI remains cancelled even if the operation already finished.
-          }
+          } catch (_) {}
         }
         return false;
       }
@@ -1119,16 +1085,12 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         if (operationId.isNotEmpty) {
           try {
             _applyWarmupOperation(await _api.getEngineOperation(operationId));
-          } catch (_) {
-            // The instance snapshot below remains the final source of truth.
-          }
+          } catch (_) {}
         }
         try {
           final instance = await _api.getEngineInstance(instanceId);
           _applyWarmupInstance(instance);
-        } catch (_) {
-          // A later SSE event or poll can still recover the warmup.
-        }
+        } catch (_) {}
         lastRelevantEvent = DateTime.now();
         if (mounted) setState(() {});
       }
@@ -1357,7 +1319,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       _pendingAgenticMessage = text;
       _pendingWarmupMessage = text;
     }
-    setState(() {}); // Reset send button state
+    setState(() {});
 
     setState(() {
       if (!reusePendingMessage &&
@@ -1393,8 +1355,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
         mode: _thinkingLevel == 'agent' ? _agenticMode : null,
         allowedRoots: _thinkingLevel == 'agent' ? _allowedRoots() : null,
         approvePlan: approvePlan,
-        // Bei der Freigabe selbst nicht erneut planen lassen, sonst legt
-        // der Bot einen zweiten Plan vor statt den ersten auszufuehren.
+
         planning: approvePlan == true ? null : (_planningEnabled ? true : null),
       ),
     );
@@ -1626,8 +1587,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       if (event.type == 'permission_request') {
         _pendingPermission = Map<String, dynamic>.from(event.data);
       } else if (event.type == 'permission_result') {
-        // Sicherheitsnetz: Panel schliessen, sobald die Entscheidung
-        // backend-seitig durch ist (auch wenn sie nicht von hier kam).
         final id = event.data['request_id']?.toString();
         if (id != null && id == _pendingPermission?['request_id']?.toString()) {
           _pendingPermission = null;
@@ -1722,11 +1681,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       _cancelEditingUserMessage();
       return;
     }
-    // Auch bei unveraendertem Text absenden: "Neu senden" ohne Textaenderung
-    // ist der uebliche Weg, eine Antwort mit einem zwischenzeitlich anders
-    // gewaehlten Modell neu zu generieren (Regenerate). Vorher wurde das
-    // still abgebrochen, wenn der Text identisch blieb — dann passierte
-    // sichtbar nichts.
+
     _msgController.text = text;
     await _sendMessage();
     _editMessageController.clear();
@@ -1844,7 +1799,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
             backgroundColor: Colors.transparent,
             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC9A24A)),
           ),
-        // Messages List
+
         Expanded(
           child: Row(
             children: [
@@ -2069,17 +2024,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                                   )
                                                 else if (isStreamingAssistant &&
                                                     content.isEmpty)
-                                                  // Immer der tickende Spinner (nicht
-                                                  // nur wenn reasoning leer ist):
-                                                  // sobald ein Denkblock einmal Text
-                                                  // geliefert hat, blieb der Screen
-                                                  // zwischen Tool-Runden sonst
-                                                  // eingefroren (nur die alte
-                                                  // reasoning-Vorschau + ein
-                                                  // reglungsloser Cursor) — sah wie
-                                                  // abgestuerzt aus, obwohl das
-                                                  // Modell noch an der naechsten
-                                                  // Runde arbeitete.
                                                   _buildWorkingIndicator()
                                                 else if (isStreamingAssistant)
                                                   _buildStreamingText(
@@ -2345,7 +2289,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
               ? null
               : () => _appState.setScreen('bot_management'),
         ),
-        // Redesigned Floating Input Bar
+
         _buildFloatingInputBar(),
         const SizedBox(height: 6),
         Text(
@@ -2459,7 +2403,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  /// Icon fuer einen Dateinamen im Dateibaum, grob nach Endung.
   IconData _fileTreeIcon(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.dart') ||
@@ -2488,7 +2431,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     return Icons.insert_drive_file_outlined;
   }
 
-  /// Rechte Seitenleiste mit dem Dateibaum des aktiven Projekts.
   Widget _buildFileTreePanel() {
     final tree = _fileTree;
     return Container(
@@ -2550,7 +2492,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  /// Baut die Zeilen des Dateibaums rekursiv; Ordner zuerst, dann Dateien.
   List<Widget> _buildTreeNodes(Map<String, dynamic> node, int depth) {
     final children = node['children'];
     if (children is! List) return const [];
@@ -2620,7 +2561,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     return widgets;
   }
 
-  /// Aktions-Badge-Texte und Farben fuer file_changed-Karten.
   (String, Color) _fileChangeActionStyle(String action) {
     switch (action) {
       case 'created':
@@ -2646,8 +2586,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     }
   }
 
-  /// Rendert die Datei-Aenderungen einer Assistant-Nachricht als aufklappbare
-  /// Diff-Karten (Live-Diff).
   Widget _buildFileChanges(List<dynamic> events) {
     final changes = events
         .whereType<Map>()
@@ -2659,10 +2597,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        // Der Index gehoert in den Schluessel: derselbe Pfad kann in einer
-        // Antwort mehrfach geaendert werden (ein Agent patcht eine Datei
-        // gern in mehreren Schritten), und zwei Karten mit gleichem
-        // Schluessel lassen Flutter mit "Duplicate keys" abstuerzen.
+
         for (final (index, change) in changes.indexed)
           _buildFileChangeCard(change, index),
       ],
@@ -2779,7 +2714,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  /// Deutsche Kurzlabels fuer die Datei-Tools im Permission-Panel.
   Future<void> _respondPermission(String decision) async {
     final pending = _pendingPermission;
     if (pending == null) return;
@@ -2792,8 +2726,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
       decision: decision,
     );
     if (!ok && mounted) {
-      // Dann hat das Backend die Anfrage bereits verworfen (Timeout/Ende)
-      // und faehrt mit "abgelehnt" fort — nur als Hinweis zeigen.
       showTopNotification(
         context,
         chatTabsText('philobot.permissionNoLongerOpen'),
@@ -2802,7 +2734,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     }
   }
 
-  /// Laedt den Dateibaum des aktiven Projekts vom Backend.
   Future<void> _loadFileTree() async {
     final sessionId = _sessionId;
     if (sessionId == null || _fileTreeLoading) return;
@@ -2819,8 +2750,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     }
   }
 
-  /// Aktualisiert den Baum nach file_changed-Events, gebuendelt, damit eine
-  /// Folge schneller Aenderungen nur einen Reload ausloest.
   void _scheduleFileTreeRefresh() {
     if (!_showFileTree) return;
     _fileTreeRefreshTimer?.cancel();
@@ -2830,8 +2759,6 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
     );
   }
 
-  /// Panel fuer die live-Zugriffsanfrage: der Agent will ausserhalb des
-  /// Projektpfads arbeiten und wartet blockierend auf die Entscheidung.
   Widget _buildCreatedBotCard(Map<String, dynamic> bot) {
     final name = bot['name']?.toString() ?? chatTabsText('philobot.newBot');
     final keywords = bot['keywords'];
@@ -3408,13 +3335,7 @@ class _PhiloBotTabState extends State<PhiloBotTab> {
                                   disabledBackgroundColor: composerHint
                                       .withValues(alpha: 0.15),
                                 ),
-                                // Waehrend eine Antwort noch laeuft (oder das
-                                // Modell warmup macht), ersetzt ein Loading-
-                                // Kreis den Pfeil: der gesperrte Button allein
-                                // (gleiches Grau wie bei leerem Textfeld) war
-                                // nicht eindeutig genug als "KI arbeitet noch"
-                                // zu erkennen — sah wie ein normaler inaktiver
-                                // Button aus, nicht wie eine laufende Anfrage.
+
                                 icon: _interactionLocked
                                     ? const SizedBox(
                                         width: 16,

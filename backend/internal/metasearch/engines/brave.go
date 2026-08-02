@@ -6,9 +6,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// newBrave erzeugt den Brave-Text-Engine (search.brave.com).
-// Cookies steuern Country/Safesearch, der eigentliche Request ist eine
-// GET-Suche mit Query-Parameter q.
 func newBrave(client *metasearch.HttpClient) metasearch.Engine {
 	return &metasearch.XPathEngine{
 		Meta: metasearch.EngineInfo{

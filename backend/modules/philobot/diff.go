@@ -6,20 +6,16 @@ import (
 )
 
 const (
-	// maxDiffLines deckelt die Zeilenzahl pro Seite des Diffs; darueber wird
-	// nur noch ein Metadaten-Event ohne Zeilen-Diff geschickt.
 	maxDiffLines = 1500
-	// diffContextLines ist der Kontext um jede Aenderung.
+
 	diffContextLines = 3
 )
 
-// diffOp ist eine Zeilen-Operation im Edit-Skript.
 type diffOp struct {
-	kind byte // ' ' Kontext, '-' entfernt, '+' hinzugefuegt
+	kind byte
 	text string
 }
 
-// canDiffText prueft, ob fuer beide Inhalte ein Zeilen-Diff sinnvoll ist.
 func canDiffText(oldText, newText string) bool {
 	if len(oldText) > 256*1024 || len(newText) > 256*1024 {
 		return false
@@ -29,8 +25,6 @@ func canDiffText(oldText, newText string) bool {
 	return oldLines <= maxDiffLines && newLines <= maxDiffLines
 }
 
-// unifiedDiff erzeugt einen einfachen Unified-Diff zweier Texte (LCS auf
-// Zeilenbasis, Hunks mit Kontext). relPath ziert die ---/+++-Header.
 func unifiedDiff(oldText, newText, relPath string) string {
 	oldLines := splitDiffLines(oldText)
 	newLines := splitDiffLines(newText)
@@ -59,17 +53,16 @@ func splitDiffLines(text string) []string {
 		return nil
 	}
 	lines := strings.Split(text, "\n")
-	// Split liefert bei abschliessendem Newline ein leeres Endelement.
+
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
 	return lines
 }
 
-// diffOps berechnet das Edit-Skript ueber die klassische LCS-Tabelle.
 func diffOps(oldLines, newLines []string) []diffOp {
 	n, m := len(oldLines), len(newLines)
-	// lcs[i][j] = Laenge der gemeinsamen Endsequenz ab old[i:], new[j:].
+
 	lcs := make([][]int, n+1)
 	for i := range lcs {
 		lcs[i] = make([]int, m+1)
@@ -110,16 +103,13 @@ func diffOps(oldLines, newLines []string) []diffOp {
 	return ops
 }
 
-// diffHunk ist ein zusammenhaengender Aenderungsblock samt 1-basierten
-// Startzeilen in alter und neuer Datei.
 type diffHunk struct {
 	ops                []diffOp
 	oldStart, newStart int
 }
 
-// groupDiffHunks fasst Aenderungen mit diffContextLines Kontext zu Hunks.
 func groupDiffHunks(ops []diffOp) []diffHunk {
-	// Laufende 1-basierte Zeilennummern pro Operation vormerken.
+
 	oldLine, newLine := 1, 1
 	type numberedOp struct {
 		op           diffOp
@@ -141,8 +131,8 @@ func groupDiffHunks(ops []diffOp) []diffHunk {
 
 	var hunks []diffHunk
 	var current []numberedOp
-	var pendingContext []numberedOp // letzte Kontextzeilen vor einem moeglichen Hunk
-	gap := 0                        // Kontextzeilen seit der letzten Aenderung
+	var pendingContext []numberedOp
+	gap := 0
 	flush := func() {
 		if len(current) == 0 {
 			return
@@ -173,7 +163,7 @@ func groupDiffHunks(ops []diffOp) []diffHunk {
 			}
 			gap++
 			if gap > 2*diffContextLines {
-				// Hunk abschliessen: ueberlange Kontext-Flanke kuerzen.
+
 				current = current[:len(current)-(gap-diffContextLines)]
 				flush()
 				pendingContext = append(pendingContext, entry)
@@ -190,7 +180,7 @@ func groupDiffHunks(ops []diffOp) []diffHunk {
 		current = append(current, entry)
 	}
 	if current != nil {
-		// Endkontext auf diffContextLines kuerzen.
+
 		trim := 0
 		for i := len(current) - 1; i >= 0 && current[i].op.kind == ' '; i-- {
 			trim++

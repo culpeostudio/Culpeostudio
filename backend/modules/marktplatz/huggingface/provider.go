@@ -29,8 +29,6 @@ type HuggingFaceModel struct {
 	Siblings    []HuggingFaceSibling   `json:"siblings"`
 }
 
-// BundleDescriptor beschreibt den reproduzierbaren Teil eines HF-Snapshots,
-// der fuer genau die ausgewaehlte Gewichtsvariante benoetigt wird.
 type BundleDescriptor struct {
 	Revision  string   `json:"revision"`
 	CommitSHA string   `json:"commit_sha,omitempty"`
@@ -46,9 +44,6 @@ func SearchHuggingFace(ctx context.Context, httpClient *http.Client, apiBase, qu
 	return mapHFModels(models, format), nil
 }
 
-// fetchHFModels kapselt den HTTP-Aufruf inkl. 401-Retry ohne `goto`.
-// Bei einem abgelaufenen Token wird einmalig ohne Auth wiederholt; andere
-// Fehler (5xx, Netzwerk) werden direkt durchgereicht.
 func fetchHFModels(ctx context.Context, httpClient *http.Client, apiBase, query string, limit int, token string) ([]HuggingFaceModel, error) {
 	params := url.Values{}
 	params.Set("limit", fmt.Sprintf("%d", limit))
@@ -64,7 +59,7 @@ func fetchHFModels(ctx context.Context, httpClient *http.Client, apiBase, query 
 
 	var models []HuggingFaceModel
 	if err := common.RequestJSON(ctx, httpClient, "GET", apiURL, authHeaders, &models); err != nil {
-		// Nur bei 401 mit gespeichertem Token ohne Auth wiederholen.
+
 		if strings.TrimSpace(token) != "" && IsUnauthorizedError(err) {
 			if retryErr := common.RequestJSON(ctx, httpClient, "GET", apiURL, nil, &models); retryErr == nil {
 				return models, nil
@@ -126,10 +121,7 @@ func mapHFModels(models []HuggingFaceModel, format string) []types.ModelSummary 
 
 func DetailHuggingFace(ctx context.Context, httpClient *http.Client, apiBase, modelID string, token string) (types.ModelDetail, error) {
 	repoPath := hfRepoPath(modelID)
-	// blobs=true ist der einzige HuggingFace-Modus, der echte Dateigroessen
-	// (siblings[].size) liefert. Die Such-/Listen-API gibt sie nie zurueck,
-	// selbst mit full=true nicht -- deshalb lohnt sich der teurere Aufruf nur
-	// hier, wo genau ein Modell abgefragt wird.
+
 	apiURL := strings.TrimRight(apiBase, "/") + "/api/models/" + repoPath + "?blobs=true"
 	authHeaders := map[string]string{}
 	if strings.TrimSpace(token) != "" {
@@ -140,8 +132,7 @@ func DetailHuggingFace(ctx context.Context, httpClient *http.Client, apiBase, mo
 	if err != nil {
 		return types.ModelDetail{}, err
 	}
-	// Guard nach Retry: ein leeres model.ID duerfen wir nie durchlassen
-	// (frueher wurde dieser Check durch `goto mapDetail` uebersprungen).
+
 	if strings.TrimSpace(model.ID) == "" {
 		return types.ModelDetail{}, fmt.Errorf("model not found")
 	}
@@ -195,9 +186,6 @@ var contextKeys = map[string]struct{}{
 	"seq_length":              {},
 }
 
-// extractContextLength prefers real HuggingFace config metadata.  Name-based
-// guessing is only a fallback elsewhere and was the reason most local models
-// were incorrectly shown as 8K.
 func extractContextLength(config map[string]interface{}, tags []string) int {
 	if value := findContextValue(config); value > 0 {
 		return value
@@ -263,8 +251,6 @@ func parseContextText(value string) int {
 	return int(parsed * float64(multiplier))
 }
 
-// fetchHFDetailModel ruft einen einzelnen HF-Repo-Endpunkt ab und kapselt
-// den 401-Retry (einmalig ohne Auth). Liefert das Modell oder einen Fehler.
 func fetchHFDetailModel(ctx context.Context, httpClient *http.Client, apiURL string, authHeaders map[string]string, token string) (HuggingFaceModel, error) {
 	var model HuggingFaceModel
 	if err := common.RequestJSON(ctx, httpClient, "GET", apiURL, authHeaders, &model); err != nil {
@@ -282,25 +268,17 @@ func DownloadHuggingFace(ctx context.Context, httpClient *http.Client, apiBase, 
 	return DownloadHuggingFaceWithStats(ctx, httpClient, apiBase, modelID, assetID, targetDir, token, onProgress, nil)
 }
 
-// DownloadHuggingFaceWithStats ist dasselbe wie DownloadHuggingFace, reicht
-// aber zusaetzlich sekündliche (downloadedBytes, totalBytes, speedBytesPerSec)
-// an onStats weiter, so dass der Aufrufer die Live-Anzeige in der Job-UI
-// fuehren kann.
 func DownloadHuggingFaceWithStats(ctx context.Context, httpClient *http.Client, apiBase, modelID, assetID, targetDir, token string, onProgress func(int), onStats func(int64, int64, int64)) (string, error) {
 	return DownloadHuggingFaceRevisionWithStats(ctx, httpClient, apiBase, modelID, "main", assetID, targetDir, token, onProgress, onStats)
 }
 
-// DownloadHuggingFaceRevisionWithStats behaelt den relativen Repository-Pfad
-// bei und pinnt den Download an die angeforderte Revision.
 func DownloadHuggingFaceRevisionWithStats(ctx context.Context, httpClient *http.Client, apiBase, modelID, revision, assetID, targetDir, token string, onProgress func(int), onStats func(int64, int64, int64)) (string, error) {
 	modelID = strings.TrimSpace(modelID)
 	if modelID == "" {
 		return "", fmt.Errorf("model_id is required")
 	}
 	assetID = strings.TrimSpace(assetID)
-	// H4: frueher wurde "default-asset" nicht zurueckgesetzt, wodurch die
-	// nachfolgende Options-Iteration (die nach nicht-leer sucht) die
-	// Konstante stehen liess – der URL-Builder baute dann .../resolve/main/default-asset.
+
 	if assetID == "default-asset" {
 		assetID = ""
 	}
@@ -362,8 +340,6 @@ func DownloadHuggingFaceRevisionWithStats(ctx context.Context, httpClient *http.
 		candidates = append(candidates, escaped, addDownloadQuery(escaped))
 	}
 
-	// M4: case-sensitive dedup fuer URLs. Frueher wurde UniqueNonEmptyLower
-	// genutzt, was .../Foo.gguf und .../foo.gguf fälschlich zusammenfasste.
 	var lastErr error
 	for _, candidate := range types.UniqueNonEmpty(candidates) {
 		outputPath, err := common.DownloadFileWithStats(ctx, httpClient, candidate, headers, targetDir, fileName, onProgress, onStats)
@@ -385,10 +361,6 @@ func DownloadHuggingFaceRevisionWithStats(ctx context.Context, httpClient *http.
 	return "", lastErr
 }
 
-// ResolveBundleAssets ergaenzt eine SafeTensors-Gewichtsauswahl um die
-// statischen Konfigurations-, Tokenizer-, Chat-Template- und Remote-Code-
-// Dateien des Repositories. GGUF bleibt bewusst bei der gewaehlten Datei bzw.
-// vollstaendigen Split-Gruppe.
 func ResolveBundleAssets(ctx context.Context, httpClient *http.Client, apiBase, modelID, revision, token string, requested []string) (BundleDescriptor, error) {
 	modelID = strings.TrimSpace(modelID)
 	if modelID == "" {

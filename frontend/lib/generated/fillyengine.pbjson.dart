@@ -1,7 +1,3 @@
-// This is a generated file - do not edit.
-//
-// Generated from fillyengine.proto.
-
 // @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
@@ -26,7 +22,6 @@ const StartEngineRequest$json = {
   ],
 };
 
-/// Descriptor for `StartEngineRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List startEngineRequestDescriptor = $convert.base64Decode(
     'ChJTdGFydEVuZ2luZVJlcXVlc3QSHQoKbW9kZWxfcGF0aBgBIAEoCVIJbW9kZWxQYXRoEh0KCm'
     'dwdV9sYXllcnMYAiABKAVSCWdwdUxheWVycxIYCgd0aHJlYWRzGAMgASgFUgd0aHJlYWRzEiEK'
@@ -40,7 +35,6 @@ const LoadModelRequest$json = {
   ],
 };
 
-/// Descriptor for `LoadModelRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List loadModelRequestDescriptor = $convert.base64Decode(
     'ChBMb2FkTW9kZWxSZXF1ZXN0Eh0KCm1vZGVsX3BhdGgYASABKAlSCW1vZGVsUGF0aA==');
 
@@ -55,7 +49,6 @@ const EngineStatus$json = {
   ],
 };
 
-/// Descriptor for `EngineStatus`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List engineStatusDescriptor = $convert.base64Decode(
     'CgxFbmdpbmVTdGF0dXMSGAoHcnVubmluZxgBIAEoCFIHcnVubmluZxIUCgVtb2RlbBgCIAEoCV'
     'IFbW9kZWwSIAoMdnJhbV91c2VkX21iGAMgASgDUgp2cmFtVXNlZE1iEh4KC3JhbV91c2VkX21i'
@@ -76,7 +69,6 @@ const ModelList$json = {
   ],
 };
 
-/// Descriptor for `ModelList`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List modelListDescriptor = $convert.base64Decode(
     'CglNb2RlbExpc3QSLgoGbW9kZWxzGAEgAygLMhYuZmlsbHllbmdpbmUuTW9kZWxJbmZvUgZtb2'
     'RlbHM=');
@@ -92,7 +84,6 @@ const ModelInfo$json = {
   ],
 };
 
-/// Descriptor for `ModelInfo`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List modelInfoDescriptor = $convert.base64Decode(
     'CglNb2RlbEluZm8SEgoEbmFtZRgBIAEoCVIEbmFtZRISCgRwYXRoGAIgASgJUgRwYXRoEhYKBm'
     'Zvcm1hdBgDIAEoCVIGZm9ybWF0Eh0KCnNpemVfYnl0ZXMYBCABKANSCXNpemVCeXRlcw==');
@@ -105,7 +96,6 @@ const CreateSessionRequest$json = {
   ],
 };
 
-/// Descriptor for `CreateSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List createSessionRequestDescriptor =
     $convert.base64Decode(
         'ChRDcmVhdGVTZXNzaW9uUmVxdWVzdBIZCghtb2RlbF9pZBgBIAEoCVIHbW9kZWxJZA==');
@@ -119,7 +109,6 @@ const SessionInfo$json = {
   ],
 };
 
-/// Descriptor for `SessionInfo`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List sessionInfoDescriptor = $convert.base64Decode(
     'CgtTZXNzaW9uSW5mbxIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSGQoIbW9kZWxfaW'
     'QYAiABKAlSB21vZGVsSWQ=');
@@ -132,7 +121,6 @@ const SessionRequest$json = {
   ],
 };
 
-/// Descriptor for `SessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List sessionRequestDescriptor = $convert.base64Decode(
     'Cg5TZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQ=');
 
@@ -147,7 +135,6 @@ const ChatMessageRequest$json = {
   ],
 };
 
-/// Descriptor for `ChatMessageRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List chatMessageRequestDescriptor = $convert.base64Decode(
     'ChJDaGF0TWVzc2FnZVJlcXVlc3QSHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2lvbklkEhgKB2'
     '1lc3NhZ2UYAiABKAlSB21lc3NhZ2USIAoLdGVtcGVyYXR1cmUYAyABKAJSC3RlbXBlcmF0dXJl'
@@ -163,7 +150,6 @@ const ChatMessageResponse$json = {
   ],
 };
 
-/// Descriptor for `ChatMessageResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List chatMessageResponseDescriptor = $convert.base64Decode(
     'ChNDaGF0TWVzc2FnZVJlc3BvbnNlEhQKBXJlcGx5GAEgASgJUgVyZXBseRIdCgpzZXNzaW9uX2'
     'lkGAIgASgJUglzZXNzaW9uSWQSHwoLdG9rZW5zX3VzZWQYAyABKAVSCnRva2Vuc1VzZWQ=');
@@ -177,7 +163,6 @@ const ChatToken$json = {
   ],
 };
 
-/// Descriptor for `ChatToken`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List chatTokenDescriptor = $convert.base64Decode(
     'CglDaGF0VG9rZW4SFAoFdG9rZW4YASABKAlSBXRva2VuEhIKBGRvbmUYAiABKAhSBGRvbmU=');
 
@@ -196,7 +181,6 @@ const ChatHistory$json = {
   ],
 };
 
-/// Descriptor for `ChatHistory`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List chatHistoryDescriptor = $convert.base64Decode(
     'CgtDaGF0SGlzdG9yeRIyCghtZXNzYWdlcxgBIAMoCzIWLmZpbGx5ZW5naW5lLkNoYXRFbnRyeV'
     'IIbWVzc2FnZXM=');
@@ -211,7 +195,6 @@ const ChatEntry$json = {
   ],
 };
 
-/// Descriptor for `ChatEntry`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List chatEntryDescriptor = $convert.base64Decode(
     'CglDaGF0RW50cnkSEgoEcm9sZRgBIAEoCVIEcm9sZRIYCgdjb250ZW50GAIgASgJUgdjb250ZW'
     '50EhwKCXRpbWVzdGFtcBgDIAEoA1IJdGltZXN0YW1w');
@@ -244,7 +227,6 @@ const TrainingRequest_HyperparamsEntry$json = {
   '7': {'7': true},
 };
 
-/// Descriptor for `TrainingRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List trainingRequestDescriptor = $convert.base64Decode(
     'Cg9UcmFpbmluZ1JlcXVlc3QSGQoIbW9kZWxfaWQYASABKAlSB21vZGVsSWQSIQoMZGF0YXNldF'
     '9wYXRoGAIgASgJUgtkYXRhc2V0UGF0aBJPCgtoeXBlcnBhcmFtcxgDIAMoCzItLmZpbGx5ZW5n'
@@ -260,7 +242,6 @@ const JobRequest$json = {
   ],
 };
 
-/// Descriptor for `JobRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List jobRequestDescriptor =
     $convert.base64Decode('CgpKb2JSZXF1ZXN0EhUKBmpvYl9pZBgBIAEoCVIFam9iSWQ=');
 
@@ -273,7 +254,6 @@ const JobInfo$json = {
   ],
 };
 
-/// Descriptor for `JobInfo`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List jobInfoDescriptor = $convert.base64Decode(
     'CgdKb2JJbmZvEhUKBmpvYl9pZBgBIAEoCVIFam9iSWQSFgoGc3RhdHVzGAIgASgJUgZzdGF0dX'
     'M=');
@@ -289,7 +269,6 @@ const JobStatus$json = {
   ],
 };
 
-/// Descriptor for `JobStatus`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List jobStatusDescriptor = $convert.base64Decode(
     'CglKb2JTdGF0dXMSFQoGam9iX2lkGAEgASgJUgVqb2JJZBIWCgZzdGF0dXMYAiABKAlSBnN0YX'
     'R1cxIaCghwcm9ncmVzcxgDIAEoBVIIcHJvZ3Jlc3MSFAoFZXJyb3IYBCABKAlSBWVycm9y');
@@ -309,7 +288,6 @@ const JobList$json = {
   ],
 };
 
-/// Descriptor for `JobList`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List jobListDescriptor = $convert.base64Decode(
     'CgdKb2JMaXN0EioKBGpvYnMYASADKAsyFi5maWxseWVuZ2luZS5Kb2JTdGF0dXNSBGpvYnM=');
 
@@ -325,7 +303,6 @@ const TrainingMetrics$json = {
   ],
 };
 
-/// Descriptor for `TrainingMetrics`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List trainingMetricsDescriptor = $convert.base64Decode(
     'Cg9UcmFpbmluZ01ldHJpY3MSFAoFZXBvY2gYASABKAVSBWVwb2NoEhIKBHN0ZXAYAiABKAVSBH'
     'N0ZXASEgoEbG9zcxgDIAEoAlIEbG9zcxIjCg1sZWFybmluZ19yYXRlGAQgASgCUgxsZWFybmlu'
@@ -341,7 +318,6 @@ const QuantRequest$json = {
   ],
 };
 
-/// Descriptor for `QuantRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List quantRequestDescriptor = $convert.base64Decode(
     'CgxRdWFudFJlcXVlc3QSHQoKbW9kZWxfcGF0aBgBIAEoCVIJbW9kZWxQYXRoEh0KCnF1YW50X3'
     'R5cGUYAiABKAlSCXF1YW50VHlwZRIfCgtvdXRwdXRfcGF0aBgDIAEoCVIKb3V0cHV0UGF0aA==');
@@ -354,7 +330,6 @@ const QuantTypes$json = {
   ],
 };
 
-/// Descriptor for `QuantTypes`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List quantTypesDescriptor =
     $convert.base64Decode('CgpRdWFudFR5cGVzEhQKBXR5cGVzGAEgAygJUgV0eXBlcw==');
 
@@ -368,7 +343,6 @@ const QuantProgress$json = {
   ],
 };
 
-/// Descriptor for `QuantProgress`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List quantProgressDescriptor = $convert.base64Decode(
     'Cg1RdWFudFByb2dyZXNzEhUKBmpvYl9pZBgBIAEoCVIFam9iSWQSKQoQcHJvZ3Jlc3NfcGVyY2'
     'VudBgCIAEoBVIPcHJvZ3Jlc3NQZXJjZW50EiEKDGN1cnJlbnRfc3RlcBgDIAEoCVILY3VycmVu'
@@ -385,7 +359,6 @@ const SearchRequest$json = {
   ],
 };
 
-/// Descriptor for `SearchRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List searchRequestDescriptor = $convert.base64Decode(
     'Cg1TZWFyY2hSZXF1ZXN0EhQKBXF1ZXJ5GAEgASgJUgVxdWVyeRIWCgZmb3JtYXQYAiABKAlSBm'
     'Zvcm1hdBIUCgVsaW1pdBgDIAEoBVIFbGltaXQSFgoGb2Zmc2V0GAQgASgFUgZvZmZzZXQ=');
@@ -406,7 +379,6 @@ const SearchResponse$json = {
   ],
 };
 
-/// Descriptor for `SearchResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List searchResponseDescriptor = $convert.base64Decode(
     'Cg5TZWFyY2hSZXNwb25zZRIwCgZtb2RlbHMYASADKAsyGC5maWxseWVuZ2luZS5Nb2RlbERldG'
     'FpbFIGbW9kZWxzEhQKBXRvdGFsGAIgASgFUgV0b3RhbA==');
@@ -419,7 +391,6 @@ const ModelDetailRequest$json = {
   ],
 };
 
-/// Descriptor for `ModelDetailRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List modelDetailRequestDescriptor =
     $convert.base64Decode(
         'ChJNb2RlbERldGFpbFJlcXVlc3QSGQoIbW9kZWxfaWQYASABKAlSB21vZGVsSWQ=');
@@ -438,7 +409,6 @@ const ModelDetail$json = {
   ],
 };
 
-/// Descriptor for `ModelDetail`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List modelDetailDescriptor = $convert.base64Decode(
     'CgtNb2RlbERldGFpbBIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZRIgCgtkZX'
     'NjcmlwdGlvbhgDIAEoCVILZGVzY3JpcHRpb24SFgoGYXV0aG9yGAQgASgJUgZhdXRob3ISGAoH'
@@ -454,7 +424,6 @@ const DownloadRequest$json = {
   ],
 };
 
-/// Descriptor for `DownloadRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List downloadRequestDescriptor = $convert.base64Decode(
     'Cg9Eb3dubG9hZFJlcXVlc3QSGQoIbW9kZWxfaWQYASABKAlSB21vZGVsSWQSFgoGZm9ybWF0GA'
     'IgASgJUgZmb3JtYXQ=');
@@ -471,7 +440,6 @@ const DownloadProgress$json = {
   ],
 };
 
-/// Descriptor for `DownloadProgress`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List downloadProgressDescriptor = $convert.base64Decode(
     'ChBEb3dubG9hZFByb2dyZXNzEhUKBmpvYl9pZBgBIAEoCVIFam9iSWQSKQoQYnl0ZXNfZG93bm'
     'xvYWRlZBgCIAEoA1IPYnl0ZXNEb3dubG9hZGVkEh8KC2J5dGVzX3RvdGFsGAMgASgDUgpieXRl'
@@ -487,7 +455,6 @@ const ImportSkillRequest$json = {
   ],
 };
 
-/// Descriptor for `ImportSkillRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List importSkillRequestDescriptor = $convert.base64Decode(
     'ChJJbXBvcnRTa2lsbFJlcXVlc3QSHwoLc291cmNlX3BhdGgYASABKAlSCnNvdXJjZVBhdGgSGA'
     'oHZW5hYmxlZBgCIAEoCFIHZW5hYmxlZA==');
@@ -501,7 +468,6 @@ const UpdateSkillRequest$json = {
   ],
 };
 
-/// Descriptor for `UpdateSkillRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List updateSkillRequestDescriptor = $convert.base64Decode(
     'ChJVcGRhdGVTa2lsbFJlcXVlc3QSEgoEbmFtZRgBIAEoCVIEbmFtZRIYCgdlbmFibGVkGAIgAS'
     'gIUgdlbmFibGVk');
@@ -514,7 +480,6 @@ const DeleteSkillRequest$json = {
   ],
 };
 
-/// Descriptor for `DeleteSkillRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deleteSkillRequestDescriptor = $convert
     .base64Decode('ChJEZWxldGVTa2lsbFJlcXVlc3QSEgoEbmFtZRgBIAEoCVIEbmFtZQ==');
 
@@ -534,7 +499,6 @@ const SkillListResponse$json = {
   ],
 };
 
-/// Descriptor for `SkillListResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List skillListResponseDescriptor = $convert.base64Decode(
     'ChFTa2lsbExpc3RSZXNwb25zZRIwCgZza2lsbHMYASADKAsyGC5maWxseWVuZ2luZS5Ta2lsbF'
     'JlY29yZFIGc2tpbGxzEhQKBWNvdW50GAIgASgFUgVjb3VudA==');
@@ -555,7 +519,6 @@ const SkillResponse$json = {
   ],
 };
 
-/// Descriptor for `SkillResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List skillResponseDescriptor = $convert.base64Decode(
     'Cg1Ta2lsbFJlc3BvbnNlEi4KBXNraWxsGAEgASgLMhguZmlsbHllbmdpbmUuU2tpbGxSZWNvcm'
     'RSBXNraWxsEhgKB21lc3NhZ2UYAiABKAlSB21lc3NhZ2U=');
@@ -570,7 +533,6 @@ const DeleteSkillResponse$json = {
   ],
 };
 
-/// Descriptor for `DeleteSkillResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deleteSkillResponseDescriptor = $convert.base64Decode(
     'ChNEZWxldGVTa2lsbFJlc3BvbnNlEhIKBG5hbWUYASABKAlSBG5hbWUSFgoGc3RhdHVzGAIgAS'
     'gJUgZzdGF0dXMSGAoHbWVzc2FnZRgDIAEoCVIHbWVzc2FnZQ==');
@@ -602,7 +564,6 @@ const SkillRecord$json = {
   ],
 };
 
-/// Descriptor for `SkillRecord`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List skillRecordDescriptor = $convert.base64Decode(
     'CgtTa2lsbFJlY29yZBISCgRuYW1lGAEgASgJUgRuYW1lEiAKC2Rlc2NyaXB0aW9uGAIgASgJUg'
     'tkZXNjcmlwdGlvbhIYCgdlbmFibGVkGAMgASgIUgdlbmFibGVkEhIKBHBhdGgYBCABKAlSBHBh'
@@ -626,7 +587,6 @@ const SkillFileSummary$json = {
   ],
 };
 
-/// Descriptor for `SkillFileSummary`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List skillFileSummaryDescriptor = $convert.base64Decode(
     'ChBTa2lsbEZpbGVTdW1tYXJ5Eh0KCmZpbGVfY291bnQYASABKAVSCWZpbGVDb3VudBInCg9kaX'
     'JlY3RvcnlfY291bnQYAiABKAVSDmRpcmVjdG9yeUNvdW50Eh8KC2hhc19zY3JpcHRzGAMgASgI'
@@ -638,7 +598,6 @@ const Empty$json = {
   '1': 'Empty',
 };
 
-/// Descriptor for `Empty`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List emptyDescriptor =
     $convert.base64Decode('CgVFbXB0eQ==');
 
@@ -673,7 +632,6 @@ const AgenticRequest_ContextEntry$json = {
   '7': {'7': true},
 };
 
-/// Descriptor for `AgenticRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List agenticRequestDescriptor = $convert.base64Decode(
     'Cg5BZ2VudGljUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSIQoMdXNlcl'
     '9tZXNzYWdlGAIgASgJUgt1c2VyTWVzc2FnZRIlCg50aGlua2luZ19sZXZlbBgDIAEoCVINdGhp'
@@ -741,7 +699,6 @@ const AgenticResponse_Type$json = {
   ],
 };
 
-/// Descriptor for `AgenticResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List agenticResponseDescriptor = $convert.base64Decode(
     'Cg9BZ2VudGljUmVzcG9uc2USNQoEdHlwZRgBIAEoDjIhLmZpbGx5ZW5naW5lLkFnZW50aWNSZX'
     'Nwb25zZS5UeXBlUgR0eXBlEhIKBHRleHQYAiABKAlSBHRleHQSMgoJdG9vbF9jYWxsGAMgASgL'
@@ -766,7 +723,6 @@ const ToolCall$json = {
   ],
 };
 
-/// Descriptor for `ToolCall`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List toolCallDescriptor = $convert.base64Decode(
     'CghUb29sQ2FsbBIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZRIcCglhcmd1bW'
     'VudHMYAyABKAlSCWFyZ3VtZW50cxIlCg5yZXN1bHRfcHJldmlldxgEIAEoCVINcmVzdWx0UHJl'
@@ -792,7 +748,6 @@ const PlanningState$json = {
   ],
 };
 
-/// Descriptor for `PlanningState`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List planningStateDescriptor = $convert.base64Decode(
     'Cg1QbGFubmluZ1N0YXRlEhYKBnN0YXR1cxgBIAEoCVIGc3RhdHVzEjsKCXF1ZXN0aW9ucxgCIA'
     'MoCzIdLmZpbGx5ZW5naW5lLlBsYW5uaW5nUXVlc3Rpb25SCXF1ZXN0aW9ucxIhCgxwbGFuX3N1'
@@ -817,7 +772,6 @@ const PlanningQuestion$json = {
   ],
 };
 
-/// Descriptor for `PlanningQuestion`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List planningQuestionDescriptor = $convert.base64Decode(
     'ChBQbGFubmluZ1F1ZXN0aW9uEg4KAmlkGAEgASgJUgJpZBIWCgZwcm9tcHQYAiABKAlSBnByb2'
     '1wdBI1CgdvcHRpb25zGAMgAygLMhsuZmlsbHllbmdpbmUuUGxhbm5pbmdPcHRpb25SB29wdGlv'
@@ -833,7 +787,6 @@ const PlanningOption$json = {
   ],
 };
 
-/// Descriptor for `PlanningOption`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List planningOptionDescriptor = $convert.base64Decode(
     'Cg5QbGFubmluZ09wdGlvbhIOCgJpZBgBIAEoCVICaWQSFAoFbGFiZWwYAiABKAlSBWxhYmVsEi'
     'AKC2Rlc2NyaXB0aW9uGAMgASgJUgtkZXNjcmlwdGlvbg==');
@@ -853,7 +806,6 @@ const ToolList$json = {
   ],
 };
 
-/// Descriptor for `ToolList`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List toolListDescriptor = $convert.base64Decode(
     'CghUb29sTGlzdBIqCgV0b29scxgBIAMoCzIULmZpbGx5ZW5naW5lLlRvb2xEZWZSBXRvb2xz');
 
@@ -873,7 +825,6 @@ const ToolDef$json = {
   ],
 };
 
-/// Descriptor for `ToolDef`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List toolDefDescriptor = $convert.base64Decode(
     'CgdUb29sRGVmEhIKBG5hbWUYASABKAlSBG5hbWUSIAoLZGVzY3JpcHRpb24YAiABKAlSC2Rlc2'
     'NyaXB0aW9uEjQKFnBhcmFtZXRlcnNfanNvbl9zY2hlbWEYAyABKAlSFHBhcmFtZXRlcnNKc29u'
@@ -897,7 +848,6 @@ const CompressionEvent$json = {
   ],
 };
 
-/// Descriptor for `CompressionEvent`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List compressionEventDescriptor = $convert.base64Decode(
     'ChBDb21wcmVzc2lvbkV2ZW50EhwKCXRyaWdnZXJlZBgBIAEoCFIJdHJpZ2dlcmVkEiEKDHVzYW'
     'dlX2JlZm9yZRgCIAEoAlILdXNhZ2VCZWZvcmUSHwoLdXNhZ2VfYWZ0ZXIYAyABKAJSCnVzYWdl'

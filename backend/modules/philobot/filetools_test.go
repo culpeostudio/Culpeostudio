@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// fakePermissionAsker beantwortet Permission-Anfragen im Test mit einer
-// festen Folge von Entscheidungen; danach gilt automatisch "deny".
 type fakePermissionAsker struct {
 	decisions []string
 	calls     int
@@ -34,8 +32,6 @@ func newTestExecutor(t *testing.T) (*fileToolExecutor, string) {
 	return exec, root
 }
 
-// newPermissionTestSetup baut einen Executor mit Root plus eine Datei
-// ausserhalb davon und liefert Executor, Fake-Asker und den Outside-Ordner.
 func newPermissionTestSetup(t *testing.T, decisions ...string) (*fileToolExecutor, *fakePermissionAsker, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -68,8 +64,6 @@ func mustFail(t *testing.T, result map[string]interface{}, context string) {
 	}
 }
 
-// TestFileToolExecutorReadWritePatch deckt den normalen Arbeitszyklus ab:
-// schreiben, lesen, patchen — alles innerhalb des Roots.
 func TestFileToolExecutorReadWritePatch(t *testing.T) {
 	exec, root := newTestExecutor(t)
 
@@ -95,7 +89,7 @@ func TestFileToolExecutorReadWritePatch(t *testing.T) {
 		"path": "notes.txt", "old_text": "welt", "new_text": "projekt",
 	})
 	mustOK(t, patchResult, "patch_file")
-	// Da vorher gelesen wurde, darf keine "read before write"-Warnung erscheinen.
+
 	if _, hasWarning := patchResult["warning"]; hasWarning {
 		t.Fatalf("keine Warnung erwartet nach vorherigem read_file: %v", patchResult)
 	}
@@ -105,12 +99,9 @@ func TestFileToolExecutorReadWritePatch(t *testing.T) {
 	}
 }
 
-// TestFileToolExecutorBlocksTraversal beweist die Sandbox: weder relatives ".."
-// noch ein absoluter Pfad ausserhalb des Roots duerfen zugreifen.
 func TestFileToolExecutorBlocksTraversal(t *testing.T) {
 	exec, root := newTestExecutor(t)
 
-	// Eine Datei ausserhalb des Roots (im Eltern-Ordner des TempDir).
 	outside := filepath.Join(filepath.Dir(root), "geheim.txt")
 	if err := os.WriteFile(outside, []byte("streng geheim"), 0o644); err != nil {
 		t.Fatalf("setup outside file: %v", err)
@@ -126,7 +117,6 @@ func TestFileToolExecutorBlocksTraversal(t *testing.T) {
 	absResult := exec.Execute("read_file", map[string]interface{}{"path": outside})
 	mustFail(t, absResult, "read_file mit absolutem Pfad ausserhalb")
 
-	// Auch Schreiben ausserhalb muss scheitern — die Datei bleibt unveraendert.
 	writeResult := exec.Execute("write_file", map[string]interface{}{
 		"path": outside, "content": "ueberschrieben",
 	})
@@ -136,8 +126,6 @@ func TestFileToolExecutorBlocksTraversal(t *testing.T) {
 	}
 }
 
-// TestFileToolExecutorValidatesArguments stellt sicher, dass fehlende Pflichtfelder
-// sauber als Tool-Fehler (mit Hinweis) zurueckkommen statt zu paniken.
 func TestFileToolExecutorValidatesArguments(t *testing.T) {
 	exec, _ := newTestExecutor(t)
 
@@ -154,8 +142,6 @@ func TestFileToolExecutorValidatesArguments(t *testing.T) {
 	mustFail(t, unknown, "unbekanntes Tool")
 }
 
-// TestFileToolExecutorPermissionDeny: der Nutzer lehnt ab — der Zugriff
-// scheitert mit permission_denied, die Datei bleibt unangetastet.
 func TestFileToolExecutorPermissionDeny(t *testing.T) {
 	exec, asker, outsideDir := newPermissionTestSetup(t, permissionDeny)
 
@@ -171,8 +157,6 @@ func TestFileToolExecutorPermissionDeny(t *testing.T) {
 	}
 }
 
-// TestFileToolExecutorPermissionOnce: "einmalig" laesst genau diesen einen
-// Zugriff durch; der naechste Zugriff ausserhalb fragt erneut nach.
 func TestFileToolExecutorPermissionOnce(t *testing.T) {
 	exec, asker, outsideDir := newPermissionTestSetup(t, permissionOnce)
 
@@ -184,8 +168,6 @@ func TestFileToolExecutorPermissionOnce(t *testing.T) {
 		t.Fatalf("falscher Inhalt: %q", content)
 	}
 
-	// Zweiter Zugriff auf dieselbe Datei: muss erneut fragen (Fake liefert
-	// ohne weitere Entscheidung deny).
 	second := exec.Execute("read_file", map[string]interface{}{
 		"path": filepath.Join(outsideDir, "a.txt"),
 	})
@@ -195,8 +177,6 @@ func TestFileToolExecutorPermissionOnce(t *testing.T) {
 	}
 }
 
-// TestFileToolExecutorPermissionSession: "Sitzung" gibt den Ordner als neuen
-// Root frei — weitere Zugriffe darin laufen ohne Nachfrage.
 func TestFileToolExecutorPermissionSession(t *testing.T) {
 	exec, asker, outsideDir := newPermissionTestSetup(t, permissionSession)
 
@@ -217,8 +197,6 @@ func TestFileToolExecutorPermissionSession(t *testing.T) {
 	}
 }
 
-// TestFileToolExecutorPermissionEvents: permission_request/-result werden als
-// Events gemeldet, inklusive session_id.
 func TestFileToolExecutorPermissionEvents(t *testing.T) {
 	root := t.TempDir()
 	outsideDir := t.TempDir()
@@ -258,11 +236,9 @@ func TestFileToolExecutorPermissionEvents(t *testing.T) {
 	}
 }
 
-// TestPermissionBrokerLifecycle deckt Respond, unbekannte IDs und Close ab.
 func TestPermissionBrokerLifecycle(t *testing.T) {
 	broker := newPermissionBroker()
 
-	// Antwort vor Ablauf: Ask blockiert, bis Respond die Entscheidung liefert.
 	result := make(chan string, 1)
 	go func() {
 		result <- broker.Ask(context.Background(), permissionRequest{ID: "req-1", Tool: "read_file", Path: "/tmp/x"})
@@ -273,8 +249,7 @@ func TestPermissionBrokerLifecycle(t *testing.T) {
 	if broker.Respond("req-1", "muell") {
 		t.Fatalf("Respond mit ungueltiger Entscheidung darf nicht true liefern")
 	}
-	// Die Registrierung in Ask laeuft in einer Goroutine — kurz warten, bis
-	// die Anfrage sichtbar ist, statt auf ein festes Timing zu vertrauen.
+
 	answered := false
 	for i := 0; i < 200 && !answered; i++ {
 		answered = broker.Respond("req-1", permissionSession)
@@ -289,7 +264,6 @@ func TestPermissionBrokerLifecycle(t *testing.T) {
 		t.Fatalf("Ask lieferte %q statt %q", got, permissionSession)
 	}
 
-	// Nach Close wird alles sofort mit deny beantwortet.
 	broker.Close()
 	if got := broker.Ask(context.Background(), permissionRequest{ID: "req-2"}); got != permissionDeny {
 		t.Fatalf("Ask nach Close sollte deny liefern, bekam %q", got)

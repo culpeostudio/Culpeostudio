@@ -13,9 +13,7 @@ import (
 )
 
 func (m *EngineModule) executePlanTransaction(ctx context.Context, operationID, primaryID string, views map[string]ContextPlanView, primaryConfig EngineConfig, seedBackups map[string]*EngineInstance) {
-	// The UI status may become terminal immediately on cancellation, while the
-	// physical transaction still owns queue/lifecycle cleanup and rollback.
-	// Keep the instance reserved until every deferred queue action has run.
+
 	defer m.finishStartExecution(primaryID, operationID)
 	if m.startQueue != nil {
 		waitTimeout := m.startQueueTimeout
@@ -103,9 +101,7 @@ func (m *EngineModule) executePlanTransaction(ctx context.Context, operationID, 
 		preparedRuntime[id] = true
 		m.setOperationDetail(operationID, "running", 0.1+0.2*float64(index+1)/float64(len(restartIDs)), "runtime_ready", "Runtime ist bereit", "Die lokale Laufzeitumgebung wurde geprueft. Das aktuelle Speicherbudget wird jetzt noch einmal gemessen.", nil)
 	}
-	// Runtime-Installation can take minutes. Refresh byte-exact free RAM/VRAM
-	// immediately before draining so foreign GPU load cannot make a stale plan
-	// evict or shrink an existing model unexpectedly.
+
 	m.mu.RLock()
 	primaryNow := m.instances[primaryID]
 	primaryModelID := ""
@@ -237,10 +233,6 @@ func (m *EngineModule) restoreBeforeDrainCancellation(primaryID string, backups 
 	m.markCancelledInstance(primaryID)
 }
 
-// restoreQueuedStartBackup restores every instance whose target plan was
-// mutated before queue admission. A previously ready restart target remains
-// exactly as routable and resource-holding as it was; no worker lifecycle
-// action has happened yet.
 func (m *EngineModule) restoreQueuedStartBackup(primaryID string, backups map[string]*EngineInstance) bool {
 	m.mu.Lock()
 	restored := make([]*EngineInstance, 0, len(backups))

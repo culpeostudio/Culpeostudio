@@ -222,7 +222,6 @@ func TestFirstCreatedAccountReceivesPendingLegacyBotsBeforeAnotherUserVisitsBotA
 	}
 	_ = decodeJSON(t, created)
 
-	// Simulate another login opening the Bot API before FirstCreated does.
 	if err := botStore.EnsureUser("OtherVisitor"); err != nil {
 		t.Fatal(err)
 	}
@@ -318,10 +317,6 @@ func TestPasswordResetUpdatesLogin(t *testing.T) {
 	}
 }
 
-// TestPasswordResetRejectsWithoutValidTOTP schliesst die Account-Uebernahme,
-// die /api/password/reset als oeffentlichem Endpoint sonst offen liesse: ohne
-// (oder mit falschem) Authenticator-Code darf ein fremdes Passwort nicht
-// zuruecksetzbar sein, egal welcher Username angegeben wird.
 func TestPasswordResetRejectsWithoutValidTOTP(t *testing.T) {
 	app, module := newTestLoginApp(t)
 	secret := configureTestAuthenticator(t, module)

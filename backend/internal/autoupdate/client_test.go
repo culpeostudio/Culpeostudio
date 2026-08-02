@@ -97,8 +97,7 @@ func TestClientDeletesChecksumMismatch(t *testing.T) {
 
 func TestGitHubOriginPolicyAcceptsReleaseDownloads(t *testing.T) {
 	t.Parallel()
-	// Release archives are served from github.com and redirect to these asset
-	// hosts, so every hop of that chain has to pass the policy.
+
 	for _, rawURL := range []string{
 		"https://raw.githubusercontent.com/kuchenboss/MyPhiloEngine/main/quikinstall/manifest.json",
 		"https://github.com/kuchenboss/MyPhiloEngine/releases/download/v1.0.0/myphiloengine-1.0.0-linux-x64.tar.gz",

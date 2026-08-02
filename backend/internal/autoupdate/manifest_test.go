@@ -8,9 +8,6 @@ import (
 	"testing"
 )
 
-// TestPublishedManifestIsDecodable guards the file every client actually reads.
-// A manifest the launcher cannot parse takes every installation offline at once,
-// and the mistake would only surface after it was pushed.
 func TestPublishedManifestIsDecodable(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join("..", "..", "..", "quikinstall", "manifest.json")
@@ -37,11 +34,6 @@ func TestPublishedManifestIsDecodable(t *testing.T) {
 	}
 }
 
-// TestDecodeManifestAcceptsAReservedSignature protects the upgrade path to a
-// signed manifest. Unknown fields are rejected, so a client that cannot read
-// this key would refuse the manifest, keep starting offline, and never update
-// again — which would also make it unable to receive the very client that
-// understands signatures.
 func TestDecodeManifestAcceptsAReservedSignature(t *testing.T) {
 	t.Parallel()
 	base, err := url.Parse("https://raw.githubusercontent.com/example/project/main/quikinstall/manifest.json")

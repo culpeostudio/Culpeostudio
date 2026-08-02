@@ -578,8 +578,6 @@ func TestIdleSweepRevalidatesUsageBetweenScanAndDrain(t *testing.T) {
 		t.Fatalf("initial idle candidates = %#v", candidates)
 	}
 
-	// Simulate acquireInference winning after the read-only scan but before the
-	// sweep's final scheduling decision.
 	module.mu.Lock()
 	instance := module.instances["recently-used"]
 	instance.ActiveRequests = 1
@@ -622,9 +620,7 @@ func TestGuardStateAndPeakPolicies(t *testing.T) {
 	plan := ContextPlanView{Memory: engineplanner.ResourceBreakdown{Total: engineplanner.MemoryAllocation{RAMBytes: 2 << 30, GPUBytes: map[string]int64{"gpu": 4 << 30}}}}
 	record := modelcatalog.ModelRecord{SizeBytes: 1 << 30}
 	ram, gpu := loadPeakBytes(engineruntime.RuntimeLlamaCPP, record, plan)
-	// llama.cpp peak = plan RAM + GPU-bound mmap'd weights (1 GiB, none of it
-	// planned in RAM here) + 2 GiB runtime base. Sizing this from plan RAM
-	// alone produced ~512 MiB worker limits that killed healthy GPU loads.
+
 	if ram != (2<<30)+(1<<30)+(2<<30) || gpu["gpu"] != (4<<30)+(512<<20) {
 		t.Fatalf("llama peaks ram=%d gpu=%#v", ram, gpu)
 	}
@@ -670,7 +666,6 @@ func TestPeakAwareAllocationTurnsMarginalGPUPlanIntoHybridSplit(t *testing.T) {
 		SelectedGPUIDs: []string{"gpu"},
 	}
 
-	// The old steady-state-only calculation accepts this model on the GPU.
 	if _, err := engineplanner.Allocate(hardwarePlan, []engineplanner.Request{request}, policy); err != nil {
 		t.Fatalf("steady-state plan should fit before load headroom is added: %v", err)
 	}
@@ -708,7 +703,7 @@ func TestExplicitCPURequestProducesPeakSafeRAMOnlyPlan(t *testing.T) {
 	config := defaultEngineConfig()
 	config.RuntimeOptions["offload"] = "cpu"
 	config.RuntimeOptions["gpu_layers"] = 0
-	config.RuntimeOptions["allow_ram_offload"] = false // CPU intent is the consent.
+	config.RuntimeOptions["allow_ram_offload"] = false
 	record := modelcatalog.ModelRecord{
 		ID: "cpu-model", Format: modelcatalog.FormatGGUF, SizeBytes: 8 * engineplanner.GiB,
 		Metadata: modelcatalog.Metadata{

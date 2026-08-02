@@ -1,3 +1,5 @@
+// Package config reads the server configuration from the environment and fills
+// in defaults for anything unset.
 package config
 
 import (
@@ -11,8 +13,6 @@ import (
 )
 
 type Config struct {
-	// HTTPHost: Bind-Adresse. Standard 127.0.0.1 (nur lokal erreichbar);
-	// HTTP_HOST=0.0.0.0 oeffnet den Server bewusst fuer das Netzwerk.
 	HTTPHost            string
 	HTTPPort            string
 	GRPCPort            string
@@ -20,13 +20,14 @@ type Config struct {
 	LoginAccountsFile   string
 	AuthConfigFile      string
 	UserPreferencesFile string
+	NewsSavedFile       string
+	BenchmarkCacheDir   string
 	SettingsFile        string
 	TLSCert             string
 	TLSKey              string
 	UseHTTPS            bool
 	AgenticTimeoutSec   int
 
-	// Memory-Modul
 	MemoryDataDir          string
 	MemoryProjectTag       string
 	MemoryAPIToken         string
@@ -44,17 +45,14 @@ type Config struct {
 	ChatOverlapSize        int
 	MemoryViewerTitle      string
 
-	// Reindexer- und Wartungs-Tuning
 	MemoryReindexIntervalSeconds  int
 	MemoryReindexBatchSize        int
 	MemoryReindexConcurrency      int
 	MemorySoftDeleteRetentionDays int
 
-	// Modellspezifische Token-Zaehlung (siehe internal/memorytoken)
 	MemoryTokenizerFamily    string
 	MemoryTokenizerModelPath string
 
-	// Pluggable Embedding-Backends fuer das Memory-Modul
 	EmbeddingBackend      string
 	EmbeddingHashDims     int
 	EmbeddingSidecarURL   string
@@ -80,6 +78,8 @@ func Load() *Config {
 		LoginAccountsFile:   getEnv("LOGIN_ACCOUNTS_FILE", "data/login_accounts.json"),
 		AuthConfigFile:      getEnv("AUTH_CONFIG_FILE", "data/login_authenticator.json"),
 		UserPreferencesFile: getEnv("USER_PREFERENCES_FILE", "data/user_preferences.json"),
+		NewsSavedFile:       getEnv("NEWS_SAVED_FILE", "data/news_saved.json"),
+		BenchmarkCacheDir:   getEnv("BENCHMARK_CACHE_DIR", "data/benchmark"),
 		SettingsFile:        getEnv("SETTINGS_FILE", "data/settings.json"),
 		TLSCert:             getEnv("TLS_CERT", ""),
 		TLSKey:              getEnv("TLS_KEY", ""),
@@ -133,20 +133,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// getOrCreateSecret liefert ein Geheimnis (JWT-Signatur, Memory-Token) in
-// dieser Reihenfolge: Umgebungsvariable, zuvor erzeugte Datei, sonst frisch
-// gewuerfelt und gespeichert.
-//
-// Frueher stand hier ein fester Vorgabewert im Quelltext. Da der Server auf
-// allen Netzwerk-Interfaces lauscht (":8080"), konnte damit jeder im selben
-// Netz, der den Quelltext kennt, gueltige Tokens signieren. Ein pro
-// Installation gewuerfeltes Geheimnis behebt das, ohne dass beim Start etwas
-// eingerichtet werden muss; es ueberlebt Neustarts, damit Anmeldungen nicht
-// jedes Mal ungueltig werden.
-//
-// Schlaegt Erzeugen oder Speichern fehl, laeuft der Server mit einem nur im
-// Speicher gehaltenen Geheimnis weiter — dann sind Sitzungen nach einem
-// Neustart ungueltig, aber nie unsicher.
 func getOrCreateSecret(envKey, path string) string {
 	if v := strings.TrimSpace(os.Getenv(envKey)); v != "" {
 		return v

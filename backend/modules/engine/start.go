@@ -157,10 +157,7 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	if err != nil {
 		return err
 	}
-	// The memory plan and the worker must use the same physical KV-cache
-	// representation. Runtime capability negotiation may resolve a requested
-	// compact cache to a wider fallback (for example q4_0 -> f16). Replan before
-	// spawning so cgroup limits and the displayed context remain byte-exact.
+
 	resolvedConfig := cloneEngineConfig(config)
 	resolvedConfig.RuntimeOptions["kv_cache_dtype"] = command.Effective.KVCacheDType
 	resolvedPlannerType := plannerKVType(resolvedConfig)
@@ -209,12 +206,7 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	}
 	memoryLimit, err := m.validateLoadPeakWithNormalLRU(ctx, launch.kind, record, plan, operationID, instanceID)
 	if err != nil {
-		// Automatic context shrinking: a smaller KV cache often turns a
-		// rejected plan into a startable one. Only for memory conflicts and
-		// only while fallbacks are allowed. A GPU load-peak conflict is handled
-		// first: shrinking the KV cache cannot create the weight-upload headroom
-		// that is missing, while a RAM-approved llama.cpp plan can safely fall
-		// back to CPU placement.
+
 		var conflict *ResourceConflictError
 		if errors.As(err, &conflict) && fallbackEnabled(config) {
 			if strings.HasPrefix(conflict.Resource, "gpu") && launch.kind == engineruntime.RuntimeLlamaCPP && !forceCPURequested(config) {
@@ -239,19 +231,13 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	}
 	handle, err := m.supervisor.Start(ctx, processSpec)
 	if err != nil && isPortConflictError(err) {
-		// The randomly allocated loopback port can be stolen between allocation
-		// and worker bind, and an orphaned process from a crashed run may still
-		// hold it. A fresh Start allocates a new random port.
+
 		log.Printf("[engine] worker port conflict for %s, retrying with a fresh port: %v", instanceID, err)
 		m.setInstanceStateDetail(instanceID, engineruntime.StateStarting, 0.62, "launching_worker", "Der lokale Netzwerk-Port war belegt. Der Start wird automatisch mit einem neuen Port wiederholt.", "")
 		handle, err = m.supervisor.Start(ctx, processSpec)
 	}
 	if err != nil {
-		// Escalation ladder: memory exhaustion first shrinks the context
-		// mathematically. When no reduction remains (or the failure is not
-		// memory-related, e.g. a KV-cache incompatibility), fall THROUGH to
-		// the KV/runtime/CPU fallbacks instead of giving up — skipping them
-		// would kill models that only need the q4_0->f16 fallback.
+
 		if isMemoryExhaustionError(err) && fallbackEnabled(config) &&
 			computeReducedContext(plan.EffectiveContextTokens, plan.KVBytesPerTokenAtStart, err) > 0 {
 			return m.retryReducedContext(ctx, instanceID, config, plan, operationID, err)
@@ -307,11 +293,7 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 		}
 		return fmt.Errorf("Mini-Inferenztest fehlgeschlagen: %w", err)
 	}
-	// An explicit "maximize stable" request does not stop at the first working
-	// half-size fallback. A failed upper bound is carried through the retries;
-	// after every successful probe we test the midpoint above it until the
-	// remaining interval is one 256-token step. Trial workers are never exposed
-	// as Ready and are stopped before the next probe starts.
+
 	if contextSearchRequested(config) {
 		failedCeiling := contextSearchBound(config, contextSearchCeilingOption)
 		currentContext := plan.EffectiveContextTokens
@@ -353,10 +335,6 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 					fmt.Sprintf("Der hoehere Test mit %d Token ist fehlgeschlagen. Der zuvor bestaetigte Bestwert von %d Token wird wieder gestartet.", nextPlan.EffectiveContextTokens, currentContext), nil)
 			}
 
-			// If the refreshed hardware budget no longer admits the next midpoint,
-			// or a non-memory probe fails, restart and commit the value that was
-			// just verified instead of turning a successful optimization into a
-			// failed transaction.
 			return m.startOne(ctx, instanceID, stableConfig, plan, operationID)
 		}
 	}
@@ -378,9 +356,7 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	instance.Runtime = launch.kind
 	instance.EffectiveConfig = effective
 	if contextSearchRequested(config) {
-		// Preserve the user's original runtime/KV/offload intent. Recursive
-		// search attempts may contain temporary CPU or cache fallbacks that
-		// belong only in EffectiveConfig and the fallback history.
+
 		instance.RequestedConfig = stableContextRequest(instance.RequestedConfig, plan.EffectiveContextTokens)
 	}
 	instance.Plan = &plan
@@ -409,8 +385,7 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	instance.Placement = placementForPlan(&plan)
 	instance.GuardState = m.guardState
 	instance.LastKnownGood = &LastKnownGood{EffectiveConfig: cloneEngineConfig(effective), Plan: plan, Runtime: string(launch.kind), UpdatedAt: instance.UpdatedAt}
-	// A stopped generation may still own deferred HTTP releases. Give the new
-	// worker a fresh inference gate so those releases cannot consume its slots.
+
 	m.inferenceMu.Lock()
 	m.inferenceGates[instanceID] = &inferenceGate{}
 	m.inferenceMu.Unlock()
@@ -423,11 +398,6 @@ func (m *EngineModule) startOne(ctx context.Context, instanceID string, config E
 	return nil
 }
 
-// revalidatePlanBeforeLaunch closes the longest race in a model start: runtime
-// installation can take minutes, during which other applications may consume
-// VRAM/RAM or model files may change. A recommendation is therefore only an
-// admission estimate; this second calculation is authoritative for spawning
-// the worker. It never silently changes the context of another live instance.
 func (m *EngineModule) revalidatePlanBeforeLaunch(ctx context.Context, instanceID string, config EngineConfig, previous ContextPlanView, record modelcatalog.ModelRecord, operationID string) (ContextPlanView, modelcatalog.ModelRecord, error) {
 	if strings.TrimSpace(record.ID) == "" {
 		return previous, record, os.ErrNotExist
@@ -515,9 +485,7 @@ func resolveWorkerGPUs(kind engineruntime.RuntimeKind, config EngineConfig, plan
 		selected = selected[:parallelism]
 	}
 	if kind == engineruntime.RuntimeTransformers {
-		// Transformers' device_map must use exactly the devices for which the
-		// planner provided a byte budget; otherwise an unbounded visible device
-		// could silently become an offload target.
+
 		filtered := make([]string, 0, len(selected))
 		seen := map[string]bool{}
 		for _, id := range selected {
@@ -594,8 +562,7 @@ func plannedVLLMMemoryUtilization(plan ContextPlanView, selected []hardware.GPU)
 			return 0, fmt.Errorf("vLLM-Plan enthaelt nicht ausgewaehlte GPU %q", id)
 		}
 	}
-	// vLLM exposes one fraction for every tensor-parallel worker. Flooring at
-	// six decimals ensures no selected GPU can exceed its individual plan.
+
 	utilization = math.Floor(utilization*1_000_000) / 1_000_000
 	if utilization <= 0 || utilization > 1 {
 		return 0, fmt.Errorf("vLLM VRAM-Auslastungsgrenze %.6f liegt ausserhalb des gueltigen Bereichs", utilization)

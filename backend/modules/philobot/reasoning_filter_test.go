@@ -5,9 +5,6 @@ import (
 	"testing"
 )
 
-// splitThinkStream speist reply Zeichen fuer Zeichen ein (wie filterVisible in
-// agent_loop_test.go), um Chunk-Grenzen mitten im Sentinel zu erzwingen, und
-// gibt sichtbaren Text und Reasoning-Text getrennt zurueck.
 func splitThinkStream(reply string) (visible string, reasoning string) {
 	var visibleBuf, reasoningBuf strings.Builder
 	f := newThinkTagFilter(
@@ -52,8 +49,7 @@ func TestThinkTagFilterKeepsTextBeforeAndAfterBlock(t *testing.T) {
 }
 
 func TestThinkTagFilterUnterminatedBlockStaysHidden(t *testing.T) {
-	// Ein nie geschlossener Denkblock (Modell wurde abgeschnitten) darf nicht
-	// als rohes Sentinel-Fragment im sichtbaren Text auftauchen.
+
 	visible, reasoning := splitThinkStream("<think>Abgebrochener Gedanke ohne Ende")
 	if visible != "" {
 		t.Fatalf("unterminierter Denkblock sollte nicht sichtbar sein, bekam: %q", visible)

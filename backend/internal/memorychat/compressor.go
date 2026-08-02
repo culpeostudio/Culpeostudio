@@ -1,3 +1,5 @@
+// Package memorychat compresses finished dialogue pairs into structured chat
+// memories and rolling summaries.
 package memorychat
 
 import (
@@ -60,8 +62,6 @@ func (c *Compressor) HasSession(sessionID string) bool {
 	_, hasCnt := c.counters[sessionID]
 	return hasBuf || hasCnt
 }
-
-
 
 func (c *Compressor) CompressPair(sessionID, userText, assistantText string, at time.Time) []memory.AddObservationInput {
 	if at.IsZero() {
@@ -266,7 +266,6 @@ func extractPersons(text string) []string {
 	for _, raw := range words {
 		token := cleanToken(raw)
 
-		// Determine if the raw word ended with sentence-ending character (before cleaning)
 		endsSentence := false
 		if len(raw) > 0 {
 			lastChar := raw[len(raw)-1]
@@ -291,7 +290,6 @@ func extractPersons(text string) []string {
 
 		key := strings.ToLower(token)
 
-		// Filter out domain technical nouns and general stopwords
 		if _, isCommon := commonNouns[key]; isCommon {
 			startsSentence = endsSentence
 			continue
@@ -301,7 +299,6 @@ func extractPersons(text string) []string {
 			continue
 		}
 
-		// First word of sentence is highly likely to be a false positive unless marked by @
 		if startsSentence && !strings.HasPrefix(raw, "@") {
 			startsSentence = endsSentence
 			continue

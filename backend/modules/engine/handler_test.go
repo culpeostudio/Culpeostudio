@@ -51,8 +51,7 @@ func TestEngineManagementCatalogRecommendationAndInstanceContract(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer module.Shutdown()
-	// Avoid package installation in this API-contract test. The asynchronous
-	// operation must fail cleanly while the management mutation remains valid.
+
 	if module.installer != nil {
 		module.installer.Close()
 		module.installer = nil

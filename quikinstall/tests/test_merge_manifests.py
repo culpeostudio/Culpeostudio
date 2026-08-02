@@ -50,8 +50,8 @@ class MergeManifestsTest(unittest.TestCase):
         self.assertEqual(
             sorted(merged["assets"]), ["linux-x64", "macos-arm64", "windows-x64"]
         )
-        # The newest build stamps the release, so the manifest never claims to
-        # predate an asset it points at.
+
+
         self.assertEqual(merged["published_at"], "2026-07-27T11:00:00Z")
 
     def test_refuses_to_mix_versions(self) -> None:

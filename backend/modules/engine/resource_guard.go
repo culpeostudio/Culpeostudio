@@ -19,20 +19,15 @@ const (
 	guardGPUFloor = int64(256 << 20)
 )
 
-// ResourceConflictError reports exactly which memory budget blocked a model
-// start. It is machine-readable (serialized as resource_conflict on failed
-// operations) so clients can render a required-vs-available comparison
-// instead of a flat text line.
 type ResourceConflictError struct {
-	// Resource is "ram" or "gpu:<id>".
 	Resource string `json:"resource"`
-	// RequiredBytes is the conservative load peak for the requested plan.
+
 	RequiredBytes int64 `json:"required_bytes"`
-	// AvailableBytes is what remains after subtracting the protected reserve.
+
 	AvailableBytes int64 `json:"available_bytes"`
-	// ReserveBytes is the protected host reserve that was subtracted.
+
 	ReserveBytes int64 `json:"reserve_bytes,omitempty"`
-	// TotalBytes is the physical size of the resource, when known.
+
 	TotalBytes int64  `json:"total_bytes,omitempty"`
 	Reason     string `json:"reason"`
 }
@@ -79,12 +74,7 @@ func loadPeakBytes(kind engineruntime.RuntimeKind, record modelcatalog.ModelReco
 	ram = plan.Memory.Total.RAMBytes
 	switch kind {
 	case engineruntime.RuntimeLlamaCPP:
-		// GGUF weights are memory-mapped even for a pure GPU plan: the
-		// file-backed pages stream through the worker's page cache (counted
-		// by cgroup memory) while uploading to the GPU, and the Python +
-		// Vulkan/CUDA runtime needs a solid base amount. Sizing the limit
-		// from plan RAM alone produced ~512 MiB caps that killed perfectly
-		// healthy loads within a second.
+
 		gpuWeightBytes := modelBytes - plan.Memory.Weights.RAMBytes
 		if gpuWeightBytes < 0 {
 			gpuWeightBytes = 0
@@ -105,10 +95,6 @@ func loadPeakBytes(kind engineruntime.RuntimeKind, record modelcatalog.ModelReco
 	return ram, gpu
 }
 
-// loadPeakReserveAdditions returns the transient bytes that must remain free
-// in addition to a plan's steady-state allocation while the worker loads the
-// model. Keeping this calculation derived from loadPeakBytes prevents the
-// recommendation and the launch guard from drifting apart.
 func loadPeakReserveAdditions(kind engineruntime.RuntimeKind, record modelcatalog.ModelRecord, plan ContextPlanView) (int64, map[string]int64) {
 	ramRequired, gpuRequired := loadPeakBytes(kind, record, plan)
 	ramExtra := ramRequired - plan.Memory.Total.RAMBytes
@@ -125,10 +111,6 @@ func loadPeakReserveAdditions(kind engineruntime.RuntimeKind, record modelcatalo
 	return ramExtra, gpuExtra
 }
 
-// allocateWithLoadPeak performs the normal steady-state allocation first and
-// then repeats it with the target worker's transient load headroom reserved.
-// Model starts are serialized, so only the target's peak is added; allocations
-// of already-running instances remain part of the ordinary planner budget.
 func allocateWithLoadPeak(
 	hardwarePlan engineplanner.Hardware,
 	requests []engineplanner.Request,
@@ -166,10 +148,6 @@ func allocateWithLoadPeak(
 	return secondPass, nil
 }
 
-// llama.cpp exposes the hybrid placement as a GPU-layer count. Its automatic
-// plan must therefore move weight layers to RAM when reserving GPU load
-// headroom; merely spilling the generic runtime/KV buckets would leave
-// n_gpu_layers=-1 and the real worker would still fill VRAM with all weights.
 func llamaRequestsWithPeakWeightSplit(requests []engineplanner.Request, targetID string, target engineplanner.ContextPlan, gpuReduction map[string]int64) []engineplanner.Request {
 	result := append([]engineplanner.Request(nil), requests...)
 	for index := range result {
@@ -195,10 +173,6 @@ func llamaRequestsWithPeakWeightSplit(requests []engineplanner.Request, targetID
 	return result
 }
 
-// gpuPeakAllocationReductions discounts headroom that was already unused in
-// pass one. Small models therefore stay fully on GPU; only the part of the
-// transient reserve that actually displaces a steady allocation is converted
-// into a llama.cpp weight-layer split.
 func gpuPeakAllocationReductions(hardwarePlan engineplanner.Hardware, plans []engineplanner.ContextPlan, basePolicy engineplanner.ReservePolicy, gpuExtra map[string]int64) map[string]int64 {
 	totalGPU := map[string]int64{}
 	for _, plan := range plans {
@@ -272,10 +246,6 @@ func addMemoryBytes(base, extra int64) int64 {
 	return base + extra
 }
 
-// validatePeakAwareAllocation verifies pass two against the planner's
-// projected post-eviction capacities. This catches the special case where a
-// peak addition alone exceeds a resource even though the target has no
-// steady-state allocation on that resource.
 func validatePeakAwareAllocation(
 	hardwarePlan engineplanner.Hardware,
 	plans []engineplanner.ContextPlan,
@@ -370,10 +340,7 @@ func (m *EngineModule) validateLoadPeak(ctx context.Context, kind engineruntime.
 	m.mu.RLock()
 	guard := m.guardState
 	m.mu.RUnlock()
-	// "warning" merely means the budget is tight — which is exactly what the
-	// byte-exact peak check below decides precisely. Blanket-blocking starts
-	// on warning made hosts with one normally-loaded GPU unable to start
-	// anything else. Only critical/emergency protect the host outright.
+
 	if guard == GuardCritical || guard == GuardEmergency {
 		return 0, fmt.Errorf("%w: neue Starts sind bei Guard-Zustand %s pausiert", localinference.ErrGuardRejected, guard)
 	}
@@ -443,27 +410,21 @@ func guardStateForSnapshot(snapshot hardware.Snapshot) GuardState {
 		}
 	}
 	if snapshot.RAMTotalBytes <= 0 {
-		// Unknown telemetry pauses admission/prewarm but does not evict a model
-		// solely because the first asynchronous sample is still pending.
+
 		state = GuardWarning
 	} else if snapshot.RAMAvailableBytes <= 0 {
-		// With a known total, zero availability is below the non-negotiable
-		// emergency floor (not an unknown sample).
+
 		apply(0, emergencyFloor(snapshot.RAMTotalBytes, guardRAMFloor))
 	} else {
 		apply(snapshot.RAMAvailableBytes, emergencyFloor(snapshot.RAMTotalBytes, guardRAMFloor))
 	}
 	if snapshot.GPUTelemetryIncomplete && guardRank(state) < guardRank(GuardWarning) {
-		// A previously measured dedicated GPU vanished from the pressure sample.
-		// Pause admission without fabricating zero free VRAM (which would trigger
-		// destructive Emergency eviction on a mere telemetry failure).
+
 		state = GuardWarning
 	}
 	for _, gpu := range snapshot.GPUs {
 		if gpu.SharedMemory || gpu.VRAMTelemetryUnavailable {
-			// Inventory-only adapters (notably Windows CIM AMD/Intel records)
-			// remain unschedulable through zero capacity, but are not evidence of
-			// actual pressure and therefore must not block unrelated CPU starts.
+
 			continue
 		}
 		if gpu.VRAMTotalBytes <= 0 {
@@ -568,8 +529,7 @@ func (m *EngineModule) setGuardState(state GuardState) {
 	if state == "" {
 		state = GuardNormal
 	}
-	// Serialize the guard transition with the background-runtime spawn gate.
-	// Once a non-normal state is visible, no prewarm process can be created.
+
 	m.prewarmMu.Lock()
 	m.spawnGateMu.Lock()
 	m.mu.Lock()
@@ -577,9 +537,7 @@ func (m *EngineModule) setGuardState(state GuardState) {
 		m.mu.Unlock()
 		m.spawnGateMu.Unlock()
 		m.prewarmMu.Unlock()
-		// A previous cancellation may still be waiting for an uncooperative
-		// installer child. Reassert cancellation on every pressure sample while
-		// suppressing duplicate guard/instance events.
+
 		if state != GuardNormal {
 			m.requestRuntimePrewarmPause()
 			if guardRank(state) >= guardRank(GuardCritical) {
@@ -643,10 +601,6 @@ func (m *EngineModule) idleSweepCandidates(now time.Time) []string {
 	return ids
 }
 
-// claimIdleStop repeats every TTL predicate in the same critical section that
-// closes inference admission. A request which updates ActiveRequests/LastUsed
-// after the initial sweep scan therefore wins and cannot be drained from a
-// stale candidate list.
 func (m *EngineModule) claimIdleStop(instanceID string, now time.Time) bool {
 	m.mu.Lock()
 	instance := m.instances[instanceID]
@@ -696,10 +650,6 @@ func (m *EngineModule) relievePressure(emergency bool) {
 	_, _ = m.scheduleStopWithReason(id, "resource_pressure", "Ressourcenwaechter entlaedt die am laengsten ungenutzte Instanz")
 }
 
-// claimPressureStop closes the selection-to-drain race. Under critical (but
-// non-emergency) pressure, a request or reservation which appears after the
-// LRU scan wins and is never interrupted. Emergency may escalate a newly
-// active candidate through emergencyTerminate instead.
 func (m *EngineModule) claimPressureStop(instanceID string, emergency bool) (claimed bool, active bool) {
 	m.mu.Lock()
 	instance := m.instances[instanceID]
@@ -805,8 +755,7 @@ func (m *EngineModule) pressureEvictionCandidate(emergency bool) (string, bool) 
 			if leftActive != rightActive {
 				return !leftActive
 			}
-			// Once emergency protection must interrupt an active answer, user
-			// priority is authoritative; request count is only a tie-breaker.
+
 			if leftActive && candidates[i].priority != candidates[j].priority {
 				return candidates[i].priority < candidates[j].priority
 			}
@@ -822,9 +771,6 @@ func (m *EngineModule) pressureEvictionCandidate(emergency bool) (string, bool) 
 	return candidates[0].id, candidates[0].active > 0
 }
 
-// activeOperationProtectsInstanceLocked prevents non-emergency maintenance
-// from mutating participants while a lifecycle transaction owns their plans.
-// m.mu must already be held for reading or writing.
 func (m *EngineModule) activeOperationProtectsInstanceLocked(instanceID string) bool {
 	if m.startExecutions[instanceID] != "" {
 		return true
@@ -863,8 +809,7 @@ func (m *EngineModule) emergencyTerminate(instanceID string) {
 		m.mu.Unlock()
 		return
 	}
-	// Close inference admission before signalling the process. Draining remains
-	// resource-holding and deliberately does not claim that RAM/VRAM is free.
+
 	instance.State = engineruntime.StateDraining
 	instance.Phase = "guard_emergency_stopping"
 	instance.DetailMessage = "Notabschaltung laeuft; der Modellprozess wird zwangsweise beendet und anschliessend bestaetigt."

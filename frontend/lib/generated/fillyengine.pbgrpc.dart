@@ -1,7 +1,3 @@
-// This is a generated file - do not edit.
-//
-// Generated from fillyengine.proto.
-
 // @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
@@ -22,10 +18,8 @@ export 'fillyengine.pb.dart';
 
 @$pb.GrpcServiceName('fillyengine.EngineService')
 class EngineServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -66,8 +60,6 @@ class EngineServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$listLocalModels, request, options: options);
   }
-
-  // method descriptors
 
   static final _$startEngine =
       $grpc.ClientMethod<$0.StartEngineRequest, $0.EngineStatus>(
@@ -179,10 +171,8 @@ abstract class EngineServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.ChatService')
 class ChatServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -203,7 +193,6 @@ class ChatServiceClient extends $grpc.Client {
     return $createUnaryCall(_$sendMessage, request, options: options);
   }
 
-  /// Server-Streaming für Token-für-Token Antworten
   $grpc.ResponseStream<$0.ChatToken> streamMessage(
     $0.ChatMessageRequest request, {
     $grpc.CallOptions? options,
@@ -219,8 +208,6 @@ class ChatServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$getHistory, request, options: options);
   }
-
-  // method descriptors
 
   static final _$createSession =
       $grpc.ClientMethod<$0.CreateSessionRequest, $0.SessionInfo>(
@@ -318,10 +305,8 @@ abstract class ChatServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.TrainingService')
 class TrainingServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -356,7 +341,6 @@ class TrainingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$cancelJob, request, options: options);
   }
 
-  /// Server-Streaming für Live-Training-Metriken
   $grpc.ResponseStream<$0.TrainingMetrics> streamProgress(
     $0.JobRequest request, {
     $grpc.CallOptions? options,
@@ -365,8 +349,6 @@ class TrainingServiceClient extends $grpc.Client {
         _$streamProgress, $async.Stream.fromIterable([request]),
         options: options);
   }
-
-  // method descriptors
 
   static final _$startTraining =
       $grpc.ClientMethod<$0.TrainingRequest, $0.JobInfo>(
@@ -476,10 +458,8 @@ abstract class TrainingServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.QuantizationService')
 class QuantizationServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -514,7 +494,6 @@ class QuantizationServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getAvailableTypes, request, options: options);
   }
 
-  /// Streaming Progress
   $grpc.ResponseStream<$0.QuantProgress> streamProgress(
     $0.JobRequest request, {
     $grpc.CallOptions? options,
@@ -523,8 +502,6 @@ class QuantizationServiceClient extends $grpc.Client {
         _$streamProgress, $async.Stream.fromIterable([request]),
         options: options);
   }
-
-  // method descriptors
 
   static final _$startQuantization =
       $grpc.ClientMethod<$0.QuantRequest, $0.JobInfo>(
@@ -635,10 +612,8 @@ abstract class QuantizationServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.MarktplatzService')
 class MarktplatzServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -666,7 +641,6 @@ class MarktplatzServiceClient extends $grpc.Client {
     return $createUnaryCall(_$download, request, options: options);
   }
 
-  /// Streaming Download-Progress
   $grpc.ResponseStream<$0.DownloadProgress> streamDownloadProgress(
     $0.JobRequest request, {
     $grpc.CallOptions? options,
@@ -675,8 +649,6 @@ class MarktplatzServiceClient extends $grpc.Client {
         _$streamDownloadProgress, $async.Stream.fromIterable([request]),
         options: options);
   }
-
-  // method descriptors
 
   static final _$search =
       $grpc.ClientMethod<$0.SearchRequest, $0.SearchResponse>(
@@ -770,10 +742,8 @@ abstract class MarktplatzServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.SkillsService')
 class SkillsServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -814,8 +784,6 @@ class SkillsServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$rescanSkills, request, options: options);
   }
-
-  // method descriptors
 
   static final _$listSkills =
       $grpc.ClientMethod<$0.Empty, $0.SkillListResponse>(
@@ -933,10 +901,8 @@ abstract class SkillsServiceBase extends $grpc.Service {
 
 @$pb.GrpcServiceName('fillyengine.PhiloxAgenticService')
 class PhiloxAgenticServiceClient extends $grpc.Client {
-  /// The hostname for this service.
   static const $core.String defaultHost = '';
 
-  /// OAuth scopes needed for the client.
   static const $core.List<$core.String> oauthScopes = [
     '',
   ];
@@ -944,7 +910,6 @@ class PhiloxAgenticServiceClient extends $grpc.Client {
   PhiloxAgenticServiceClient(super.channel,
       {super.options, super.interceptors});
 
-  /// Agentic Execution mit Streaming (Tools, Planning, File-Ops)
   $grpc.ResponseStream<$0.AgenticResponse> executeAgentic(
     $0.AgenticRequest request, {
     $grpc.CallOptions? options,
@@ -954,7 +919,6 @@ class PhiloxAgenticServiceClient extends $grpc.Client {
         options: options);
   }
 
-  /// Planning Phase nur (für Approval-Flow)
   $grpc.ResponseStream<$0.AgenticResponse> planAgentic(
     $0.AgenticRequest request, {
     $grpc.CallOptions? options,
@@ -964,15 +928,12 @@ class PhiloxAgenticServiceClient extends $grpc.Client {
         options: options);
   }
 
-  /// Verfügbare Tools für Frontend
   $grpc.ResponseFuture<$0.ToolList> listTools(
     $0.Empty request, {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$listTools, request, options: options);
   }
-
-  // method descriptors
 
   static final _$executeAgentic =
       $grpc.ClientMethod<$0.AgenticRequest, $0.AgenticResponse>(

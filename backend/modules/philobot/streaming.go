@@ -63,7 +63,7 @@ func consumeCompleteUTF8(data []byte) (string, []byte) {
 		}
 		r, size := utf8.DecodeRune(data[i:])
 		if r == utf8.RuneError && size == 1 {
-			// A complete invalid byte cannot be fixed by a later chunk.
+
 			i++
 			continue
 		}

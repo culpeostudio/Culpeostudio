@@ -25,10 +25,6 @@ type resourceLauncherPayload struct {
 	Args []string `json:"args"`
 }
 
-// init implements two shell-free stages: a backend-lifetime supervisor and a
-// one-way helper which applies RLIMIT_AS immediately before execing the fixed
-// model argv. Keeping Go supervision outside the address-space cap avoids the
-// launcher runtime itself exhausting a deliberately small worker limit.
 func init() {
 	supervise := os.Getenv(resourceLauncherFlag) == "1"
 	execLimited := os.Getenv(resourceLauncherExecFlag) == "1"
@@ -73,8 +69,6 @@ func resourceWorkerEnvironment() []string {
 	return environment
 }
 
-// limitedExecEnvironment retains the serialized command/limit for the tiny
-// one-way exec helper while removing supervisor-only lifetime configuration.
 func limitedExecEnvironment() []string {
 	base := make([]string, 0, len(os.Environ()))
 	for _, value := range os.Environ() {
@@ -88,13 +82,6 @@ func limitedExecEnvironment() []string {
 	return append(base, resourceLauncherExecFlag+"=1")
 }
 
-// addressSpaceHeadroomBytes is added to the RAM budget before it becomes the
-// worker's RLIMIT_AS. RLIMIT_AS counts virtual address space, not resident
-// memory: GPU drivers map multi-gigabyte device BARs, GGUF weights are
-// memory-mapped, and Python reserves large arenas — none of which consume
-// that much RAM. Without generous headroom the kernel kills healthy GPU
-// workers during startup. cgroup memory.max (where available) enforces the
-// actual RAM budget; RLIMIT_AS only remains as a runaway-allocation stop.
 const addressSpaceHeadroomBytes int64 = 32 << 30
 
 func prepareRlimitLauncher(cmd *exec.Cmd, maximum int64) error {

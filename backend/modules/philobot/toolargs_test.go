@@ -5,9 +5,6 @@ import (
 	"testing"
 )
 
-// TestNormalizeToolArgumentsUebersetztVarianten deckt den Fall ab, der in
-// der Praxis auftrat: das Modell rief find_files mit "glob" statt
-// "pattern" auf und scheiterte dreimal am selben Aufruf.
 func TestNormalizeToolArgumentsUebersetztVarianten(t *testing.T) {
 	cases := []struct {
 		tool     string
@@ -41,8 +38,6 @@ func TestNormalizeToolArgumentsUebersetztVarianten(t *testing.T) {
 	}
 }
 
-// TestNormalizeToolArgumentsBehaeltGlobBeiGrep: bei grep_search ist "glob"
-// ein eigenstaendiges Feld (Dateifilter) und darf nicht zu "pattern" werden.
 func TestNormalizeToolArgumentsBehaeltGlobBeiGrep(t *testing.T) {
 	got := normalizeToolArguments("grep_search", map[string]interface{}{
 		"pattern": "func main", "glob": "*.go",
@@ -55,8 +50,6 @@ func TestNormalizeToolArgumentsBehaeltGlobBeiGrep(t *testing.T) {
 	}
 }
 
-// TestNormalizeToolArgumentsKanonischerNameGewinnt: schickt ein Modell
-// beides, darf der Alias den richtigen Wert nicht ueberschreiben.
 func TestNormalizeToolArgumentsKanonischerNameGewinnt(t *testing.T) {
 	got := normalizeToolArguments("read_file", map[string]interface{}{
 		"path": "richtig.go", "file": "falsch.go",
@@ -69,8 +62,6 @@ func TestNormalizeToolArgumentsKanonischerNameGewinnt(t *testing.T) {
 	}
 }
 
-// TestNormalizeToolArgumentsLeererKanonischerName: ist das richtige Feld
-// zwar da, aber leer, springt der Alias ein.
 func TestNormalizeToolArgumentsLeererKanonischerName(t *testing.T) {
 	got := normalizeToolArguments("read_file", map[string]interface{}{
 		"path": "   ", "file": "echt.go",
@@ -91,8 +82,6 @@ func TestNormalizeToolArgumentsUnbekanntesToolUnveraendert(t *testing.T) {
 	}
 }
 
-// TestNormalizeToolArgumentsAendertEingabeNicht: der Aufrufer protokolliert
-// die Original-Argumente, die duerfen sich nicht unter der Hand aendern.
 func TestNormalizeToolArgumentsAendertEingabeNicht(t *testing.T) {
 	in := map[string]interface{}{"glob": "*.go"}
 	normalizeToolArguments("find_files", in)
@@ -101,9 +90,6 @@ func TestNormalizeToolArgumentsAendertEingabeNicht(t *testing.T) {
 	}
 }
 
-// TestTruncationAwareHintErkenntAbschneiden deckt den in der Praxis
-// beobachteten Fall ab: das Modell schickt eine ganze Funktion als
-// old_text, die Antwort bricht ab und new_text fehlt.
 func TestTruncationAwareHintErkenntAbschneiden(t *testing.T) {
 	langerText := strings.Repeat("x", truncationSuspicionChars+100)
 	hint := truncationAwareHint("patch_file", map[string]interface{}{
@@ -118,8 +104,6 @@ func TestTruncationAwareHintErkenntAbschneiden(t *testing.T) {
 	}
 }
 
-// TestTruncationAwareHintBleibtGenerisch: bei kurzen Argumenten ist das
-// Abschneiden nicht die Ursache, dann hilft der normale Hinweis.
 func TestTruncationAwareHintBleibtGenerisch(t *testing.T) {
 	hint := truncationAwareHint("patch_file", map[string]interface{}{
 		"path": "a.go", "old_text": "kurz",
@@ -132,8 +116,6 @@ func TestTruncationAwareHintBleibtGenerisch(t *testing.T) {
 	}
 }
 
-// TestTruncationAwareHintNurFuerSchreibwerkzeuge: bei den uebrigen
-// Werkzeugen gibt es nichts abzuschneiden.
 func TestTruncationAwareHintNurFuerSchreibwerkzeuge(t *testing.T) {
 	langerText := strings.Repeat("x", truncationSuspicionChars+100)
 	hint := truncationAwareHint("grep_search", map[string]interface{}{"pattern": langerText})

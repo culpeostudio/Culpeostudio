@@ -8,9 +8,6 @@ func TestHashBackendModelIsV2(t *testing.T) {
 	}
 }
 
-// hash-v2 fuegt Zeichen-Trigramme hinzu: morphologische Varianten teilen keine
-// ganzen Woerter, aber viele Trigramme und werden dadurch aehnlich – waehrend
-// unverwandte Woerter klar unaehnlicher bleiben.
 func TestHashBackendTrigramsFuzzyMatch(t *testing.T) {
 	backend := NewHashBackend(256)
 	sim := func(a, b string) float64 {
@@ -34,7 +31,6 @@ func TestHashBackendTrigramsFuzzyMatch(t *testing.T) {
 		t.Fatalf("Varianten sollten aehnlicher sein als Unverwandtes: morph=%v unrelated=%v", morph, unrelated)
 	}
 
-	// Ein gemeinsamer Tippfehler-Nachbar bleibt erkennbar.
 	typo := sim("preference", "prefernce")
 	if typo <= 0 {
 		t.Fatalf("Tippfehler-Variante sollte Aehnlichkeit >0 haben, war %v", typo)

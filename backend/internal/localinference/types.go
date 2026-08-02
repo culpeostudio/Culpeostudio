@@ -1,6 +1,3 @@
-// Package localinference defines the narrow contract used by application
-// modules to talk to a ready local Engine instance. The worker secret and its
-// loopback address deliberately stay inside the Engine implementation.
 package localinference
 
 import (
@@ -40,10 +37,6 @@ type ChatRequest struct {
 	MaxTokens   *int
 }
 
-// WarmupProgress carries only presentation-safe engine state. In particular,
-// worker addresses and credentials never cross the module boundary. Progress
-// is an observed phase boundary; clients may interpolate it for display but
-// must not treat it as a byte-accurate download percentage.
 type WarmupProgress struct {
 	OperationID   string  `json:"operation_id,omitempty"`
 	InstanceID    string  `json:"instance_id"`
@@ -55,17 +48,12 @@ type WarmupProgress struct {
 	Message       string  `json:"message,omitempty"`
 }
 
-// Provider is implemented by EngineModule. Application modules never receive
-// worker credentials and therefore cannot accidentally expose them to clients.
 type Provider interface {
 	ReadyLocalModels() []Model
 	ResolveLocalModel(instanceID string) (Model, error)
 	StreamLocalChat(ctx context.Context, instanceID string, request ChatRequest, emit func(string) error) (string, error)
 }
 
-// WarmupProvider is optional so existing Provider implementations and tests
-// remain source compatible. Callers type-assert it when a stopped local model
-// should be started and observed in the same request.
 type WarmupProvider interface {
 	EnsureLocalModelReady(ctx context.Context, instanceID string, emit func(WarmupProgress) error) (Model, error)
 }

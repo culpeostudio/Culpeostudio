@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import 'settings_widgets.dart';
 
-// Groessere, aber zustandslose Karten der Einstellungen: System-Infos,
-// Hilfe-Hinweis und die Kachel eines einzelnen Skills. Daten und Aktionen
-// kommen vom Screen herein.
-
 String? settingsHardwareDetectionSourceLabel(String? source) {
   final normalized = source?.trim();
   if (normalized == null || normalized.isEmpty) return null;

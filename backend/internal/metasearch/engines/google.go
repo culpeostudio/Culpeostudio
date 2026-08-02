@@ -9,10 +9,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// googleUserAgentDevices sind die Android-Geraet-Templates, die der
-// Python-Code fuer zufaellige Android-Google-App User-Agents nutzt.
-// Pro Konstruktion picken wir eines und bauen einen plausiblen
-// Chrome-Versions-String.
 var googleUserAgentDevices = []struct {
 	androidVer string
 	device     string
@@ -24,12 +20,8 @@ var googleUserAgentDevices = []struct {
 	{"8.0", "Pixel 2 Build/OPD3.170816.012", 39, 60},
 }
 
-// googleUATail entspricht hex 4e53544e5756 aus dem Python-Code. Es ist
-// die Kodierung des Strings "NSTNWV"; der Python-Code haengt ihn an,
-// um dem von veroeffentlichten Chrome-UA-Mustern zu entsprechen.
 const googleUATail = "NSTNWV"
 
-// getGoogleUA liefert einen zufaelligen Android-User-Agent.
 func getGoogleUA() string {
 	dev := googleUserAgentDevices[rand.Intn(len(googleUserAgentDevices))]
 	chromeMajor := dev.chromeMin + rand.Intn(dev.chromeMax-dev.chromeMin+1)
@@ -41,10 +33,6 @@ func getGoogleUA() string {
 	return ua + googleUATail
 }
 
-// newGoogle erzeugt den Google-Text-Engine. Definitionsgemaess nutzt
-// Google ein CONSENT-Cookie und einen zufaelligen Android-Chrome
-// User-Agent, um die Trefferqualitaet ohne primp-Fingerprinting zu
-// halten.
 func newGoogle(client *metasearch.HttpClient) metasearch.Engine {
 	ua := getGoogleUA()
 	return &metasearch.XPathEngine{
@@ -111,5 +99,4 @@ func newGoogle(client *metasearch.HttpClient) metasearch.Engine {
 	}
 }
 
-// _ um Unused-Import fuer time zu vermeiden, falls rand spaeter entfernt wird.
 var _ = time.Now

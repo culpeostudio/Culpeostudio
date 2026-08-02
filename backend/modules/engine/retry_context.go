@@ -14,11 +14,6 @@ import (
 	"github.com/fillyengine/backend/internal/engineruntime"
 )
 
-// retryReducedContext shrinks the planned context (computed from the actual
-// memory deficit where known) and retries the start. Recursion through
-// startOne continues the ladder automatically until the model runs or the
-// 2048-token floor is reached; each applied reduction is recorded as a
-// visible fallback.
 func (m *EngineModule) retryReducedContext(ctx context.Context, instanceID string, config EngineConfig, plan ContextPlanView, operationID string, cause error) error {
 	current := plan.EffectiveContextTokens
 	m.mu.RLock()
@@ -60,10 +55,7 @@ func (m *EngineModule) retryReducedContext(ctx context.Context, instanceID strin
 	}
 	m.setOperationDetail(operationID, "running", 0.58, "reducing_context",
 		title, detail, nil)
-	// A worker that just died from OOM releases its memory asynchronously;
-	// give the OS a moment before measuring the budget again, and wait for a
-	// transient guard warning (caused by that very worker) to clear instead
-	// of failing the whole escalation on it.
+
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		select {
@@ -86,7 +78,7 @@ func (m *EngineModule) retryReducedContext(ctx context.Context, instanceID strin
 		return cause
 	}
 	if len(reducedPlan.AffectedRestartInstances) > 0 {
-		// Shrinking our own context must never silently restart other models.
+
 		return cause
 	}
 	if err := m.startOne(ctx, instanceID, fallbackConfig, reducedPlan, operationID); err != nil {

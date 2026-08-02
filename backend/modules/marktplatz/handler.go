@@ -29,17 +29,11 @@ import (
 	"github.com/fillyengine/backend/modules/marktplatz/types"
 )
 
-// Provider-Catalog wird mit TTL gecacht, damit nicht pro Such-/Detail-Anfrage
-// der gesamte OpenRouter/Featherless-Katalog (Tausende Eintraege) neu geladen
-// und JSON-decodiert werden muss. Siehe H8. Implementiert in den Provider-
-// Packages selbst.
 const catalogCacheTTL = 15 * time.Minute
 
 type MarktplatzModule struct {
-	// metadataClient: kurze API-Aufrufe (Suche/Detail) mit festem 30s-Timeout.
 	metadataClient *http.Client
-	// downloadClient: lange Downloads; kein Gesamt-Timeout, Begrenzung per
-	// Request-Context — nur Verbindungsaufbau/Response-Header sind befristet.
+
 	downloadClient *http.Client
 
 	settingsStore *appsettings.Store
@@ -61,11 +55,7 @@ func New(settingsFile string) *MarktplatzModule {
 
 	return &MarktplatzModule{
 		metadataClient: &http.Client{Timeout: 30 * time.Second},
-		// DownloadClient ohne Gesamt-Timeout: grosse Modelle duerfen beliebig
-		// lange laden, begrenzt wird das ueber den Request-Context (2h in
-		// runDownloadJob). Die Transport-Timeouts betreffen nur den
-		// Verbindungsaufbau und die Wartezeit bis zum ersten Response-Header —
-		// ohne sie haengt ein stummer Server bis zum Context-Ende.
+
 		downloadClient: &http.Client{
 			Transport: &http.Transport{
 				DialContext: (&net.Dialer{
@@ -89,14 +79,10 @@ func New(settingsFile string) *MarktplatzModule {
 func (m *MarktplatzModule) Name() string { return "marktplatz" }
 
 func (m *MarktplatzModule) RegisterRoutes(r fiber.Router) {
-	// Hinweis Defense-in-Depth: Auth laeuft bereits global via app.Use(middleware.AuthMiddleware).
-	// Sollte je Modul noch einmal isoliert gesichert werden, kann hier ein
-	// g.Use(middleware.AuthMiddleware(secret)) ergaenzt werden.
+
 	g := r.Group("/marktplatz")
 	g.Get("/search", m.handleSearch)
-	// Model IDs are commonly namespaced (for example "openai/gpt-oss-20b").
-	// A query parameter keeps the slash out of the route path; retain the old
-	// path variant below for clients that only use IDs without slashes.
+
 	g.Get("/model", m.handleDetail)
 	g.Get("/model/:id", m.handleDetail)
 	g.Get("/hardware/profile", m.handleHardwareProfile)
@@ -153,9 +139,7 @@ func (m *MarktplatzModule) handleStartAPIModel(c *fiber.Ctx) error {
 
 	model, err := m.activeModels.Start(provider, modelID, body.DisplayName)
 	if err != nil {
-		// M13: Limit fuer aktive API-Modelle erreichbar – Client-seitig
-		// behandelbar, deshalb 400. Andere Fehler vom Store sind
-		// Persistenz-Probleme und bleiben 500.
+
 		if errors.Is(err, apimodels.ErrActiveModelsLimitReached) {
 			return c.Status(400).JSON(fiber.Map{
 				"error":       err.Error(),
@@ -222,12 +206,6 @@ func (m *MarktplatzModule) handleSearch(c *fiber.Ctx) error {
 	searchProvider := p.resolvedProvider()
 	postFilteredSearch := p.isPostFilteredSearch()
 
-	// M17: Wir fragen immer ein Modell mehr an, als die Seite fuellt. Nur dann
-	// kann paginateModels has_more korrekt bestimmen: liefert der Provider das
-	// Extra-Modell, existiert eine weitere Seite. Frueher galt das nur fuer
-	// HuggingFace/all – bei OpenRouter und Featherless kam deshalb exakt eine
-	// volle Seite zurueck, has_more war immer false und der Katalog endete
-	// nach der ersten Seite.
 	searchLimit++
 	if searchLimit > maxSearchWindow {
 		searchLimit = maxSearchWindow
@@ -258,12 +236,6 @@ func (m *MarktplatzModule) handleSearch(c *fiber.Ctx) error {
 
 	pagedModels, hasMore := paginateModels(models, p.Page, p.PageSize)
 
-	// Die alte has_more-Heuristik verglich post-filter len(models) mit raw
-	// searchLimit – was fast nie equal ist und zu falschen "mehr"-Signalen
-	// fuehrte. has_more wird jetzt ausschliesslich aus paginateModels
-	// abgeleitet (end < len(models)). Nur wenn ein lokaler Filter das Fenster
-	// erschoepft hat (rawModelCount == searchLimit) und wir noch nicht am
-	// maxSearchWindow sind, erlauben wir noch eine Nachladeseite.
 	if !hasMore && postFilteredSearch && rawModelCount == searchLimit && searchLimit < maxSearchWindow {
 		hasMore = true
 	}
@@ -340,11 +312,6 @@ func (m *MarktplatzModule) handleDetail(c *fiber.Ctx) error {
 		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Die Suchliste ruft enrichMarketplaceMetadata bereits auf, die
-	// Detailansicht (dieser Handler) tat es nie – dadurch blieben
-	// fits_detected_gpu/runtime_fit/estimated_vram_gb auf der Modellseite
-	// immer auf ihren Zero-Values, obwohl der User genau dort die
-	// Download-Entscheidung trifft.
 	enriched := enrichMarketplaceMetadata([]types.ModelSummary{detail.ModelSummary}, detectHardwareProfile())
 	detail.ModelSummary = enriched[0]
 	return c.JSON(detail)
@@ -358,9 +325,7 @@ func (m *MarktplatzModule) handleDownload(c *fiber.Ctx) error {
 		AssetIDs  []string `json:"asset_ids"`
 		Revision  string   `json:"revision"`
 		TargetDir string   `json:"target_dir"`
-		// SizeBytes ist die vom Client (aus download_options) mitgegebene
-		// erwartete Download-Groesse. Optional – wenn 0, ueberspringt der
-		// Backend den Pre-Check (Best-Effort statt false Negative).
+
 		SizeBytes int64 `json:"size_bytes"`
 	}
 	if err := c.BodyParser(&body); err != nil {
@@ -380,13 +345,6 @@ func (m *MarktplatzModule) handleDownload(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "model_id ist erforderlich"})
 	}
 
-	// M10: Server-seitiger In-Flight-Guard. Frueher konnte ein Client
-	// beliebig viele parallele Downloads fuer dasselbe Modell ausloesen –
-	// jeder `go runDownloadJob` legte eine weitere Goroutine an, die
-	// dieselbe Datei aufs Neue holte (Netz-/Disk-Bandbreite verschwendend,
-	// und abertauchend konnte der letzte Rename eine halbfertige Datei
-	// ueberschreiben). Jetzt wird der existierende aktive Job zurueck-
-	// gegeben, so dass der Client denselben追踪ieren kann.
 	if existing, ok := m.jobs.ActiveJobForModel(provider, modelID); ok {
 		return c.JSON(fiber.Map{
 			"job_id":   existing.ID,
@@ -401,9 +359,6 @@ func (m *MarktplatzModule) handleDownload(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "settings konnten nicht geladen werden"})
 	}
 
-	// C1 Path-Traversal-Schutz: target_dir wird relativ zum konfigurierten
-	// ModelDir aufgeloest. Ein Request mit "../../etc" oder einem absoluten
-	// Pfad ausserhalb von ModelDir wird mit 400 abgewiesen.
 	baseDir := strings.TrimSpace(settings.ModelDir)
 	if baseDir == "" {
 		baseDir = appsettings.DefaultModelDir
@@ -413,20 +368,13 @@ func (m *MarktplatzModule) handleDownload(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": dirErr.Error()})
 	}
 
-	// M14: Disk-Space Pre-Check. Wenn der Client size_bytes mitliefert
-	// (HuggingFace-DownloadOption), suchen wir das grösste freie Volume,
-	// das targetDir enthaelt, und verweigern frueh mit 400 – statt erst
-	// nach geraumer Zeit als "failed" zu enden, wenn der Platz waaaehrend
-	// des Downloads ausgeht. DiskFreeBytes == 0 (Plattform ohne df oder
-	// Detection gescheitert) => Pre-Check wird uebersprungen (Best-Effort).
 	if body.SizeBytes > 0 {
 		profile := detectHardwareProfile()
 		if live := enginehardware.Detect(c.UserContext(), targetDir); live.DiskFreeBytes > 0 && (profile.DiskFreeBytes == 0 || live.DiskFreeBytes < profile.DiskFreeBytes) {
 			profile.DiskFreeBytes = live.DiskFreeBytes
 			profile.DiskFree = formatBytesAsGB(live.DiskFreeBytes)
 		}
-		// Wir brauchen Sicherheits-Puffer: Modelle brauchen oft nochmal
-		// Platz fuer Entpacken / Quants etc. 10% Puffer, mindestens 1GB.
+
 		puffer := body.SizeBytes / 10
 		if puffer < 1<<30 {
 			puffer = 1 << 30
@@ -468,15 +416,6 @@ func (m *MarktplatzModule) handleDownload(c *fiber.Ctx) error {
 	})
 }
 
-// sanitizeTargetDir loest ein vom Client gesendetes targetDir gegen baseDir
-// (ModelDir) auf und verweigert Pfade, die baseDir verlassen wuerden.
-//
-//   - Leeres targetDir -> baseDir.
-//   - Relativer Pfad -> baseDir/targetDir.
-//   - Absoluter Pfad, der baseDir enthaelt -> unveraendert akzeptiert.
-//   - Absoluter Pfad ausserhalb baseDir -> Fehler.
-//
-// So kann ein Client kein "../etc" oder "/tmp/evil" durchreichen.
 func sanitizeTargetDir(baseDir, targetDir string) (string, error) {
 	if runtime.GOOS != "windows" && appsettings.LooksLikeWindowsPath(baseDir) {
 		return "", fmt.Errorf("model_dir ist ein Windows-Pfad; bitte in den Einstellungen einen Linux-Ordner auswählen")
@@ -496,19 +435,17 @@ func sanitizeTargetDir(baseDir, targetDir string) (string, error) {
 		candidate = filepath.Clean(filepath.Join(baseAbs, targetDir))
 	}
 
-	// Sicherheitscheck: candidate muss baseAbs enthaltem (Prefix + Separator).
 	if !isWithinDir(candidate, baseAbs) {
 		return "", fmt.Errorf("target_dir ausserhalb des ModelDir")
 	}
 	return candidate, nil
 }
 
-// isWithinDir prueft, ob child gleich parent ist oder innerhalb parent liegt.
 func isWithinDir(child, parent string) bool {
 	if child == parent {
 		return true
 	}
-	// Mit Separator, damit "/foo/bar" nicht als innerhalb "/foo/ba" gilt.
+
 	return strings.HasPrefix(child, parent+string(filepath.Separator))
 }
 
@@ -531,10 +468,6 @@ func (m *MarktplatzModule) handleJobStatus(c *fiber.Ctx) error {
 	return c.JSON(job)
 }
 
-// searchProviders ruft die Provider-Suchen parallel ab (errgroup) und
-// sammelt Modelle + Fehler. Bei ProviderAll laufen HuggingFace, OpenRouter
-// und Featherless gleichzeitig; Teilausfaelle werden in providerErrors
-// abgelegt und ueber partial=true an den Client gemeldet.
 func (m *MarktplatzModule) searchProviders(ctx context.Context, provider, query, format string, limit int, settings appsettings.Settings) ([]types.ModelSummary, []string) {
 	type providerSearch struct {
 		name string
@@ -570,7 +503,7 @@ func (m *MarktplatzModule) searchProviders(ctx context.Context, provider, query,
 	}
 
 	if len(searches) == 1 {
-		// Fast path: kein errgroup noetig.
+
 		result, err := searches[0].fn()
 		if err != nil {
 			return nil, []string{searches[0].name + ": " + err.Error()}
@@ -578,7 +511,6 @@ func (m *MarktplatzModule) searchProviders(ctx context.Context, provider, query,
 		return result, nil
 	}
 
-	// Parallel-Path: errgroup mit dem Request-Context.
 	g, gctx := errgroup.WithContext(ctx)
 	results := make([][]types.ModelSummary, len(searches))
 	errs := make([]error, len(searches))
@@ -587,14 +519,14 @@ func (m *MarktplatzModule) searchProviders(ctx context.Context, provider, query,
 		i := i
 		s := searches[i]
 		g.Go(func() error {
-			// Context-Abbruch propagieren; Teilausfall wird nicht abgebrochen.
+
 			if gctx.Err() != nil {
 				return gctx.Err()
 			}
 			r, err := s.fn()
 			results[i] = r
 			errs[i] = err
-			return nil // nie abbrechen, alle Provider probieren.
+			return nil
 		})
 	}
 	_ = g.Wait()
@@ -663,18 +595,14 @@ func (m *MarktplatzModule) runDownloadJob(jobID string) {
 	m.jobs.SetRunning(jobID)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 	defer cancel()
-	// CancelFunc beim Store hinterlegen, damit handleDeleteJob den
-	// laufenden Download gezielt abbrechen kann. Aufräumen, egal wie der
-	// Job endet (done/failed/cancelled).
+
 	m.jobs.RegisterCancel(jobID, cancel)
 	defer m.jobs.UnregisterCancel(jobID)
 
 	progressFn := func(progress int) {
 		m.jobs.SetProgress(jobID, progress)
 	}
-	// statsFn wird ~sekündlich vom common.DownloadFileWithStats aufgerufen
-	// und traegt Byte-Zaehler + Geschwindigkeit in den Job ein.  So kann
-	// das Frontend "5.2 MB/s · 1.4 GB / 5 GB" anzeigen.
+
 	statsFn := func(downloadedBytes int64, totalBytes int64, speedBytesPerSec int64) {
 		m.jobs.SetStats(jobID, downloadedBytes, totalBytes, speedBytesPerSec)
 	}
@@ -745,13 +673,7 @@ func (m *MarktplatzModule) runDownloadJob(jobID string) {
 		}
 	case types.ProviderOpenRouter, types.ProviderFeatherless:
 		progressFn(25)
-		// Schreibe einen Deskriptor fuer das API-Modell. Frueher wurden hier
-		// MkdirAll+WriteFile mit `_ = ` verschluckt; ein Fehler wurde dem
-		// User als "done" gemeldet. Jetzt: Fehler pruefen und Job als failed
-		// markieren, damit der User es sieht.
-		// Dateiname: letzte Pfadkomponente von ModelID (z.B.
-		// "openrouter/openai/gpt-4o" -> "gpt-4o.json"), damit Provider-Prefix
-		// und Org- namen nicht in einem endlos langen Dateinamen landen.
+
 		modelSlug := job.ModelID
 		if idx := strings.LastIndex(modelSlug, "/"); idx >= 0 && idx < len(modelSlug)-1 {
 			modelSlug = modelSlug[idx+1:]
@@ -793,5 +715,4 @@ func (m *MarktplatzModule) loadSettings() (appsettings.Settings, error) {
 	return m.settingsStore.Get(), nil
 }
 
-// errors.Is wrapper for context cancellation checks (kept for future use).
 var _ = errors.Is

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Kleine Bausteine des Telemetrie-Panels (Auslastungsanzeige).
-
 class TelemetryLabel extends StatelessWidget {
   const TelemetryLabel({
     super.key,
@@ -72,6 +70,3 @@ class TelemetryEmpty extends StatelessWidget {
     );
   }
 }
-
-/// Gradient badge shown next to the page title so the header reads as a
-/// branded hero instead of plain text.

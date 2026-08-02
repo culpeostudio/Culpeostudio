@@ -89,8 +89,7 @@ func TestInstallReusesAnAlreadyInstalledBundle(t *testing.T) {
 	if _, err := client.Install(context.Background(), root, manifest, asset); err != nil {
 		t.Fatalf("Install() error = %v", err)
 	}
-	// Reinstalling the same version happens on every start while a broken
-	// release is rolled back, so it must not transfer the archive again.
+
 	state, err := client.Install(context.Background(), root, manifest, asset)
 	if err != nil {
 		t.Fatalf("second Install() error = %v", err)

@@ -39,17 +39,11 @@ type DownloadJob struct {
 	UpdatedAt  time.Time      `json:"updated_at"`
 	StartedAt  *time.Time     `json:"started_at,omitempty"`
 	FinishedAt *time.Time     `json:"finished_at,omitempty"`
-	// DownloadedBytes ist die tatsaechlich auf die Platte geschriebene
-	// Menge Bytes; 0 wenn Streaming noch nicht begonnen hat. Frontend
-	// kann Bytes+Progress+VRAM vergleichen, um "5 von 40 GB" anzuzeigen.
+
 	DownloadedBytes int64 `json:"downloaded_bytes,omitempty"`
-	// SpeedBytesPerSec wird vom Client.go ca. sekündlich gemessen und per
-	// SetStats ins Job-Struct geschrieben. Frontend formatiert das als
-	// "5.2 MB/s" neben dem Fortschrittsbalken.
+
 	SpeedBytesPerSec int64 `json:"speed_bytes_per_sec,omitempty"`
-	// TotalBytes ist die ContentLength der HTTP-Antwort (wird nur gesetzt,
-	// wenn der Server es liefert). Beim PU/Zipping von .gguf-Dateien ist
-	// das unzuverlaessig; 0 bedeutet "unbekannt".
+
 	TotalBytes int64 `json:"total_bytes,omitempty"`
 }
 
@@ -77,10 +71,6 @@ func NewDownloadJobStore(persistencePath ...string) *DownloadJobStore {
 	return s
 }
 
-// RegisterCancel hinterlegt die CancelFunc zum Abbruch der laufenden
-// Download-Goroutine. Wird von runDownloadJob beim Start gesetzt. So kann
-// Delete einen laufenden Download gezielt stoppen, statt die Goroutine
-// weiterlaufen zu lassen, bis sie von selbst endet oder das 2h-Timeout zufaellt.
 func (s *DownloadJobStore) RegisterCancel(id string, cancel context.CancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -90,8 +80,6 @@ func (s *DownloadJobStore) RegisterCancel(id string, cancel context.CancelFunc) 
 	s.cancels[id] = cancel
 }
 
-// UnregisterCancel entfernt eine hinterlegte CancelFunc nach Download-Ende
-// (egal ob done/failed), damit der Store keine toten Referenzen haelt.
 func (s *DownloadJobStore) UnregisterCancel(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,13 +91,10 @@ type persistedData struct {
 	Ordered []string                `json:"ordered"`
 }
 
-// newJobID erzeugt eine nicht-sequenzielle, schwer zaehlbare ID (crypto/rand).
-// Stellt sicher, dass job-Endpunkte nicht durch einfaches Hochzaehlen enumeriert
-// werden koennen, sobald Auth-Layer ergaenzt oder umgangen werden.
 func newJobID() string {
 	buf := make([]byte, 6)
 	if _, err := rand.Read(buf); err != nil {
-		// Fallback: zeitbasiert, falls crypto/rand (selten) versagt.
+
 		return fmt.Sprintf("dl-%d", time.Now().UnixNano())
 	}
 	return "dl-" + hex.EncodeToString(buf)
@@ -121,7 +106,7 @@ func (s *DownloadJobStore) load() {
 
 	data, err := os.ReadFile(s.persistencePath)
 	if err != nil {
-		// Still不存在 ist OK – frischer Store.
+
 		if !os.IsNotExist(err) {
 			log.Printf("[marktplatz] download_jobs load: %v", err)
 		}
@@ -142,9 +127,6 @@ func (s *DownloadJobStore) load() {
 	}
 }
 
-// save schreibt die Jobs atomar auf Disk: zuerst in eine .tmp-Datei, dann Rename.
-// Auf POSIX-Dateisystemen ist Rename atomar – zwei konkurrente save()-Aufrufe
-// koennen sich nicht gegenseitig truncieren/korrumieren.
 func (s *DownloadJobStore) save() {
 	if s.persistencePath == "" {
 		return
@@ -195,7 +177,7 @@ func (s *DownloadJobStore) save() {
 		return
 	}
 	if err := os.Rename(tmpPath, s.persistencePath); err != nil {
-		// Aufräumen des .tmp, falls Rename fehlschlägt (z.B. Cross-Device).
+
 		_ = os.Remove(tmpPath)
 		log.Printf("[marktplatz] download_jobs rename: %v", err)
 	}
@@ -246,9 +228,7 @@ func (s *DownloadJobStore) SetResolvedBundle(id, revision, commitSHA string, ass
 }
 
 func (s *DownloadJobStore) Get(id string) (DownloadJob, bool) {
-	// copyJob muss innerhalb von RLock passieren, damit ein nebenlaeufiges
-	// SetProgress/SetRunning nicht in das kopierte Struct hineinschreibt
-	// (race). Frueher wurde der Lock vor copyJob freigegeben.
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	job, ok := s.jobs[id]
@@ -264,10 +244,7 @@ func (s *DownloadJobStore) Delete(id string) bool {
 		s.mu.Unlock()
 		return false
 	}
-	// Cancel triggern, BEVOR der Job entfernt wird – sonst wuerde eine
-	// laufende Download-Goroutine nach dem Mappen des Status in den
-	// geloeschten Job schreiben (race). cancelLocked loest die CancelFunc
-	// ohne den Lock zu halten.
+
 	cancel, ok := s.cancels[id]
 	if ok {
 		delete(s.cancels, id)
@@ -303,11 +280,6 @@ func (s *DownloadJobStore) List() []DownloadJob {
 	return out
 }
 
-// ActiveJobForModel sucht nach einem noch laufenden (queued/running) Job
-// fuer das provider:modelID-Paar. Wird von handleDownload benutzt, um
-// Duplikat-Downloads zu vermeiden – ein User, der mehrfach auf "Download"
-// klickt (oder die Karte neu baut), bekommt stattdessen den existierenden
-// Job zurueck und kann ihn verfolgen.
 func (s *DownloadJobStore) ActiveJobForModel(provider, modelID string) (DownloadJob, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -350,7 +322,7 @@ func (s *DownloadJobStore) SetProgress(id string, progress int) {
 			return
 		}
 		if progress > job.Progress {
-			// Save to disk on every 10% progress or if it's close to finished
+
 			if progress-job.Progress >= 10 || progress == 99 || job.Progress == 1 {
 				changed = true
 			}
@@ -363,9 +335,6 @@ func (s *DownloadJobStore) SetProgress(id string, progress int) {
 	}
 }
 
-// SetExpectedBytes setzt die aus den Marketplace-Metadaten bekannte
-// Gesamtgröße schon vor dem ersten HTTP-Byte. Bei mehrteiligen Modellen ist
-// die Content-Length einer einzelnen Datei sonst fälschlich die Gesamtgröße.
 func (s *DownloadJobStore) SetExpectedBytes(id string, totalBytes int64) {
 	if totalBytes <= 0 {
 		return
@@ -377,13 +346,6 @@ func (s *DownloadJobStore) SetExpectedBytes(id string, totalBytes int64) {
 	s.save()
 }
 
-// SetStats aktualisiert die momentane Geschwindigkeit (SpeedBytesPerSec)
-// und die bislang heruntergeladenen Bytes aus dem laufenden Stream.
-// Wird ≈ sekündlich vom DownloadFile-Callback aufgerufen. Wir persistieren
-// bewusst nicht jeden Aufruf (save) – das wuerde die Platte unter Last mit
-// Writes fluten; die Aenderungen sind transient und werden ohnehin durch
-// eine normale periodische save() (z.B. nach Progress-Schritten)
-// mitgeflushed.  So bleibt die Anzeige schnell ohne IO-Schaden.
 func (s *DownloadJobStore) SetStats(id string, downloadedBytes int64, totalBytes int64, speedBytesPerSec int64) {
 	var changed bool
 	s.mutate(id, func(job *DownloadJob) {
@@ -404,10 +366,7 @@ func (s *DownloadJobStore) SetStats(id string, downloadedBytes int64, totalBytes
 		job.UpdatedAt = time.Now().UTC()
 	})
 	if changed {
-		// Persistiere nur, wenn sich die Byte-Zaehler (nicht nur speed)
-		// geaendert haben – das verhindert, dass bei 0-Updates (z.B.
-		// Netz-Pause) unnoetig Disk-IO ausgeloest wird. Eine sekündliche
-		// save() ist fuer 1-3 aktive Jobs gut tragbar.
+
 		s.save()
 	}
 }

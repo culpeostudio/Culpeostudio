@@ -1,3 +1,6 @@
+// Package memory recalls facts from earlier conversations into later ones. It
+// ranks candidates, keeps the injected context inside a budget, and summarises
+// what no longer fits.
 package memory
 
 import (
@@ -6,22 +9,14 @@ import (
 	"strings"
 )
 
-// TriggerCompression runs one compression check for a session (same path the
-// automatic triggers use). Exposed for tests and manual maintenance.
 func (s *Service) TriggerCompression(userID, sessionID string) error {
 	return s.maybeCompress(userID, sessionID, "")
 }
 
-// maybeCompress runs the full compression cycle atomically: the repository
-// executes decide() inside one BEGIN IMMEDIATE transaction, so reading the
-// active observations, the threshold check, writing the compressed memory
-// and archiving happen as a unit. Parallel triggers serialize on the write
-// lock; the loser re-reads the archived state and backs off.
 func (s *Service) maybeCompress(userID, sessionID, reason string) error {
 	userID = normalizeUserID(userID, s.defaultUserID)
 	sessionID = strings.TrimSpace(sessionID)
 
-	// 1. Get session snapshot outside of any lock/transaction
 	session, err := s.repo.GetSession(userID, sessionID)
 	if err != nil {
 		return err
@@ -44,7 +39,6 @@ func (s *Service) maybeCompress(userID, sessionID, reason string) error {
 	toCompress := append([]Observation{}, compressible[:cutoff]...)
 	obsIDs := collectObservationIDs(toCompress)
 
-	// 2. Call Summarize OUTSIDE the database transaction
 	summaryText, learned, openTasks, sumErr := s.summarizer.Summarize(toCompress)
 	if sumErr != nil {
 		return sumErr
@@ -70,7 +64,6 @@ func (s *Service) maybeCompress(userID, sessionID, reason string) error {
 		UsageAfter:  estimateUsageAfterCompression(session, memoryItem),
 	}
 
-	// 3. Write inside transaction (with double-check inside WriteCompressedMemory)
 	err = s.repo.WriteCompressedMemory(userID, sessionID, plan, obsIDs)
 	if err != nil {
 		if errors.Is(err, ErrAlreadyArchived) {
@@ -80,7 +73,6 @@ func (s *Service) maybeCompress(userID, sessionID, reason string) error {
 		return err
 	}
 
-	// 4. Update vector index (outside transaction)
 	if s.vector != nil {
 		if vectorErr := s.vector.Upsert(plan.Document); vectorErr != nil {
 			s.publish("vector_upsert_failed", map[string]string{"doc_id": plan.Document.DocID, "error": vectorErr.Error()})
@@ -123,7 +115,7 @@ func (s *Service) indexObservation(observation *Observation) error {
 	}
 	if s.vector != nil {
 		if err := s.vector.Upsert(document); err != nil {
-			// FTS already covers the document; embeddings heal via reindexer.
+
 			s.publish("vector_upsert_failed", map[string]string{"doc_id": document.DocID, "error": err.Error()})
 		}
 	}
@@ -153,8 +145,6 @@ func observationIndexTags(observation *Observation) []string {
 	return normalizeList(tags)
 }
 
-// BuildMemoryDocument renders the search document of a compressed memory.
-// Shared with the store so PATCH updates rebuild the same shape.
 func BuildMemoryDocument(memoryItem *CompressedMemory, project, source string) SearchDocument {
 	return SearchDocument{
 		DocID:     "mem:" + memoryItem.ID,

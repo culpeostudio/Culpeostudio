@@ -34,10 +34,7 @@ func normalizeCategory(input string) string {
 	case "embed", "embeddings":
 		return categoryEmbedding
 	default:
-		// M9: unbekannte Kategorien frueher unveraendert durchgereicht –
-		// ein Tippfehler wie ?category=chatt filterte dann alle Treffer
-		// still heraus. Jetzt normalisieren wir unbekannt -> "alle",
-		// damit der User die Liste ohne Filter sieht.
+
 		return categoryAll
 	}
 }
@@ -162,11 +159,7 @@ func enrichMarketplaceMetadata(models []types.ModelSummary, profile HardwareProf
 		if model.LocalModel {
 			recommendation := marketplaceRecommendation(*model, profile, "")
 			if recommendation.Fit == "" {
-				// hasKnownVRAMMetadata found neither a real artifact size nor
-				// a parseable parameter count + quantization to estimate
-				// from. Say so explicitly instead of leaving every
-				// fit-related field silently empty, which the UI used to
-				// render as if the badge simply did not exist.
+
 				model.RuntimeFit = "unknown"
 			} else {
 				hadRealSize := hasRealSizeMetadata(*model)
@@ -379,9 +372,7 @@ func deriveContextLength(model types.ModelSummary) int {
 	if best > 0 {
 		return best
 	}
-	// Keine Schätzung anzeigen: Ein angenommener Standardwert (z. B. 8K)
-	// erweckt den Eindruck eines verifizierten Kontextfensters und war bei
-	// vielen Marketplace-Modellen falsch.
+
 	return 0
 }
 

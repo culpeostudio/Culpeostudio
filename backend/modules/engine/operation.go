@@ -146,8 +146,7 @@ func (m *EngineModule) setOperationDetail(id, state string, progress float64, ph
 		if operation.DetailMessage == "" || operation.DetailMessage == operation.Message {
 			operation.DetailMessage = operation.ErrorSummary
 		}
-		// Preserve the structured budget comparison so clients can render
-		// required vs. available memory instead of parsing the text.
+
 		var conflict *ResourceConflictError
 		if errors.As(operationErr, &conflict) {
 			operation.ResourceConflict = conflict

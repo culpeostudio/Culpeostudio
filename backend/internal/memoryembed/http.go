@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// httpBackend covers all remote inference paths. Embedding inference runs in
-// a separate process (Python/onnxruntime sidecar, Ollama, or a hosted API)
-// instead of CGO inside the Go binary, so the binary stays cross-compilable.
 type httpBackend struct {
 	name    string
 	model   string
@@ -71,8 +68,6 @@ func (b *httpBackend) Embed(text string) ([]float32, error) {
 	return normalize(vector), nil
 }
 
-// NewSidecarBackend talks to the local ONNX sidecar process (see sidecar/).
-// Protocol: POST {url}/embed {"texts": ["..."]} -> {"embeddings": [[...]]}.
 func NewSidecarBackend(url, model string, timeoutSeconds int) Backend {
 	url = strings.TrimRight(strings.TrimSpace(url), "/")
 	if model == "" {
@@ -109,7 +104,6 @@ func NewSidecarBackend(url, model string, timeoutSeconds int) Backend {
 	}
 }
 
-// NewOllamaBackend uses a running Ollama instance (local or remote).
 func NewOllamaBackend(url, model string, timeoutSeconds int) Backend {
 	url = strings.TrimRight(strings.TrimSpace(url), "/")
 	if url == "" {
@@ -146,7 +140,6 @@ func NewOllamaBackend(url, model string, timeoutSeconds int) Backend {
 	}
 }
 
-// NewAPIBackend uses an OpenAI-compatible /v1/embeddings endpoint.
 func NewAPIBackend(url, apiKey, model string, timeoutSeconds int) Backend {
 	url = strings.TrimRight(strings.TrimSpace(url), "/")
 	if model == "" {

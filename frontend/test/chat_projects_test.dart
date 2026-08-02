@@ -5,8 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:myphilostudio/services/api_service.dart';
 import 'package:myphilostudio/state/app_state.dart';
 
-/// Kleiner Fake-PhiloBot-Server, der Projekt- und Session-Endpunkte bedient
-/// und die empfangenen Requests zur Auswertung protokolliert.
 class FakePhiloBotServer {
   HttpServer? _server;
   final List<Map<String, dynamic>> requests = [];
@@ -127,8 +125,6 @@ void main() {
     await server.stop();
   });
 
-  /// Wartet, bis ein asynchron abgefeuerter Request (AppState nutzt
-  /// `unawaited`) beim Fake-Server angekommen ist.
   Future<Map<String, dynamic>> waitForRequest(
     bool Function(Map<String, dynamic>) match,
   ) async {

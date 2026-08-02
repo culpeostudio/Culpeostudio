@@ -70,8 +70,7 @@ func RunBundle(
 	}
 	if hardwareProbe := bundledHardwareProbe(bundle.Root); hardwareProbe != "" {
 		managedEnvironment["PHILOENGINE_HARDWARE_PROBE_PATH"] = hardwareProbe
-		// Keep one-release rollback compatibility with backends that still
-		// read the former environment variable.
+
 		managedEnvironment["WHICHLLM_PROBE_PATH"] = hardwareProbe
 	}
 	environment := withEnvironment(os.Environ(), managedEnvironment)
@@ -91,9 +90,6 @@ func RunBundle(
 		return &StartupError{Cause: fmt.Errorf("start frontend: %w", err)}
 	}
 
-	// A process that cannot survive its first moments is a startup failure and
-	// can safely trigger rollback. Later exits are runtime failures and must
-	// not silently downgrade a version that was already working.
 	startupWindow := time.NewTimer(2 * time.Second)
 	select {
 	case frontendErr := <-frontend.done:
@@ -142,9 +138,6 @@ func RunBundle(
 	}
 }
 
-// managedProcess couples a started command with its single Wait result. exited
-// records that the result was already consumed, because waiting on that channel
-// a second time would block until stop() gives up rather than returning at once.
 type managedProcess struct {
 	command *exec.Cmd
 	done    chan error

@@ -5,23 +5,13 @@ import (
 	"strings"
 )
 
-// Result ist der vereinheitlichte Treffer-Typ fuer alle Suchkategorien.
-// Felder, die fuer die jeweilige Kategorie nicht relevant sind, bleiben
-// leer und werden via omitempty im JSON unterdrueckt.
-//
-// Die Go-Variante bewusst als ein einzelner Typ (statt fuenf separater
-// Dataclasses wie in Python):(Art) engines wissen ohnehin, welche Felder sie
-// fuellen, und die Aggregation/Dedup-Logik wird dadurch wesentlich
-// kompakter.
 type Result struct {
 	Category string `json:"-"`
 
-	// TextResult
 	Title string `json:"title,omitempty"`
 	Href  string `json:"href,omitempty"`
 	Body  string `json:"body,omitempty"`
 
-	// ImagesResult
 	Image     string `json:"image,omitempty"`
 	Thumbnail string `json:"thumbnail,omitempty"`
 	URL       string `json:"url,omitempty"`
@@ -29,10 +19,8 @@ type Result struct {
 	Width     string `json:"width,omitempty"`
 	Source    string `json:"source,omitempty"`
 
-	// NewsResult
 	Date string `json:"date,omitempty"`
 
-	// VideosResult
 	Content     string `json:"content,omitempty"`
 	Description string `json:"description,omitempty"`
 	Duration    string `json:"duration,omitempty"`
@@ -44,14 +32,10 @@ type Result struct {
 	Publisher   string `json:"publisher,omitempty"`
 	Uploader    string `json:"uploader,omitempty"`
 
-	// BooksResult
 	Author string `json:"author,omitempty"`
 	Info   string `json:"info,omitempty"`
 }
 
-// Set schreibt einen Wert in das benannte Feld und wendet dabei die
-// zur Feld-Variante gehoerige Normalisierung an. Entspricht dem
-// Python-_normalizers-Mapping aus ddgs/results.py.
 func (r *Result) Set(field, value string) {
 	if value == "" {
 		return
@@ -117,7 +101,6 @@ func (r *Result) setField(field, value string) {
 	}
 }
 
-// Get liefert den Wert des benannten Feldes als String.
 func (r *Result) Get(field string) string {
 	switch field {
 	case "title":
@@ -168,9 +151,6 @@ func (r *Result) Get(field string) string {
 	return ""
 }
 
-// CacheKey sucht den ersten Treffer in cacheFields und liefert ihn
-// als Dedup-Schluessel. Wenn keines der Felder gesetzt ist, wird
-// (string, false) geliefert.
 func (r *Result) CacheKey(cacheFields []string) (string, bool) {
 	for _, f := range cacheFields {
 		if v := r.Get(f); v != "" {
@@ -180,8 +160,6 @@ func (r *Result) CacheKey(cacheFields []string) (string, bool) {
 	return "", false
 }
 
-// ToMap liefert eine flache map[string]any fuer die JSON-Serialisierung
-// oder Filterung. Leere Felder werden weggelassen (entspricht omitempty).
 func (r *Result) ToMap() map[string]any {
 	out := make(map[string]any, 24)
 	add := func(key, value string) {
@@ -214,11 +192,8 @@ func (r *Result) ToMap() map[string]any {
 	return out
 }
 
-// ResultList ist eine Hilfs-Liste mit Sortier-Methoden.
 type ResultList []Result
 
-// SortByFrequency sortiert absteigend nach Treffer-Haeufigkeit,
-// erwartetet wird parallel die Count-Map aus dem Aggregator.
 func (l ResultList) SortByFrequency(counts map[string]int) {
 	sort.SliceStable(l, func(i, j int) bool {
 		ki := primaryCacheKey(&l[i])
@@ -242,8 +217,6 @@ func primaryCacheKey(r *Result) string {
 	return ""
 }
 
-// DedupByCacheFields entfernt Duplikate aus einer Liste von Results,
-// wobei der erste Treffer je cacheField behalten wird.
 func DedupByCacheFields(results []Result, cacheFields []string) []Result {
 	seen := make(map[string]struct{}, len(results))
 	out := make([]Result, 0, len(results))
@@ -262,8 +235,6 @@ func DedupByCacheFields(results []Result, cacheFields []string) []Result {
 	return out
 }
 
-// CleanupResults filtert leere Titel/Hrefs heraus. Spezifisch fuer
-// Text-Ergebnisse, in denen sowohl Titel als auch href Pflicht sind.
 func CleanupText(results []Result) []Result {
 	out := make([]Result, 0, len(results))
 	for _, r := range results {

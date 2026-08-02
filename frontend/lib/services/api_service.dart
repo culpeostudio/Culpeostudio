@@ -26,28 +26,14 @@ class PhiloBotStreamEvent {
   const PhiloBotStreamEvent({required this.type, required this.data});
 }
 
-/// Obergrenze fuer eine normale (nicht streamende) Backend-Anfrage.
-///
-/// Grosszuegig gewaehlt: das Backend begrenzt Provider-Abfragen selbst auf 30s,
-/// eine Modellsuche darf also durchaus ein paar Sekunden brauchen. Der Wert
-/// soll nur verhindern, dass die Oberflaeche bei einem stummen Backend
-/// unbegrenzt wartet — nicht langsame, aber funktionierende Aufrufe abwuergen.
 const Duration _requestTimeout = Duration(seconds: 60);
 
-/// HTTP-Client, der jede Anfrage nach [_requestTimeout] abbricht.
-///
-/// Ohne ihn wartete die Oberflaeche bei einem haengenden Backend endlos, ohne
-/// Fehlermeldung und ohne Abbruchmoeglichkeit. Begrenzt wird die Zeit bis zur
-/// Antwort (Header); ein bereits laufender Download darf weiterlaufen. Die
-/// SSE-Streams nutzen bewusst eigene Clients und bleiben davon unberuehrt —
-/// sie sollen ja lange offen bleiben.
 class _TimeoutHttpClient extends http.BaseClient {
   _TimeoutHttpClient(this._onUnauthorized, [http.Client? inner])
     : _inner = inner ?? http.Client();
 
   final http.Client _inner;
 
-  /// Wird gerufen, wenn das Backend eine Anfrage mit 401 ablehnt.
   final void Function() _onUnauthorized;
 
   @override
@@ -66,32 +52,16 @@ class ApiService implements EngineApi {
   ApiService._internal();
   ApiService.test();
 
-  /// Client mit Timeout fuer alle normalen Anfragen (die SSE-Streams unten
-  /// erzeugen bewusst eigene Clients ohne diese Begrenzung).
-  ///
-  /// `late` ist hier wichtig: dieser Service ist ein Singleton, den Tests auf
-  /// Top-Level anlegen. Ein sofort erzeugter http.Client wuerde dort ausserhalb
-  /// der Test-Zone landen und das Laden der Testdatei abbrechen.
   late http.Client _http = _TimeoutHttpClient(_handleUnauthorized);
 
-  /// Wird gesetzt, wenn eine gespeicherte Anmeldung vom Backend abgelehnt wird
-  /// (z. B. abgelaufen oder mit einem anderen Server-Geheimnis signiert).
-  ///
-  /// Ohne diese Rueckmeldung sah die Anwendung angemeldet aus, waehrend jede
-  /// Anfrage still mit 401 scheiterte — der Nutzer bekam ein leeres Dashboard
-  /// zu sehen und musste glauben, seine Daten seien verloren.
   void Function()? onSessionExpired;
 
-  /// Ersetzt den HTTP-Client — ausschliesslich fuer Tests, damit
-  /// Server-Antworten ohne echtes Backend nachgestellt werden koennen.
   @visibleForTesting
   void debugSetHttpClient(http.Client client) {
     _http = _TimeoutHttpClient(_handleUnauthorized, client);
   }
 
   void _handleUnauthorized() {
-    // Nur melden, wenn wir uns fuer angemeldet hielten. Ein 401 beim Anmelden
-    // selbst ist ein normaler Fehlversuch und kein Sitzungsende.
     if (token == null) return;
     token = null;
     username = null;
@@ -146,7 +116,6 @@ class ApiService implements EngineApi {
     return error.toString();
   }
 
-  // --- Auth ---
   Future<Map<String, dynamic>> getAuthStatus() async {
     try {
       final response = await _http.get(
@@ -261,11 +230,6 @@ class ApiService implements EngineApi {
     username = null;
   }
 
-  // --- Per-user UI preferences ---
-  //
-  // These settings deliberately live behind an authenticated endpoint instead
-  // of in SharedPreferences: language and frontend variant belong to the
-  // account, not to one browser or device.
   Future<Map<String, dynamic>> getUserPreferences() async {
     try {
       final response = await _http.get(
@@ -297,7 +261,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- Engine ---
   Future<Map<String, dynamic>> getEngineStatus() async {
     try {
       final response = await _http.get(
@@ -660,7 +623,6 @@ class ApiService implements EngineApi {
     return EngineOperation.fromJson(json['operation'] ?? json);
   }
 
-  // --- PhiloBot ---
   Future<Map<String, dynamic>> createPhiloBotSession({
     String? modelRef,
     String? provider,
@@ -708,8 +670,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  /// Wechselt das Modell einer bestehenden Session (Verlauf bleibt erhalten).
-  /// Bei lokalen Modellen wird die instance_id als model_id gesendet.
   Future<Map<String, dynamic>> setPhiloBotSessionModel(
     String sessionId, {
     required String provider,
@@ -839,9 +799,7 @@ class ApiService implements EngineApi {
             final code = decoded['code']?.toString().trim();
             if (code?.isNotEmpty == true) data['code'] = code;
           }
-        } catch (_) {
-          // Preserve the raw body for non-JSON upstream failures.
-        }
+        } catch (_) {}
         final retryAfter = response.headers['retry-after'];
         if (retryAfter?.isNotEmpty == true) {
           data['retry_after'] = int.tryParse(retryAfter!) ?? retryAfter;
@@ -876,7 +834,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- Bots Management ---
   Future<Map<String, dynamic>> getPhiloBots() async {
     try {
       final response = await _http.get(
@@ -914,8 +871,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  /// Lists the user's persisted PhiloBot chat history so past conversations can
-  /// be restored after an app restart.
   Future<Map<String, dynamic>> listPhiloBotSessions() async {
     try {
       final response = await _http.get(
@@ -956,7 +911,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- PhiloBot Projekte (Ordner zum Buendeln von Chats) ---
   Future<Map<String, dynamic>> listPhiloBotProjects() async {
     try {
       final response = await _http.get(
@@ -1009,11 +963,9 @@ class ApiService implements EngineApi {
       if (color != null && color.trim().isNotEmpty) {
         body['color'] = color.trim();
       }
-      // Wird immer mitgeschickt (auch leer): erlaubt das gezielte Loeschen
-      // des Pfads ueber die Checkbox im Bearbeiten-Dialog.
+
       body['path'] = path?.trim() ?? '';
-      // Icon analog: leer = Standard-Icon; null (alter Aufrufer) = Key
-      // weglassen, damit das bestehende Icon nicht geloescht wird.
+
       if (icon != null) {
         body['icon'] = icon.trim();
       }
@@ -1056,8 +1008,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  /// Laedt den Dateibaum des Projekt-Pfads einer Session (tiefen- und
-  /// eintragsbegrenzt). Liefert {root, tree, truncated} oder {error}.
   Future<Map<String, dynamic>> getPhiloBotSessionTree(String sessionId) async {
     try {
       final response = await _http.get(
@@ -1070,10 +1020,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  /// Beantwortet eine Permission-Anfrage aus dem laufenden Chat-Stream: darf
-  /// der Agent auf einen Pfad ausserhalb des Projektpfads zugreifen?
-  /// [decision]: "once" (einmalig), "session" (Ordner fuer diese Sitzung
-  /// freigeben) oder "deny" (ablehnen).
   Future<bool> respondPhiloBotPermission({
     required String sessionId,
     required String requestId,
@@ -1194,10 +1140,7 @@ class ApiService implements EngineApi {
         'asset_id': assetId,
         'target_dir': targetDir,
       };
-      // M14: Disk-Pre-Check – wenn der Client size_bytes mitgibt
-      // ( aus download_options der angewaehlten Variante ), wird der
-      // Backend frueh genug ablehnen, statt erst nach langem Download in
-      // "failed" zu enden.
+
       if (sizeBytes > 0) {
         payload['size_bytes'] = sizeBytes;
       }
@@ -1296,7 +1239,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- Settings ---
   Future<Map<String, dynamic>> getSettings() async {
     try {
       final response = await _http.get(
@@ -1369,7 +1311,6 @@ class ApiService implements EngineApi {
     }
   }
 
-  // --- Skills ---
   Future<Map<String, dynamic>> listSkills() async {
     try {
       final response = await _skillsClient.listSkills(pb.Empty());
@@ -1472,7 +1413,6 @@ class ApiService implements EngineApi {
     };
   }
 
-  // --- News ---
   Future<List<dynamic>> getNews() async {
     try {
       final response = await _http.get(
@@ -1497,6 +1437,215 @@ class ApiService implements EngineApi {
       }
       throw ApiException(
         remainingUiText('api.newsLoadFailed', {'error': '$e'}),
+      );
+    }
+  }
+
+  Future<List<dynamic>> getSavedNews() async {
+    try {
+      final response = await _http.get(
+        Uri.parse('$baseUrl/news/saved'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List<dynamic>) {
+          return decoded;
+        }
+        throw ApiException(remainingUiText('api.newsUnexpectedResponse'));
+      }
+      throw ApiException(
+        remainingUiText('api.newsSavedLoadFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
+      );
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        remainingUiText('api.newsLoadFailed', {'error': '$e'}),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> saveNewsArticle(
+    Map<String, dynamic> article,
+  ) async {
+    try {
+      final response = await _http.post(
+        Uri.parse('$baseUrl/news/saved'),
+        headers: _headers,
+        body: jsonEncode(article),
+      );
+      if (response.statusCode == 201) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map) {
+          return decoded.map((key, value) => MapEntry(key.toString(), value));
+        }
+        throw ApiException(remainingUiText('api.newsUnexpectedResponse'));
+      }
+      throw ApiException(
+        remainingUiText('api.newsSaveFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
+      );
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        remainingUiText('api.newsSaveFailed', {'statusCode': '$e'}),
+      );
+    }
+  }
+
+  Future<void> deleteSavedNewsArticle(String articleId) async {
+    try {
+      final response = await _http.delete(
+        Uri.parse('$baseUrl/news/saved/${Uri.encodeComponent(articleId)}'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 204 || response.statusCode == 404) {
+        return;
+      }
+      throw ApiException(
+        remainingUiText('api.newsUnsaveFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
+      );
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        remainingUiText('api.newsUnsaveFailed', {'statusCode': '$e'}),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> getBenchmarkBoards() =>
+      _benchmarkJson('/benchmark/boards');
+
+  Future<Map<String, dynamic>> getBenchmarkOverview({String board = ''}) =>
+      _benchmarkJson('/benchmark/overview', params: _boardParams(board));
+
+  Future<Map<String, dynamic>> getBenchmarkStatus({String board = ''}) =>
+      _benchmarkJson('/benchmark/status', params: _boardParams(board));
+
+  Future<Map<String, dynamic>> getBenchmarkLeaderboard({
+    String board = '',
+    String query = '',
+    List<String> types = const [],
+    List<String> orgs = const [],
+    bool bestPerModel = true,
+    bool openWeightsOnly = false,
+    String sort = 'primary',
+    String order = 'desc',
+    int offset = 0,
+    int limit = 50,
+  }) {
+    final params = <String, String>{
+      ..._boardParams(board),
+      'sort': sort,
+      'order': order,
+      'offset': '$offset',
+      'limit': '$limit',
+      'best_per_model': '$bestPerModel',
+    };
+    if (query.trim().isNotEmpty) params['query'] = query.trim();
+    if (types.isNotEmpty) params['type'] = types.join(',');
+    if (orgs.isNotEmpty) params['org'] = orgs.join(',');
+    if (openWeightsOnly) params['open_weights'] = 'true';
+
+    return _benchmarkJson('/benchmark/leaderboard', params: params);
+  }
+
+  Future<Map<String, dynamic>> getBenchmarkModel(
+    String modelId, {
+    String board = '',
+    bool withHub = true,
+  }) {
+    return _benchmarkJson(
+      '/benchmark/model',
+      params: {..._boardParams(board), 'id': modelId, 'hub': '$withHub'},
+      notFoundMessage: remainingUiText('api.benchmarkModelUnknown', {
+        'model': modelId,
+      }),
+    );
+  }
+
+  Future<Map<String, dynamic>> compareBenchmarkModels(
+    List<String> modelIds, {
+    String board = '',
+    bool withHub = true,
+  }) {
+    return _benchmarkJson(
+      '/benchmark/compare',
+      params: {
+        ..._boardParams(board),
+        'ids': modelIds.join(','),
+        'hub': '$withHub',
+      },
+    );
+  }
+
+  Future<void> refreshBenchmarkData({String board = ''}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/benchmark/refresh').replace(
+        queryParameters: board.trim().isEmpty ? null : {'board': board.trim()},
+      );
+      final response = await _http.post(uri, headers: _headers);
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        return;
+      }
+      throw ApiException(
+        remainingUiText('api.benchmarkHttpFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        remainingUiText('api.benchmarkFailed', {'error': '$e'}),
+      );
+    }
+  }
+
+  Map<String, String> _boardParams(String board) =>
+      board.trim().isEmpty ? const {} : {'board': board.trim()};
+
+  Future<Map<String, dynamic>> _benchmarkJson(
+    String path, {
+    Map<String, String>? params,
+    String? notFoundMessage,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl$path',
+      ).replace(queryParameters: params?.isEmpty ?? true ? null : params);
+      final response = await _http.get(uri, headers: _headers);
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        throw ApiException(remainingUiText('api.benchmarkUnexpectedResponse'));
+      }
+      if (response.statusCode == 404 && notFoundMessage != null) {
+        throw ApiException(notFoundMessage);
+      }
+      throw ApiException(
+        remainingUiText('api.benchmarkHttpFailed', {
+          'statusCode': '${response.statusCode}',
+        }),
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        remainingUiText('api.benchmarkFailed', {'error': '$e'}),
       );
     }
   }

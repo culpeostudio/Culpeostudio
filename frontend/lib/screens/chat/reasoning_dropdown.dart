@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/chat_aux_strings.dart';
 
-/// Zusammengeklappter Gedankengang (`<think>...</think>` Inhalt) unter einer
-/// fertigen Antwort. Waehrend des Streamings zeigt der Chat den Rohtext als
-/// Live-Vorschau; sobald die finale Antwort steht, ersetzt dieses Dropdown sie
-/// — standardmaessig zugeklappt, damit der Chatverlauf nicht mit Rohtext
-/// vermuellt wird.
 class ReasoningDropdown extends StatefulWidget {
   const ReasoningDropdown({super.key, required this.reasoning});
 

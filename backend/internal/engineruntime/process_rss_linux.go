@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-// processResidentBytes returns the resident set size of a process, or -1 when
-// unavailable. Used to detect that a model worker is still actively loading
-// weights (its RSS keeps growing) so slow disk loads are not killed by a
-// fixed health timeout.
 func processResidentBytes(pid int) int64 {
 	if pid <= 0 {
 		return -1

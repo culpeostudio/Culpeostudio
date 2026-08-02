@@ -8,13 +8,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-// HTMLToMarkdown ist ein kompakter HTML->Markdown-Konverter fuer das
-// PhiloSearch-Extract-Feature. Ziel ist kein perfektes Markdown, sondern
-// ein gut lesbarer Klartext, der Links, Ueberschriften, Listen und Code
-// erhaelt - die wichtigsten Elemente in typischen Suchtreffern.
-//
-// Wir nutzen ausschliesslich golang.org/x/net/html und bleiben damit
-// unabhaengig von einer zusaetzlichen Markdown-Engine.
 func HTMLToMarkdown(htmlText string) string {
 	doc, err := html.Parse(strings.NewReader(htmlText))
 	if err != nil {
@@ -27,8 +20,6 @@ func HTMLToMarkdown(htmlText string) string {
 	return strings.TrimSpace(out)
 }
 
-// renderMarkdown traversiert den HTML-Baum und schreibt Markdown.
-// depth ist ein Schutz vor kaputten rekursiven Seiten.
 func renderMarkdown(b *strings.Builder, n *html.Node, depth int) {
 	if n == nil || depth > 10000 {
 		return
@@ -46,11 +37,10 @@ func renderMarkdown(b *strings.Builder, n *html.Node, depth int) {
 			b.WriteString(text)
 		}
 	case html.CommentNode:
-		// Kommentare nicht uebernehmen.
+
 	}
 }
 
-// renderElement behandelt ein Element und seine Kinder.
 func renderElement(b *strings.Builder, n *html.Node, depth int) {
 	switch n.Data {
 	case "script", "style", "noscript", "iframe", "svg", "math", "template":
@@ -165,7 +155,6 @@ func renderElement(b *strings.Builder, n *html.Node, depth int) {
 	}
 }
 
-// renderListItem erzeugt einen Listenpunkt mit Bullet oder Nummer.
 func renderListItem(b *strings.Builder, li *html.Node, ordered bool, idx int) {
 	marker := "- "
 	if ordered {
@@ -178,7 +167,6 @@ func renderListItem(b *strings.Builder, li *html.Node, ordered bool, idx int) {
 	b.WriteString("\n")
 }
 
-// writePreText extrahiert den rohen Text eines pre-Blocks.
 func writePreText(b *strings.Builder, n *html.Node) {
 	if n == nil {
 		return
@@ -192,7 +180,6 @@ func writePreText(b *strings.Builder, n *html.Node) {
 	}
 }
 
-// getAttr liefert den Wert eines HTML-Attributs oder "".
 func getAttr(n *html.Node, name string) string {
 	for _, a := range n.Attr {
 		if a.Key == name {
@@ -204,8 +191,6 @@ func getAttr(n *html.Node, name string) string {
 
 var whitespacePattern = regexp.MustCompile(`\s+`)
 
-// collapseWhitespace fasst mehrere Whitespaces zu einem
-// einzelnen Leerzeichen zusammen.
 func collapseWhitespace(s string) string {
 	if s == "" {
 		return ""
@@ -213,8 +198,6 @@ func collapseWhitespace(s string) string {
 	return whitespacePattern.ReplaceAllString(s, " ")
 }
 
-// collapseBlankLines reduziert drei+ aufeinanderfolgende Newlines
-// auf maximal zwei (= ein Absatz-Abstand).
 func collapseBlankLines(s string) string {
 	for strings.Contains(s, "\n\n\n") {
 		s = strings.ReplaceAll(s, "\n\n\n", "\n\n")

@@ -9,8 +9,6 @@ import (
 	"github.com/fillyengine/backend/internal/memorytoken"
 )
 
-// EstimateUsage reports which share of the reference context the session
-// content occupies, based on the approximate token estimator.
 func EstimateUsage(session *Session) float64 {
 	total := 0
 	for _, prompt := range session.Prompts {
@@ -25,8 +23,6 @@ func EstimateUsage(session *Session) float64 {
 	return float64(total) / float64(usageBudgetTokens)
 }
 
-// estimateUsageAfterCompression predicts the usage once the compressed
-// observations are archived and the new memory exists.
 func estimateUsageAfterCompression(session *Session, memoryItem *CompressedMemory) float64 {
 	compressed := map[string]struct{}{}
 	for _, id := range memoryItem.ObservationIDs {

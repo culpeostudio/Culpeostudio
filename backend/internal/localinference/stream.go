@@ -1,3 +1,5 @@
+// Package localinference describes the requests, streamed responses and warm-up
+// progress exchanged with a locally running model.
 package localinference
 
 import (
@@ -10,8 +12,6 @@ import (
 	"strings"
 )
 
-// ReadOpenAIStream consumes an OpenAI-compatible SSE response without
-// buffering the complete answer before forwarding text to the caller.
 func ReadOpenAIStream(r io.Reader, emit func(string) error) (string, error) {
 	reader := bufio.NewReader(r)
 	var reply strings.Builder

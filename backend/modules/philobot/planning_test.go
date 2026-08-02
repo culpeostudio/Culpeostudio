@@ -9,9 +9,6 @@ import (
 	"github.com/fillyengine/backend/internal/agentplan"
 )
 
-// fakeModel spielt ein Modell nach: es liefert der Reihe nach die
-// vorbereiteten Antworten und protokolliert die System-Prompts, mit
-// denen es aufgerufen wurde.
 type fakeModel struct {
 	replies []string
 	calls   int
@@ -73,7 +70,7 @@ func TestPlanRunnerProposeLegtPlanVor(t *testing.T) {
 	if len(steps) != 2 || steps[0] != "1. Lesen" {
 		t.Fatalf("Schritt-Titel im Event falsch: %v", planData["steps"])
 	}
-	// Der rohe JSON-Plan darf nicht im Chat landen.
+
 	if strings.Contains(visible.String(), "summary") {
 		t.Errorf("Plan-JSON sollte nicht sichtbar gestreamt werden: %q", visible.String())
 	}
@@ -88,9 +85,6 @@ func TestPlanRunnerProposeMeldetUnbrauchbareAntwort(t *testing.T) {
 	}
 }
 
-// TestPlanRunnerExecuteArbeitetSchritteAb prueft den Kern: jeder Schritt
-// bekommt einen eigenen Modell-Aufruf mit eigenem Prompt, und am Ende
-// steht ein Bericht.
 func TestPlanRunnerExecuteArbeitetSchritteAb(t *testing.T) {
 	model := &fakeModel{replies: []string{
 		"Schritt eins erledigt",
@@ -137,11 +131,11 @@ func TestPlanRunnerExecuteArbeitetSchritteAb(t *testing.T) {
 	if report != "Alles fertig, hier der Bericht." {
 		t.Errorf("Bericht = %q", report)
 	}
-	// Nur der Bericht ist sichtbar, nicht die Zwischenschritte.
+
 	if visible.String() != "Alles fertig, hier der Bericht." {
 		t.Errorf("sichtbarer Text = %q", visible.String())
 	}
-	// Fortschritt wurde gemeldet: 2x start + 2x result.
+
 	var starts, results int
 	for _, e := range events {
 		switch e {
@@ -156,8 +150,6 @@ func TestPlanRunnerExecuteArbeitetSchritteAb(t *testing.T) {
 	}
 }
 
-// TestPlanRunnerExecuteGibtErgebnisWeiter: das Ergebnis von Schritt 1 muss
-// im Prompt von Schritt 2 auftauchen, sonst arbeiten die Subagenten blind.
 func TestPlanRunnerExecuteGibtErgebnisWeiter(t *testing.T) {
 	model := &fakeModel{replies: []string{
 		"Der Timeout steht auf 10 Sekunden",
@@ -181,7 +173,7 @@ func TestPlanRunnerExecuteGibtErgebnisWeiter(t *testing.T) {
 	if !strings.Contains(model.prompts[1], "Der Timeout steht auf 10 Sekunden") {
 		t.Error("Ergebnis von Schritt 1 fehlt im Prompt von Schritt 2")
 	}
-	// Jeder Schritt startet mit frischem Verlauf statt der Chat-Historie.
+
 	if len(model.convos[1]) != 1 {
 		t.Errorf("Schritt 2 sollte mit frischem Kontext starten, hatte %d Nachrichten", len(model.convos[1]))
 	}
@@ -197,8 +189,6 @@ func TestPlanRunnerExecuteLehntLeerenPlanAb(t *testing.T) {
 	}
 }
 
-// TestPlanRunnerExecuteBrichtNachFehlerAb: die folgenden Schritte bauen in
-// aller Regel auf dem fehlgeschlagenen auf, blindes Weiterlaufen waere raten.
 func TestPlanRunnerExecuteBrichtNachFehlerAb(t *testing.T) {
 	runner := &planRunner{
 		chatTurn: func(convo []chatMessage, prompt string, filterEmit func(string) error) (string, error) {
@@ -227,8 +217,6 @@ func TestPlanRunnerExecuteBrichtNachFehlerAb(t *testing.T) {
 	}
 }
 
-// TestPlanRunnerExecuteBrichtBeiAbbruchAb prueft, dass ein abgebrochener
-// Kontext die Schleife stoppt.
 func TestPlanRunnerExecuteBrichtBeiAbbruchAb(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -257,8 +245,6 @@ func TestPreviewLine(t *testing.T) {
 	}
 }
 
-// TestPlanRunnerProposeReichtRueckfragenDurch: fragt das Modell nach, statt
-// zu planen, muss das als planQuestionsError erkennbar sein.
 func TestPlanRunnerProposeReichtRueckfragenDurch(t *testing.T) {
 	model := &fakeModel{replies: []string{
 		`{"reason":"Mir fehlt das Zielformat","questions":["JSON oder YAML?"]}`,
@@ -278,7 +264,7 @@ func TestPlanRunnerProposeReichtRueckfragenDurch(t *testing.T) {
 	if len(questions.questions.Items) != 1 || questions.questions.Items[0] != "JSON oder YAML?" {
 		t.Fatalf("Fragen falsch durchgereicht: %+v", questions.questions)
 	}
-	// Bei Rueckfragen darf kein plan_ready gemeldet werden.
+
 	for _, e := range events {
 		if e == "plan_ready" {
 			t.Error("plan_ready darf bei Rueckfragen nicht kommen")

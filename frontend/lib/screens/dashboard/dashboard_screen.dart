@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../state/app_state.dart';
@@ -8,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_background.dart';
 import '../../widgets/top_notification.dart';
 import '../onboarding/onboarding_dialog.dart';
+import '../benchmark/benchmark_screen.dart';
 import '../chat/chat_history_panel.dart';
 import '../chat/philobot_tab.dart';
 import '../engine/engine_screen.dart';
@@ -29,10 +29,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with TickerProviderStateMixin {
-  static final Uri _benchmarkUri = Uri.parse(
-    'https://artificialanalysis.ai/models',
-  );
-
   final AppState _appState = AppState();
   bool _showSidebar = true;
   final Set<String> _expandedHistoryProjects = {};
@@ -57,7 +53,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   ];
   final List<Map<String, dynamic>> _deletedModules = [];
 
-  /// Module, die in der Lite-Version sichtbar sind. Classic zeigt alle.
   static const Set<String> _liteModuleKeys = {
     'chat',
     'engine',
@@ -66,8 +61,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     'benchmark',
   };
 
-  /// Screens, die zwar nicht in der Sidebar stehen, aber in beiden Versionen
-  /// erreichbar bleiben muessen (z. B. Settings ueber das Zahnrad).
   static const Set<String> _nonSidebarScreens = {
     'settings',
     'bot_management',
@@ -81,7 +74,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         .toList();
   }
 
-  /// Anzeigename eines Moduls ueber seinen Key (lokalisiert).
   static String _moduleLabel(String key) => tr('sidebar.$key');
 
   void _confirmLogout() {
@@ -195,11 +187,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     });
   }
 
-  // newIndex kommt bereits korrigiert vom ReorderableListView.onReorderItem-
-  // Callback; die frühere manuelle `if (oldIndex < newIndex) newIndex -= 1`
-  // Anpassung entfällt dadurch. Die Indizes beziehen sich auf die sichtbaren
-  // Module; in der Lite-Version wird die neue Reihenfolge in die Gesamtliste
-  // uebertragen, versteckte Module behalten ihre Position.
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
       final visible = List<Map<String, dynamic>>.of(_visibleModules);
@@ -224,7 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     _appState.loadShortcuts();
-    // Erster Login dieses Users: Sprache und Frontend-Version abfragen.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _appState.needsOnboarding) {
         showDialog(
@@ -274,67 +261,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  Future<void> _handleBenchmarkTap() async {
-    final shouldOpen = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF16161D),
-          title: Text(
-            tr('dashboard.benchmarkTitle'),
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: Text(
-            tr('dashboard.benchmarkBody'),
-            style: const TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(tr('common.cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(tr('dashboard.benchmarkContinue')),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldOpen != true) {
-      return;
-    }
-
-    try {
-      final launched = await launchUrl(
-        _benchmarkUri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && mounted) {
-        showTopNotification(
-          context,
-          tr('dashboard.benchmarkOpenFailed'),
-          color: Colors.redAccent,
-        );
-      }
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      showTopNotification(
-        context,
-        tr('dashboard.benchmarkOpenError', {'error': '$error'}),
-        color: Colors.redAccent,
-      );
-    }
-  }
-
-  /// Leitet eine Chat-Aktion (neuer Chat / Verlauf ein-/ausklappen) an den
-  /// aktiven PhiloBotTab weiter. Ist der Chat-Screen noch nicht sichtbar,
-  /// wird erst dorthin gewechselt und die Aktion nach dem Aufbau des Tabs
-  /// nachgereicht, da PhiloBotTab seinen actionStream-Listener erst in
-  /// initState registriert.
   void _triggerChatAction(String action) {
     if (_appState.currentScreen != 'chat') {
       _appState.setScreen('chat');
@@ -364,6 +290,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         return const GenStudioScreen();
       case 'news':
         return const NewsScreen();
+      case 'benchmark':
+        return const BenchmarkScreen();
       case 'settings':
         return const SettingsScreen();
       case 'bot_management':
@@ -540,8 +468,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 selected:
                                     _appState.currentScreen == item['key'],
                                 showSidebar: showExpanded,
-                                showExternalIndicator:
-                                    item['key'] == 'benchmark',
                                 isReorderMode: true,
                                 onDelete: () => _deleteModule(item),
                                 onTap: () {},
@@ -559,8 +485,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   selected:
                                       _appState.currentScreen == item['key'],
                                   showSidebar: showExpanded,
-                                  showExternalIndicator:
-                                      item['key'] == 'benchmark',
                                   trailingActionIcon: item['key'] == 'chat'
                                       ? Icons.add_comment_outlined
                                       : null,
@@ -572,18 +496,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                                           'new_chat_session',
                                         )
                                       : null,
-                                  onTap: () {
-                                    if (item['key'] == 'benchmark') {
-                                      _handleBenchmarkTap();
-                                      return;
-                                    }
-                                    _appState.setScreen(item['key'] as String);
-                                  },
+                                  onTap: () => _appState.setScreen(
+                                    item['key'] as String,
+                                  ),
                                 ),
-                                // Der Verlauf erscheint automatisch, sobald
-                                // der Chat-Screen aktiv ist, und verschwindet
-                                // wieder, sobald man zu einem anderen Reiter
-                                // wechselt - kein manuelles Auf-/Zuklappen.
+
                                 if (item['key'] == 'chat' &&
                                     showExpanded &&
                                     _appState.currentScreen == 'chat')
@@ -871,9 +788,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         final t = _railAnimation.value;
         const collapsed = 72.0;
         const expanded = 248.0;
-        // The handle is deliberately generous: it is easier to spot and click,
-        // while still reading as part of the rail divider rather than a button
-        // floating beside it.
+
         const bump = 22.0;
         final railWidth = collapsed + (expanded - collapsed) * t;
         return SizedBox(
@@ -964,8 +879,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, _) {
         final currentScreen = _appState.currentScreen;
 
-        // Wird auf Lite gewechselt, waehrend ein Lite-fremdes Modul offen
-        // ist, zurueck auf den Chat. Settings & Co. bleiben erreichbar.
         if (_appState.frontendVersion == 'lite' &&
             !_liteModuleKeys.contains(currentScreen) &&
             !_nonSidebarScreens.contains(currentScreen)) {
@@ -1057,7 +970,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // 1. Gelöschte Module Popup
                                       Container(
                                         width: 320,
                                         height: 520,
@@ -1270,7 +1182,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 24),
-                                      // 2. Model Catalog Popup (ModelManagementDialog content!)
+
                                       Container(
                                         width: 680,
                                         height: 520,
@@ -1314,11 +1226,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildContentPanel(String currentScreen, bool isDesktop) {
     final brightness = Theme.of(context).brightness;
-    // Most module screens are const widgets so they retain their state while
-    // unrelated AppState notifications arrive. A language change is the one
-    // exception: keying the active module by locale recreates it exactly then,
-    // ensuring all handwritten `tr(...)` calls are rendered in the newly
-    // selected language instead of waiting for an unrelated interaction.
+
     final panel = KeyedSubtree(
       key: ValueKey<String>('locale-${_appState.language}'),
       child: _buildBody(currentScreen),
@@ -1471,7 +1379,6 @@ class _SidebarNavItem extends StatefulWidget {
   final bool showSidebar;
   final VoidCallback onTap;
   final bool isReorderMode;
-  final bool showExternalIndicator;
   final VoidCallback? onDelete;
   final IconData? trailingActionIcon;
   final String? trailingActionTooltip;
@@ -1485,7 +1392,6 @@ class _SidebarNavItem extends StatefulWidget {
     required this.showSidebar,
     required this.onTap,
     this.isReorderMode = false,
-    this.showExternalIndicator = false,
     this.onDelete,
     this.trailingActionIcon,
     this.trailingActionTooltip,
@@ -1510,9 +1416,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
-          onTap: widget.isReorderMode
-              ? null
-              : widget.onTap, // Disable navigation in reorder mode
+          onTap: widget.isReorderMode ? null : widget.onTap,
           onHover: widget.isReorderMode
               ? null
               : (hovered) {
@@ -1595,18 +1499,6 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                                         ),
                                       ),
                                     ),
-                                    if (!widget.isReorderMode &&
-                                        widget.showSidebar &&
-                                        widget.showExternalIndicator &&
-                                        _isHovered)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: Icon(
-                                          Icons.open_in_new,
-                                          size: 15,
-                                          color: textSecondary,
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -1679,9 +1571,6 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
   }
 }
 
-/// Draws the elongated collapse handle as a continuation of the rail border.
-/// The right edge of the rail is covered beneath the handle so the divider
-/// bends around it as one continuous line.
 class _RailBumpPainter extends CustomPainter {
   final double railWidth;
   final double bumpDepth;
@@ -1702,8 +1591,8 @@ class _RailBumpPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final mid = size.height / 2;
-    const innerHalf = 64.0; // tall base against the rail (elongated)
-    const outerHalf = 38.0; // slightly broader outer edge
+    const innerHalf = 64.0;
+    const outerHalf = 38.0;
     final w = railWidth;
     final d = bumpDepth;
 
@@ -1718,7 +1607,6 @@ class _RailBumpPainter extends CustomPainter {
       ..color = fill
       ..isAntiAlias = true;
 
-    // Mask the existing straight rail border where the handle joins it.
     canvas.drawRect(
       Rect.fromLTRB(w - 2, mid - innerHalf, w + 1, mid + innerHalf),
       fillPaint,
@@ -1731,8 +1619,6 @@ class _RailBumpPainter extends CustomPainter {
         ..isAntiAlias = true,
     );
 
-    // Only trace the outer three edges. Leaving the base open lets the rail's
-    // divider flow into the handle instead of producing a doubled line.
     canvas.drawPath(
       Path()
         ..moveTo(w, mid - innerHalf)

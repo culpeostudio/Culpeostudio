@@ -34,8 +34,7 @@ func TestQuarantineBlocksOnlyTheFailedBuild(t *testing.T) {
 	if quarantine.Contains("1.2.4", broken) {
 		t.Fatal("Contains() blocked a different version")
 	}
-	// A republished build of the same version has a new checksum and must stay
-	// installable, otherwise a bad release could never be fixed in place.
+
 	if quarantine.Contains("1.2.3", strings.Repeat("b", 64)) {
 		t.Fatal("Contains() blocked a rebuilt asset of the same version")
 	}
@@ -94,8 +93,7 @@ func TestLoadQuarantineReportsCorruptListAsEmpty(t *testing.T) {
 	if err == nil {
 		t.Fatal("LoadQuarantine() unexpectedly accepted a corrupt list")
 	}
-	// The caller keeps updating on a corrupt list, so it must be empty and not
-	// silently block every version.
+
 	if quarantine.Contains("1.2.3", strings.Repeat("a", 64)) {
 		t.Fatal("corrupt list blocked a version")
 	}

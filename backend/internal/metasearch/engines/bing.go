@@ -1,3 +1,5 @@
+// Package engines holds one adapter per search engine and the registry that
+// selects them.
 package engines
 
 import (
@@ -9,9 +11,6 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// unwrapBingURL dekodiert die Bing-Wrapper-URL, die Bing fuer ausgehende
-// Links verwendet (https://www.bing.com/ck/a?...&u=aHR0cHM6...). Der
-// Python-Code lebt unter ddgs/engines/bing.py::unwrap_bing_url.
 func unwrapBingURL(rawURL string) string {
 	idx := strings.Index(rawURL, "u=")
 	if idx < 0 {
@@ -24,7 +23,7 @@ func unwrapBingURL(rawURL string) string {
 	if len(tail) <= 2 {
 		return rawURL
 	}
-	// Bing prepended zwei Zeichen vor die eigentliche Base64-Darstellung.
+
 	b64part := tail[2:]
 	pad := (-len(b64part)) % 4
 	if pad < 0 {
@@ -37,11 +36,6 @@ func unwrapBingURL(rawURL string) string {
 	return string(decoded)
 }
 
-// newBing erzeugt den Bing-Text-Engine. Im Python-Original ist der
-// Engine per `disabled = True` ausgeschaltet, da Bing gegenueber nicht
-// primp-fingerprinteten Clients zunehmend rate-limited. Wir spaenen
-// ihn trotzdem an, weil er mit unserem Standard-User-Agent oft noch
-// durchkommt.
 func newBing(client *metasearch.HttpClient) metasearch.Engine {
 	return &metasearch.XPathEngine{
 		Meta: metasearch.EngineInfo{
@@ -115,9 +109,6 @@ func newBing(client *metasearch.HttpClient) metasearch.Engine {
 	}
 }
 
-// splitRegion teilt "us-en" in ("us", "en"). Defaultwerte bei
-// Fehler/leerem Input: ("us", "en"). Wird von mehreren Engines
-// genutzt und deshalb hier zentral definiert.
 func splitRegion(region string) (country, lang string) {
 	region = strings.ToLower(strings.TrimSpace(region))
 	if region == "" {

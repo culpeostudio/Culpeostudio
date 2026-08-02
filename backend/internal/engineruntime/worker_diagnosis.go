@@ -6,22 +6,16 @@ import (
 	"strings"
 )
 
-// WorkerDiagnosis classifies a raw Python/native worker failure into a stable
-// machine-readable code, a user-friendly German message, and an optional
-// self-healing action the UI can offer as a 1-click fix.
 type WorkerDiagnosis struct {
-	// Code is stable and machine-readable, e.g. "gpu_out_of_memory".
 	Code string `json:"code"`
-	// Message explains the failure in user language, without raw tracebacks.
+
 	Message string `json:"message"`
-	// SuggestedFix describes an automatic remediation the caller can offer.
-	// Empty when no safe automatic fix exists.
+
 	SuggestedFix string `json:"suggested_fix,omitempty"`
-	// SuggestedFixLabel is the button label for the remediation.
+
 	SuggestedFixLabel string `json:"suggested_fix_label,omitempty"`
 }
 
-// Suggested fix identifiers understood by the engine module / frontend.
 const (
 	FixReduceContext        = "reduce_context"
 	FixRetryOnCPU           = "retry_on_cpu"
@@ -33,8 +27,6 @@ const (
 	FixRestartWithLowerLoad = "restart_lower_load"
 )
 
-// diagnosisPattern maps lowercase substrings of worker output to a diagnosis.
-// Order matters: the first match wins, so more specific patterns come first.
 type diagnosisPattern struct {
 	substrings []string
 	diagnosis  WorkerDiagnosis
@@ -78,9 +70,7 @@ var workerDiagnosisPatterns = []diagnosisPattern{
 		},
 	},
 	{
-		// "failed to allocate buffer" is deliberately absent: llama.cpp emits it
-		// for KV-cache type incompatibilities too, and misreading those as OOM
-		// would skip the q4_0->f16 fallback that actually fixes them.
+
 		substrings: []string{"memoryerror", "cannot allocate memory", "std::bad_alloc", "insufficient memory", "out of memory", "signal: killed"},
 		diagnosis: WorkerDiagnosis{
 			Code:              "ram_out_of_memory",
@@ -139,8 +129,6 @@ var workerDiagnosisPatterns = []diagnosisPattern{
 	},
 }
 
-// DiagnoseWorkerOutput scans raw worker output (stderr/traceback) for known
-// failure patterns. Returns false when nothing matches.
 func DiagnoseWorkerOutput(output string) (WorkerDiagnosis, bool) {
 	lower := strings.ToLower(output)
 	if strings.TrimSpace(lower) == "" {
@@ -156,9 +144,6 @@ func DiagnoseWorkerOutput(output string) (WorkerDiagnosis, bool) {
 	return WorkerDiagnosis{}, false
 }
 
-// DiagnoseWorkerExit combines stderr pattern matching with exit-code
-// heuristics. Exit code 137 (SIGKILL) without a clearer pattern usually means
-// the OS out-of-memory killer terminated the worker.
 func DiagnoseWorkerExit(exitCode int, output string) (WorkerDiagnosis, bool) {
 	if diagnosis, ok := DiagnoseWorkerOutput(output); ok {
 		return diagnosis, true
@@ -182,20 +167,14 @@ func DiagnoseWorkerExit(exitCode int, output string) (WorkerDiagnosis, bool) {
 	return WorkerDiagnosis{}, false
 }
 
-// rawDetailSeparator carries the last raw worker line alongside a diagnosed
-// message so the error log keeps the ground truth. classifyEngineError strips
-// it from the user-facing summary again.
 const rawDetailSeparator = " [Technische Meldung: "
 
-// FormatWorkerExit renders a user-facing summary for a dead worker process,
-// preferring a matched diagnosis over the raw last stderr line.
 func FormatWorkerExit(exitCode int, stderr string, processErr error) (code, summary string) {
 	sanitized := sanitizeInstallText(stderr, providerSecretValues())
 	if diagnosis, ok := DiagnoseWorkerExit(exitCode, sanitized); ok {
 		summary := diagnosis.Message
 		if detail := lastUsefulInstallLine(sanitized); detail != "" {
-			// Keep the raw line for diagnosis; without it a misclassified
-			// failure is impossible to debug from the error log.
+
 			summary += rawDetailSeparator + detail + "]"
 		}
 		return diagnosis.Code, summary
@@ -209,8 +188,6 @@ func FormatWorkerExit(exitCode int, stderr string, processErr error) (code, summ
 	return "worker_exit", fmt.Sprintf("Model-Worker wurde unerwartet mit Code %d beendet", exitCode)
 }
 
-// DiagnosisByCode returns the canonical diagnosis for a stable code so that
-// callers holding only the code can recover the suggested fix.
 func DiagnosisByCode(code string) (WorkerDiagnosis, bool) {
 	for _, pattern := range workerDiagnosisPatterns {
 		if pattern.diagnosis.Code == code {
@@ -236,12 +213,8 @@ func DiagnosisByCode(code string) (WorkerDiagnosis, bool) {
 	return WorkerDiagnosis{}, false
 }
 
-// diagnosisMarkerPattern recognizes the "[stable_code] message" prefix that
-// summarizeWorkerExit embeds so higher layers can recover the structured code
-// from a plain error string.
 var diagnosisMarkerPattern = regexp.MustCompile(`^\[([a-z0-9_]+)\]\s*(.+)$`)
 
-// MarkDiagnosis prefixes a summary with its machine-readable code.
 func MarkDiagnosis(code, summary string) string {
 	if code == "" {
 		return summary
@@ -249,9 +222,6 @@ func MarkDiagnosis(code, summary string) string {
 	return "[" + code + "] " + summary
 }
 
-// ParseDiagnosisMarker extracts a code marker embedded by MarkDiagnosis. The
-// raw technical detail appended by FormatWorkerExit is stripped from the
-// returned summary; it stays available in the full error text.
 func ParseDiagnosisMarker(text string) (code, rest string, ok bool) {
 	match := diagnosisMarkerPattern.FindStringSubmatch(strings.TrimSpace(text))
 	if match == nil {

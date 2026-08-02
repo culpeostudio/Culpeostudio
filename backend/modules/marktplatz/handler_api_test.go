@@ -547,7 +547,6 @@ func TestMarktplatzAPI_SearchHuggingFaceHasMoreNormal(t *testing.T) {
 	})
 	defer restoreHardwareProfile()
 
-	// 1. Mock server returning exactly 25 models when requested (hasMore should be true)
 	hfModels := buildHFSearchFixtures(25, func(index int) int64 {
 		return 12 * 1024 * 1024 * 1024
 	})
@@ -579,7 +578,6 @@ func TestMarktplatzAPI_SearchHuggingFaceHasMoreNormal(t *testing.T) {
 		t.Errorf("expected backend to request 25 models from HuggingFace, requested limits: %v", *requestedLimits)
 	}
 
-	// 2. Mock server returning exactly 24 models (hasMore should be false since we asked for 25 but only got 24)
 	hfModels2 := buildHFSearchFixtures(24, func(index int) int64 {
 		return 12 * 1024 * 1024 * 1024
 	})

@@ -15,11 +15,6 @@ import (
 
 const resourceLauncherStartByte = byte(0x51)
 
-// runLimitedWorker remains as a supervising parent. The lifetime pipe is also
-// a one-byte start barrier: nativeResourceLimiter.Bind first tries to place the
-// launcher in cgroup v2, then releases it. Children therefore inherit cgroup
-// membership; if cgroup delegation is unavailable, RLIMIT_AS plus this
-// supervised process group is the fail-closed fallback.
 func runLimitedWorker(payload resourceLauncherPayload, maximum uint64) (int, error) {
 	fd, err := strconv.Atoi(os.Getenv(resourceLauncherLifetimeFD))
 	if err != nil || fd < 3 {
@@ -90,8 +85,7 @@ func runLimitedWorker(payload resourceLauncherPayload, maximum uint64) (int, err
 		}
 		return 126, waitErr
 	case lifetimeErr := <-lifetimeEnded:
-		// SIGKILL intentionally includes this launcher. After backend death no
-		// management process remains to confirm graceful shutdown deadlines.
+
 		group := unix.Getpgrp()
 		if group != os.Getpid() {
 			_ = worker.Process.Kill()

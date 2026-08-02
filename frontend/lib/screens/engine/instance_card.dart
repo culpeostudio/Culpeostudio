@@ -6,13 +6,6 @@ import '../../engine/models.dart';
 import '../../engine/widgets.dart';
 import '../../l10n/app_strings.dart';
 
-/// Karte einer Engine-Instanz in der Instanzliste: Status, Fortschritt,
-/// Fehlermeldung samt Sofort-Fix und die Aktionsleiste (Start/Stopp, Kontext,
-/// Antwortverhalten, Details).
-///
-/// Zustandslos — der Screen haelt weiterhin Controller und Aufklapp-Zustand und
-/// reicht nur das Noetige herein. Die Formatierungs-Helfer darunter sind reine
-/// Funktionen; die oeffentlichen werden auch vom Screen selbst genutzt.
 class InstanceCard extends StatelessWidget {
   const InstanceCard({
     super.key,
@@ -31,18 +24,14 @@ class InstanceCard extends StatelessWidget {
 
   final EngineInstance instance;
 
-  /// Modellkatalog fuer den Titel-Lookup ueber [EngineInstance.modelId].
   final List<ModelRecord> models;
 
-  /// True, solange fuer diese Instanz eine Operation laeuft (sperrt Aktionen).
   final bool busy;
 
-  /// True, wenn der technische Detailblock aufgeklappt ist.
   final bool expanded;
 
   final VoidCallback onToggleExpanded;
 
-  /// Startet/stoppt die Instanz; das Argument ist die Aktion ('start'/'stop').
   final void Function(String action) onAction;
 
   final VoidCallback onDelete;
@@ -50,7 +39,6 @@ class InstanceCard extends StatelessWidget {
   final VoidCallback onEditSampling;
   final VoidCallback onApplySuggestedFix;
 
-  /// Schreibt eine Teilaenderung an der Instanz zurueck (z. B. Chat-Sichtbarkeit).
   final void Function(Map<String, dynamic> patch) onUpdateInstance;
 
   @override
@@ -468,9 +456,7 @@ String instanceErrorMessage(EngineInstance instance) {
       ? instance.errorSummary
       : (instance.error ?? '');
   final value = raw.toLowerCase();
-  // Older persisted failures can still contain the internal planner text.
-  // Keep it available in the optional technical details, but never expose it
-  // as the user-facing status message.
+
   if (value.contains('engine plan conflict') ||
       (value.contains('minimum context') && value.contains('maximum is'))) {
     return tr('engineWidget.error.planChanged');

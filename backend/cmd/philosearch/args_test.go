@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// newTestFlagSet baut ein FlagSet mit denselben Flag-Arten wie runSearch:
-// ein int-Flag mit Wert und ein bool-Flag ohne.
 func newTestFlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.Int("max", 10, "")
@@ -73,8 +71,6 @@ func TestSplitArgs(t *testing.T) {
 	}
 }
 
-// TestSplitArgsRoundtrip prueft, dass die getrennten Flags vom
-// flag-Paket auch tatsaechlich geparst werden.
 func TestSplitArgsRoundtrip(t *testing.T) {
 	fs := newTestFlagSet()
 	pos, flg := splitArgs(fs, []string{"railway nginx", "-max", "5", "-json"})

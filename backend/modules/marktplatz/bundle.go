@@ -1,3 +1,5 @@
+// Package marktplatz is the model marketplace: it searches local and hosted
+// providers, judges whether a model fits the machine, and runs the downloads.
 package marktplatz
 
 import (

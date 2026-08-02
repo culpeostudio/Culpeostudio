@@ -1,11 +1,6 @@
 import 'app_strings.dart' as base;
 
-/// Isolated translations for Marketplace detail views and helper widgets.
-///
-/// Existing application-wide keys remain available through the fallback so the
-/// Marketplace migration does not need to modify the established string maps.
 const Map<String, String> marketplaceDetailStringsDe = {
-  // Hardware fit details
   'marketplaceDetail.fit.memoryEstimated':
       'Geschätzter Speicherbedarf: ~{value} GB',
   'marketplaceDetail.fit.memoryMeasured':
@@ -27,7 +22,6 @@ const Map<String, String> marketplaceDetailStringsDe = {
   'marketplaceDetail.fit.unsupported': 'Passt auf diesem Gerät nicht',
   'marketplaceDetail.fit.unknown': 'Kompatibilität unbekannt',
 
-  // Model detail dialog
   'marketplaceDetail.model.fallbackName': 'Modell',
   'marketplaceDetail.model.noDescription': 'Keine Beschreibung verfügbar.',
   'marketplaceDetail.model.contextBadge': '{count}K Kontext',
@@ -41,7 +35,6 @@ const Map<String, String> marketplaceDetailStringsDe = {
   'marketplaceDetail.model.variantFallback': 'Variante',
   'marketplaceDetail.model.shardCount': '{count} zusammengehörende Dateien',
 
-  // Filter preview and recommendation explanations
   'marketplaceDetail.filter.category': 'Kategorie',
   'marketplaceDetail.filter.chat': 'Chat',
   'marketplaceDetail.filter.code': 'Code',
@@ -58,7 +51,6 @@ const Map<String, String> marketplaceDetailStringsDe = {
 };
 
 const Map<String, String> marketplaceDetailStringsEn = {
-  // Hardware fit details
   'marketplaceDetail.fit.memoryEstimated':
       'Estimated memory requirement: ~{value} GB',
   'marketplaceDetail.fit.memoryMeasured':
@@ -80,7 +72,6 @@ const Map<String, String> marketplaceDetailStringsEn = {
   'marketplaceDetail.fit.unsupported': 'Does not fit this device',
   'marketplaceDetail.fit.unknown': 'Compatibility unknown',
 
-  // Model detail dialog
   'marketplaceDetail.model.fallbackName': 'Model',
   'marketplaceDetail.model.noDescription': 'No description available.',
   'marketplaceDetail.model.contextBadge': '{count}K context',
@@ -94,7 +85,6 @@ const Map<String, String> marketplaceDetailStringsEn = {
   'marketplaceDetail.model.variantFallback': 'Variant',
   'marketplaceDetail.model.shardCount': '{count} related files',
 
-  // Filter preview and recommendation explanations
   'marketplaceDetail.filter.category': 'Category',
   'marketplaceDetail.filter.chat': 'Chat',
   'marketplaceDetail.filter.code': 'Code',
@@ -111,7 +101,6 @@ const Map<String, String> marketplaceDetailStringsEn = {
       'No recommendation available.',
 };
 
-/// Translates a Marketplace detail key, then falls back to the app-wide maps.
 String tr(String key, [Map<String, String>? params]) {
   final strings = base.appLanguage == 'en'
       ? marketplaceDetailStringsEn

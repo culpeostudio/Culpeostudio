@@ -4,14 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:myphilostudio/services/api_service.dart';
 
-// Sichert ab, dass eine vom Backend abgelehnte Anmeldung auch in der Anwendung
-// als beendet gilt.
-//
-// Vorher blieb ein gespeichertes Token nach einem 401 einfach gesetzt: die
-// Oberflaeche sah angemeldet aus, waehrend jede Anfrage still scheiterte —
-// sichtbar war nur ein leeres Dashboard, das wie Datenverlust wirkte. Genau das
-// passiert, wenn der Server ein neues Signatur-Geheimnis bekommen hat.
-
 class _StubClient extends http.BaseClient {
   _StubClient(this.statusCode);
 
@@ -51,8 +43,6 @@ void main() {
     var gemeldet = false;
     api.onSessionExpired = () => gemeldet = true;
 
-    // Entspricht einem Anmeldeversuch mit falschem Passwort: das ist ein
-    // normaler Fehlversuch, kein Sitzungsende.
     await api.getPhiloBots();
 
     expect(gemeldet, isFalse);

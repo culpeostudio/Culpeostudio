@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// autoAllowedCommands duerfen ohne Rueckfrage laufen: reine Lese- und
-// Entwicklungs-Werkzeuge. Alles andere loest eine Permission-Anfrage aus.
 var autoAllowedCommands = map[string]struct{}{
 	"ls": {}, "cat": {}, "head": {}, "tail": {}, "wc": {}, "rg": {},
 	"grep": {}, "find": {}, "diff": {}, "pwd": {}, "echo": {}, "file": {},
@@ -21,15 +19,11 @@ var autoAllowedCommands = map[string]struct{}{
 	"npm": {}, "node": {},
 }
 
-// autoAllowedGitSubcommands begrenzt git auf Lese-Operationen; alles andere
-// (commit, push, reset, ...) braucht eine explizite Erlaubnis.
 var autoAllowedGitSubcommands = map[string]struct{}{
 	"status": {}, "diff": {}, "log": {}, "show": {}, "branch": {},
 	"ls-files": {}, "rev-parse": {}, "blame": {}, "grep": {},
 }
 
-// blockedCommands werden niemals ausgefuehrt — auch nicht mit Erlaubnis,
-// weil sie die Sandbox prinzipiell unterlaufen.
 var blockedCommands = map[string]struct{}{
 	"sudo": {}, "su": {}, "doas": {},
 }
@@ -40,16 +34,13 @@ const (
 	maxCommandOutputRunes = 32000
 )
 
-// commandPreapproved prueft, ob ein Befehl ohne Nachfrage laufen darf:
-// entweder ueber die Allowlist (git nur mit Lese-Subcommands) oder weil der
-// Nutzer das Programm in dieser Sitzung bereits freigegeben hat.
 func (e *fileToolExecutor) commandPreapproved(program string, args []string) bool {
 	if _, ok := e.approvedPrograms[program]; ok {
 		return true
 	}
 	if program == "git" {
 		if len(args) == 0 {
-			return true // nacktes "git" zeigt nur Hilfe
+			return true
 		}
 		_, ok := autoAllowedGitSubcommands[args[0]]
 		return ok
@@ -58,9 +49,6 @@ func (e *fileToolExecutor) commandPreapproved(program string, args []string) boo
 	return ok
 }
 
-// runCommand fuehrt einen Befehl ohne Shell (kein sh -c) innerhalb des
-// Projekt-Roots aus. Nicht freigegebene Programme loesen dieselbe
-// Permission-Anfrage aus wie Dateizugriffe ausserhalb der Roots.
 func (e *fileToolExecutor) runCommand(args map[string]interface{}) (map[string]interface{}, error) {
 	command, _ := args["command"].(string)
 	command = strings.TrimSpace(command)
@@ -87,7 +75,7 @@ func (e *fileToolExecutor) runCommand(args map[string]interface{}) (map[string]i
 		decision := e.requestPermission("run_command", commandLine)
 		switch decision {
 		case permissionOnce:
-			// genau dieser Aufruf
+
 		case permissionSession:
 			e.approvedPrograms[program] = struct{}{}
 		default:
@@ -118,7 +106,7 @@ func (e *fileToolExecutor) runCommand(args map[string]interface{}) (map[string]i
 	if len(e.roots) > 0 {
 		cmd.Dir = e.roots[0]
 	}
-	// Minimale Umgebung: kein Durchreichen von Tokens/Keys des Server-Prozesses.
+
 	cmd.Env = []string{
 		"PATH=" + os.Getenv("PATH"),
 		"HOME=" + os.Getenv("HOME"),

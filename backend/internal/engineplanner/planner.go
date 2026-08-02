@@ -12,8 +12,6 @@ const (
 	DefaultRuntimeOverheadBytes = 256 * MiB
 )
 
-// Planner can be reused with an immutable hardware snapshot and reserve
-// policy. Plan itself has no side effects and is safe for concurrent calls.
 type Planner struct {
 	hardware Hardware
 	policy   ReservePolicy
@@ -23,7 +21,6 @@ func New(hardware Hardware, policy ReservePolicy) *Planner {
 	return &Planner{hardware: hardware, policy: policy}
 }
 
-// Allocate is a convenience wrapper around New(hardware, policy).Plan.
 func Allocate(hardware Hardware, requests []Request, policy ReservePolicy) ([]ContextPlan, error) {
 	return New(hardware, policy).Plan(requests)
 }
@@ -54,9 +51,6 @@ type preparedRequest struct {
 	plan         ContextPlan
 }
 
-// Plan first reserves every minimum (pinned current plans first), then grants
-// 256-token chunks using weighted dominant-resource fairness. A minimum
-// conflict returns no partial plans.
 func (p *Planner) Plan(requests []Request) ([]ContextPlan, error) {
 	state, err := buildResourceState(p.hardware, p.policy)
 	if err != nil {
@@ -82,8 +76,6 @@ func (p *Planner) Plan(requests []Request) ([]ContextPlan, error) {
 		prepared = append(prepared, item)
 	}
 
-	// The ordering protects fixed pinned plans, GPU-only requests and narrow
-	// device selections before more flexible requests consume shared devices.
 	sort.Slice(prepared, func(i, j int) bool {
 		a, b := prepared[i], prepared[j]
 		aPinned := a.request.Pinned && a.request.CurrentContext > 0

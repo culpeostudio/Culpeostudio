@@ -10,11 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// TestMarktplatzAPI_SearchRejectsLocalFiltersForCloudProviders stellt
-// sicher, dass local_only/gpu_fit/quantization, die HF-spezifisch sind
-// (lokale gguf-Downloads, VRAM-Check), beim Cloud-Provider nicht zu einer
-// stillen leeren Ergebnisliste fuehren. Frueher kam einfach [] models
-// zurueck – jetzt 400 mit Klartext.
 func TestMarktplatzAPI_SearchRejectsLocalFiltersForCloudProviders(t *testing.T) {
 	cases := []struct {
 		name   string

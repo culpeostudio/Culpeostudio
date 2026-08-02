@@ -1,3 +1,5 @@
+// Package appsettings stores application settings as a single JSON document and
+// serves reads from memory.
 package appsettings
 
 import (
@@ -214,9 +216,6 @@ func prepareModelDir(raw string) (string, error) {
 	return abs, nil
 }
 
-// LooksLikeWindowsPath erkennt Laufwerkspfade wie D:\\Modelle. Andere
-// Module nutzen dies, um auf Linux kein Verzeichnis mit literalem Namen
-// "D:\\..." innerhalb des Backend-Arbeitsordners anzulegen.
 func LooksLikeWindowsPath(value string) bool {
 	return len(value) >= 3 &&
 		((value[0] >= 'A' && value[0] <= 'Z') || (value[0] >= 'a' && value[0] <= 'z')) &&

@@ -4,8 +4,6 @@ import 'package:flutter/services.dart';
 import '../../l10n/app_strings.dart';
 import 'settings_widgets.dart';
 
-// Eingabefeld, das eine gedrueckte Tastenkombination aufzeichnet.
-
 class ShortcutRecorder extends StatefulWidget {
   final String shortcut;
   final ValueChanged<String> onChanged;

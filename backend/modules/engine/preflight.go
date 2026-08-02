@@ -10,10 +10,6 @@ import (
 	"github.com/fillyengine/backend/internal/modelcatalog"
 )
 
-// preflightReport makes the plan explainable without leaking planner internals.
-// The snapshot ID is not a promise that memory cannot change; it lets the UI
-// show that the exact same inputs are checked again just before the worker is
-// spawned.
 func preflightReport(record modelcatalog.ModelRecord, plan ContextPlanView, snapshot hardware.Snapshot) PreflightReport {
 	confidence := "verified"
 	for _, warning := range plan.Warnings {

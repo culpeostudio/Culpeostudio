@@ -45,7 +45,6 @@ func TestFilterModelsByQuantization(t *testing.T) {
 		t.Fatalf("expected only model-b for int8, got %#v", filteredInt8)
 	}
 
-	// Test safetensors format mapping
 	modelsWithFormats := []types.ModelSummary{
 		{
 			ModelID: "model-c",
@@ -307,10 +306,7 @@ func TestEnrichMarketplaceMetadataMarksUnknownFitExplicitly(t *testing.T) {
 }
 
 func TestEnrichMarketplaceMetadataReportsGPUPlusRAMOffload(t *testing.T) {
-	// A model too large for VRAM alone but small enough with RAM offload
-	// must be reported as a usable partial_offload configuration -- not
-	// silently dropped -- with the RAM portion broken out so the UI can
-	// show "X GB GPU + Y GB RAM" instead of a flat pass/fail badge.
+
 	models := []types.ModelSummary{
 		{
 			ModelID:  "gpu-plus-ram-model",
@@ -347,8 +343,6 @@ func TestEnrichMarketplaceMetadataReportsUnsupportedWhenNothingFits(t *testing.T
 		},
 	}
 
-	// Small GPU and small RAM: this must not be reported as "cpu_only" (which
-	// would imply it runs, just slowly) -- it does not run at all here.
 	enriched := enrichMarketplaceMetadata(models, HardwareProfile{VRAMGB: 8, RAMGB: 16})
 	if enriched[0].RuntimeFit != "unsupported" {
 		t.Fatalf("expected unsupported when neither GPU+RAM nor RAM alone suffice, got %#v", enriched[0].RuntimeFit)

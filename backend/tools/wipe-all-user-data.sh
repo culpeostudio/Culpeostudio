@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Permanently removes all account-related data for every local user.
-# Stop the backend before running this script.
+
+
 
 if [[ "${1:-}" != "--confirm" ]]; then
   echo "Abbruch: Ausfuehrung nur mit --confirm." >&2
@@ -16,7 +16,7 @@ if [[ ! -d "$DATA_DIR" ]]; then
   exit 1
 fi
 
-# Login, Profile, Bots, Chat-/Memory-Daten, Sitzungen und API-Konfigurationen.
+
 targets=(
   "$DATA_DIR/login_accounts.json"
   "$DATA_DIR/login_authenticator.json"

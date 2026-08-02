@@ -23,10 +23,6 @@ func signalProcessGroup(cmd *exec.Cmd, force bool) error {
 	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(cmd.Process.Pid))
 }
 
-// bindProcessLifetime places the worker in a Job Object configured with
-// KILL_ON_JOB_CLOSE. Closing the backend process (including an abnormal exit)
-// closes the inherited Go handle and lets Windows terminate the whole worker
-// tree, preventing orphaned VRAM allocations.
 func bindProcessLifetime(cmd *exec.Cmd) (func(), error) {
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {

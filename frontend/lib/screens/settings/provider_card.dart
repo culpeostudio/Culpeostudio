@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import 'settings_widgets.dart';
 
-// Karte eines API-Providers in den Einstellungen (Hover-Zustand inklusive).
-
 class ProviderCardWidget extends StatefulWidget {
   final String id;
   final String title;
@@ -83,15 +81,13 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
             border: Border.all(
               color: widget.accentColor.withValues(
                 alpha: _isHovered ? 0.45 : 0.18,
-              ), // glow border on hover
+              ),
               width: _isHovered ? 1.5 : 1.2,
             ),
             boxShadow: [
               BoxShadow(
                 color: _isHovered
-                    ? widget.accentColor.withValues(
-                        alpha: 0.15,
-                      ) // brand glow shadow on hover
+                    ? widget.accentColor.withValues(alpha: 0.15)
                     : Colors.black.withValues(alpha: 0.2),
                 blurRadius: _isHovered ? 14 : 10,
                 spreadRadius: _isHovered ? 1 : 0,
@@ -103,7 +99,6 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Logo + Title
               Row(
                 children: [
                   AnimatedContainer(
@@ -147,7 +142,7 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
                   ),
                 ],
               ),
-              // Details
+
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -162,7 +157,7 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  // Key Status Badge
+
                   Row(
                     children: [
                       Container(
@@ -207,7 +202,7 @@ class _ProviderCardWidgetState extends State<ProviderCardWidget> {
                   ),
                 ],
               ),
-              // Reachability Status badge
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,

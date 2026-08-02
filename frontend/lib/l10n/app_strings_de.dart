@@ -1,8 +1,4 @@
-/// Deutsche UI-Texte. Schluessel-Schema: `screen.context.key`.
-/// Platzhalter werden als `{name}` geschrieben und ueber `tr(key, {...})`
-/// ersetzt.
 const Map<String, String> appStringsDe = {
-  // Allgemein
   'common.ok': 'OK',
   'common.cancel': 'Abbrechen',
   'common.save': 'Speichern',
@@ -13,7 +9,6 @@ const Map<String, String> appStringsDe = {
   'common.error': 'Fehler',
   'common.retry': 'Erneut versuchen',
 
-  // Onboarding
   'onboarding.title': 'Willkommen!',
   'onboarding.subtitle':
       'Richte deine persönlichen Einstellungen ein. Du kannst sie später jederzeit in den Einstellungen ändern.',
@@ -28,7 +23,6 @@ const Map<String, String> appStringsDe = {
       'Nur Chat, Engine, Marktplatz, News und Benchmark werden angezeigt.',
   'onboarding.start': 'Los geht\'s',
 
-  // Sidebar / Module
   'sidebar.chat': 'Chat',
   'sidebar.engine': 'Engine',
   'sidebar.marketplace': 'Marktplatz',
@@ -38,7 +32,6 @@ const Map<String, String> appStringsDe = {
   'sidebar.news': 'News',
   'sidebar.benchmark': 'Benchmark',
 
-  // Settings: Darstellung
   'settings.appearance': 'Darstellung',
   'settings.language': 'Sprache',
   'settings.frontendVersion': 'Frontend-Version',
@@ -46,18 +39,9 @@ const Map<String, String> appStringsDe = {
   'settings.frontendVersionLite':
       'Lite (Chat, Engine, Marktplatz, News, Benchmark)',
 
-  // Dashboard
   'dashboard.logoutTitle': 'Abmelden',
   'dashboard.logoutConfirm': 'Möchtest du dich wirklich ausloggen?',
   'dashboard.logoutYes': 'Ja, abmelden',
-  'dashboard.benchmarkTitle': 'Externe Website öffnen',
-  'dashboard.benchmarkBody':
-      'Du bist dabei, artificialanalysis.ai im Browser zu öffnen. Möchtest du wirklich auf diese Seite wechseln?',
-  'dashboard.benchmarkContinue': 'Weiter',
-  'dashboard.benchmarkOpenFailed':
-      'Die externe Benchmark-Seite konnte nicht geöffnet werden.',
-  'dashboard.benchmarkOpenError':
-      'Fehler beim Öffnen der Benchmark-Seite: {error}',
   'dashboard.tooltipSettings': 'Einstellungen',
   'dashboard.tooltipLogout': 'Abmelden',
   'dashboard.tooltipNewChat': 'Neuer Chat erstellen',
@@ -71,15 +55,12 @@ const Map<String, String> appStringsDe = {
   'dashboard.codeCopied': 'Code kopiert',
   'dashboard.copy': 'Kopieren',
 
-  // Fehler
   'login.error.invalidCredentials': 'Anmeldedaten ungueltig',
   'login.error.invalidCode': 'Code ist ungueltig',
 
-  // Validierung
   'login.validation.required': 'Pflichtfeld',
   'login.validation.codeInvalid': '6-stelligen Code eingeben',
 
-  // Authenticator-Setup
   'login.setup.title': 'Authenticator einrichten',
   'login.setup.scanHint2fas':
       '2FAS öffnen, „+“ wählen und den QR-Code scannen.',
@@ -89,11 +70,9 @@ const Map<String, String> appStringsDe = {
   'login.setup.confirm': 'Einrichtung bestätigen',
   'login.setup.loadError': 'Setup konnte nicht geladen werden.',
 
-  // Begruessung
   'login.welcome.title': 'Willkommen zurück',
   'login.welcome.subtitle': 'Melde dich an, um dein Studio zu öffnen.',
 
-  // Formularfelder
   'login.field.usernameLabel': 'BENUTZERNAME',
   'login.field.usernameHint': 'Benutzername eingeben',
   'login.field.passwordLabel': 'PASSWORT',
@@ -101,7 +80,6 @@ const Map<String, String> appStringsDe = {
   'login.field.showPassword': 'Passwort anzeigen',
   'login.field.hidePassword': 'Passwort verbergen',
 
-  // Sitzung
   'login.remember.label': 'Angemeldet bleiben',
   'login.remember.duration': 'Sitzungsdauer',
   'login.duration.8h': '8 Std.',
@@ -109,17 +87,14 @@ const Map<String, String> appStringsDe = {
   'login.duration.48h': '48 Std.',
   'login.duration.permanent': 'Dauerhaft',
 
-  // Aktionen
   'login.action.login': 'Anmelden',
   'login.action.createAccount': 'Account erstellen',
   'login.action.forgotPassword': 'Passwort vergessen',
 
-  // Fusszeile
   'login.footer.copyright': '© 2026 fillystudio. Alle Rechte vorbehalten.',
   'login.footer.credits':
       'Powered by PhiloEngine • Design & Development by fillystudio',
 
-  // Account-Dialog
   'login.dialog.passwordUpdated': 'Passwort wurde aktualisiert.',
   'login.dialog.accountCreated': 'Account wurde erstellt.',
   'login.dialog.actionFailed': 'Aktion fehlgeschlagen.',
@@ -131,7 +106,6 @@ const Map<String, String> appStringsDe = {
   'login.dialog.codeFromApp': 'Code aus {app}',
   'login.dialog.create': 'Erstellen',
 
-  // Navigation
   'settings.nav.title': 'EINSTELLUNGEN',
   'settings.nav.general': 'Allgemein',
   'settings.nav.serverApi': 'Server / API',
@@ -140,7 +114,6 @@ const Map<String, String> appStringsDe = {
   'settings.nav.chatBot': 'Chat-Bot',
   'settings.nav.skills': 'Skills',
 
-  // Allgemein
   'settings.general.title': 'Allgemeine Studio-Konfiguration',
   'settings.general.modelDirLabel': 'MODELL DOWNLOAD PFAD',
   'settings.general.modelDirDescription':
@@ -158,13 +131,11 @@ const Map<String, String> appStringsDe = {
   'settings.general.saveButton': 'Einstellungen speichern',
   'settings.save.success': 'Einstellungen erfolgreich gespeichert',
 
-  // Provider-Health
   'settings.health.reachable': 'Erreichbar',
   'settings.health.unreachable': 'Nicht erreichbar',
   'settings.health.httpResponse': 'Antwortet mit HTTP {code}',
   'settings.health.error': 'Fehler',
 
-  // Server & API
   'settings.serverApi.title': 'Server & API-Schnittstellen',
   'settings.serverApi.subtitle':
       'Verbindung zu lokalen Servern und Cloud-Modell-Anbietern verwalten',
@@ -172,7 +143,6 @@ const Map<String, String> appStringsDe = {
   'settings.serverApi.addNode': 'Node hinzufügen',
   'settings.serverApi.localServer': 'Lokaler Server',
 
-  // Custom Node Dialoge
   'settings.customNode.fallbackName': 'Custom Node',
   'settings.customNode.addTitle': 'Custom Node hinzufügen',
   'settings.customNode.addDescription':
@@ -191,13 +161,11 @@ const Map<String, String> appStringsDe = {
   'settings.customNode.delete': 'Node löschen',
   'settings.customNode.save': 'Speichern',
 
-  // Custom Nodes - Phase-2-Hinweis
   'settings.serverApi.phaseNote.title': 'Kommt in Phase 2',
   'settings.serverApi.phaseNote.body':
       'Eigene API-Nodes lassen sich bereits anlegen und auf Erreichbarkeit prüfen, sind aber noch nicht als aktive Verbindung in den Chat/Engine nutzbar. Die volle Funktion folgt mit Phase 2.',
   'settings.customNode.phaseBadge': 'Phase 2',
 
-  // Token-Dialog
   'settings.token.setupTitle': '{title} einrichten',
   'settings.token.replaceDescription':
       'Es ist bereits ein Token konfiguriert. Du kannst ihn überschreiben, '
@@ -210,13 +178,11 @@ const Map<String, String> appStringsDe = {
   'settings.token.delete': 'Token löschen',
   'settings.token.updated': 'Token erfolgreich aktualisiert',
 
-  // Provider-Karte
   'settings.provider.enabled': 'Aktiviert',
   'settings.provider.keySet': 'Key eingerichtet',
   'settings.provider.keyMissing': 'Key fehlt',
   'settings.provider.checking': 'Prüfe...',
 
-  // Chat-Bot
   'settings.chatBot.title': 'Chat-Bot',
   'settings.chatBot.description':
       'Lege fest, ob neue Chats einen bestimmten Bot verwenden oder den '
@@ -225,7 +191,6 @@ const Map<String, String> appStringsDe = {
   'settings.chatBot.note':
       'Laufende Chats behalten ihren bisher verwendeten Bot.',
 
-  // Skills
   'settings.skills.title': 'Agent Skills',
   'settings.skills.description':
       'Importierte Skills werden strikt gegen den Agent-Skills-Standard geprüft '
@@ -243,7 +208,6 @@ const Map<String, String> appStringsDe = {
   'settings.skills.invalid': 'ungültig',
   'settings.skills.fileCount': '{count} Dateien',
 
-  // Shortcuts
   'settings.shortcuts.title': 'Tastenkombinationen (Shortkarts)',
   'settings.shortcuts.description':
       'Klicken Sie auf ein Tastenkürzel, um es neu aufzunehmen. Drücken Sie '
@@ -267,7 +231,6 @@ const Map<String, String> appStringsDe = {
   'settings.shortcuts.action.focusSearch': 'Suche fokussieren',
   'settings.shortcuts.action.showHelp': 'Tastenkürzel-Hilfe anzeigen',
 
-  // Systeminformationen & Hilfe
   'settings.systemInfo.title': 'Systeminformationen',
   'settings.systemInfo.noGpu': 'Keine GPU erkannt',
   'settings.systemInfo.cpuDetecting': 'CPU wird erkannt …',
@@ -284,7 +247,6 @@ const Map<String, String> appStringsDe = {
       'Stellen Sie sicher, dass das myphiloengine Backend läuft, bevor Sie '
       'Operationen aufrufen. Standardmäßig lauscht es auf Port 8080.',
 
-  // Plus-Menue (Datei/Aktion)
   'chat.plusMenu.webSearch': 'Websuche',
   'chat.plusMenu.webSearchDesc': 'Echtzeit-Informationen',
   'chat.plusMenu.restart': 'Neustart',
@@ -292,14 +254,12 @@ const Map<String, String> appStringsDe = {
   'chat.plusMenu.uploadFile': 'Datei hochladen',
   'chat.plusMenu.uploadFileDesc': 'Lokale Datei auswählen',
 
-  // Modell-Wahl / Arbeitsanzeige
   'chat.modelChoice.localReady': 'Lokal • Bereit',
   'chat.working.modelLoading': 'Modell wird geladen',
   'chat.working.thinking': 'PhiloBot denkt nach',
   'chat.noActiveChat': 'Kein aktiver Chat',
   'chat.header.showFileTree': 'Dateibaum anzeigen',
 
-  // Benachrichtigungen
   'chat.notification.modelSwitched': 'Modell gewechselt: {label}',
   'chat.notification.startModelFirst':
       'Bitte zuerst ein lokales Engine- oder API-Modell starten',
@@ -311,13 +271,11 @@ const Map<String, String> appStringsDe = {
   'chat.notification.memoryCompressed': 'Memory wurde komprimiert',
   'chat.notification.replyCopied': 'Antwort kopiert',
 
-  // Fehler
   'chat.error.modelSwitchFailed': 'Modellwechsel fehlgeschlagen',
   'chat.error.sessionStartFailed': 'Konnte Chat-Sitzung nicht starten',
   'chat.error.settingsAction': 'Einstellungen',
   'chat.error.responseFailed': 'Antwort konnte nicht erzeugt werden',
 
-  // Modell-Warmup
   'chat.warmup.modelUnavailable': 'Das lokale Modell ist nicht mehr verfügbar.',
   'chat.warmup.modelReady': 'Modell ist bereit',
   'chat.warmup.queueTimeout': 'Der Modellstart hat zu lange gewartet.',
@@ -325,12 +283,10 @@ const Map<String, String> appStringsDe = {
       'Das lokale Modell konnte nicht gestartet werden: {error}',
   'chat.warmup.localModelFallback': 'Lokales Modell',
 
-  // Bot-Test
   'chat.botTest.newBotFallback': 'der neue Bot',
   'chat.botTest.prompt':
       '{keyword}: Teste {name} mit einer kurzen Beispielantwort.',
 
-  // Lade-/Leerzustaende
   'chat.loading.preparing': 'Chat wird vorbereitet …',
   'chat.loading.initNewChat': 'Initialisiere neuen Chat...',
   'chat.empty.noModelReady': 'Noch kein Modell bereit',
@@ -339,7 +295,6 @@ const Map<String, String> appStringsDe = {
   'chat.empty.startLocalModel': 'Lokales Modell starten',
   'chat.empty.chooseApiModel': 'API-Modell wählen',
 
-  // Agentische Ereignisse
   'chat.events.toolStartedGeneric': 'Tool gestartet',
   'chat.events.toolStarted': '{tool} gestartet',
   'chat.events.toolFinishedGeneric': 'Tool beendet',
@@ -357,45 +312,36 @@ const Map<String, String> appStringsDe = {
   'chat.events.fileModified': 'Datei geändert',
   'chat.events.memoryCompressed': 'Memory komprimiert',
 
-  // Dateibaum
   'chat.fileTree.title': 'Dateien',
   'chat.fileTree.refresh': 'Aktualisieren',
 
-  // Datei-Aenderungen
   'chat.fileChange.new': 'Neu',
   'chat.fileChange.deleted': 'Gelöscht',
   'chat.fileChange.moved': 'Verschoben',
   'chat.fileChange.modified': 'Geändert',
 
-  // Planfreigabe
   'chat.planApproval.title': 'Planfreigabe',
   'chat.planApproval.reject': 'Ablehnen',
   'chat.planApproval.approve': 'Genehmigen',
   'chat.planApproval.approvedMessage': 'Plan genehmigt',
 
-  // Zugriffsanfrage
   'chat.permission.requestClosed': 'Zugriffsanfrage war nicht mehr offen',
 
-  // Erstellter Bot
   'chat.createdBot.nameFallback': 'Neuer Bot',
   'chat.createdBot.saved': '{name} gespeichert',
   'chat.createdBot.test': 'Testen',
   'chat.createdBot.edit': 'Bearbeiten',
 
-  // Inline-Editor
   'chat.editor.hint': 'Nachricht bearbeiten …',
   'chat.editor.cancel': 'Abbrechen',
   'chat.editor.resend': 'Neu senden',
 
-  // Nachrichten-Navigator
   'chat.navigator.jumpToMessage': 'Zu deiner Nachricht',
 
-  // Nachrichten-Aktionen
   'chat.messageActions.edit': 'Bearbeiten',
   'chat.messageActions.copy': 'Text kopieren',
   'chat.messageActions.actions': 'Aktionen',
 
-  // Schnell-Prompts
   'chat.quickPrompt.shorter': 'Formuliere die letzte Antwort deutlich kuerzer.',
   'chat.quickPrompt.critical':
       'Pruefe die letzte Antwort kritischer und nenne Schwachstellen.',
@@ -407,14 +353,12 @@ const Map<String, String> appStringsDe = {
   'chat.quickPrompt.rule':
       'Botbuilder: Ueberarbeite {bot} so, dass diese Antwortqualitaet dauerhaft als Bot-Regel uebernommen wird.',
 
-  // Nachrichten-Menue
   'chat.menu.shorter': 'Kuerzer',
   'chat.menu.critical': 'Kritischer',
   'chat.menu.moreStructure': 'Mehr Struktur',
   'chat.menu.tune': 'Feintunen',
   'chat.menu.asRule': 'Als Regel',
 
-  // Eingabeleiste
   'chat.input.hint': 'Nachricht...',
   'chat.input.addTooltip': 'Datei oder Chat-Aktion',
   'chat.input.modelBoundToBot':
@@ -422,18 +366,15 @@ const Map<String, String> appStringsDe = {
   'chat.input.modelWarmingUp': 'Das Modell läuft gerade warm',
   'chat.input.voiceMessage': 'Sprachnachricht',
 
-  // Senden-Button
   'chat.send.selectModelFirst': 'Bitte zuerst ein Modell auswählen',
   'chat.send.botWorking': 'PhiloBot arbeitet noch …',
   'chat.send.waitForModel': 'Warten, bis das Modell bereit ist',
   'chat.send.sendMessage': 'Nachricht senden',
 
-  // Thinking-Slider
   'chat.thinkingSlider.faster': 'Schneller',
   'chat.thinkingSlider.smarter': 'Intelligenter',
   'chat.thinkingSlider.inDevelopment': 'In Entwicklung',
 
-  // Chat-Verlauf: Umbenennen / Loeschen
   'chatHistory.rename.title': 'Chat umbenennen',
   'chatHistory.rename.hint': 'Titel',
   'chatHistory.rename.cancel': 'Abbrechen',
@@ -448,7 +389,6 @@ const Map<String, String> appStringsDe = {
   'chatHistory.deleteProject.cancel': 'Abbrechen',
   'chatHistory.deleteProject.confirm': 'Löschen',
 
-  // Chat-Verlauf: Panel
   'chatHistory.newFolder': 'Neuer Ordner',
   'chatHistory.sectionProjects': 'Projekte',
   'chatHistory.sectionHistory': 'Verlauf',
@@ -456,7 +396,6 @@ const Map<String, String> appStringsDe = {
   'chatHistory.empty':
       'Noch keine Chats — starte eine neue Unterhaltung oder lege einen Ordner an.',
 
-  // Chat-Verlauf: Projekt-Dialog
   'chatHistory.projectDialog.titleEdit': 'Ordner bearbeiten',
   'chatHistory.projectDialog.titleNew': 'Neuer Ordner',
   'chatHistory.projectDialog.nameHint': 'Projektname',
@@ -473,7 +412,6 @@ const Map<String, String> appStringsDe = {
   'chatHistory.projectDialog.save': 'Speichern',
   'chatHistory.projectDialog.create': 'Erstellen',
 
-  // Chat-Verlauf: Zeilen-Aktionen
   'chatHistory.projectRow.newChat': 'Neuer Chat im Ordner',
   'chatHistory.projectRow.edit': 'Ordner bearbeiten',
   'chatHistory.projectRow.delete': 'Ordner löschen',
@@ -483,7 +421,6 @@ const Map<String, String> appStringsDe = {
   'chatHistory.chatRow.rename': 'Umbenennen',
   'chatHistory.chatRow.delete': 'Löschen',
 
-  // Philox-Tab
   'philox.header.agentSession': 'Agent Session: {id}',
   'philox.header.sessionConfig': 'Sitzungskonfiguration',
   'philox.header.toggleParams': 'Parameter einblenden/ausblenden',
@@ -502,7 +439,6 @@ const Map<String, String> appStringsDe = {
   'philox.input.hint': 'Agenten instruieren...',
   'philox.input.voiceControl': 'Sprachsteuerung',
 
-  // News
   'news.title': 'AI & Tech Feed',
   'news.subtitle':
       'Live-Nachrichten aggregiert aus führenden Hardware- und KI-Quellen.',
@@ -512,15 +448,158 @@ const Map<String, String> appStringsDe = {
   'news.categoryAll': 'Alle',
   'news.categoryReleases': 'KI-Releases',
   'news.categoryHardware': 'Hardware',
+  'news.categorySoftware': 'Software & Entwicklung',
+  'news.categorySecurity': 'Security',
   'news.categoryOpenSource': 'Open Source',
   'news.categoryResearch': 'Research',
   'news.noResults': 'Keine passenden Artikel gefunden.',
   'news.empty': 'Momentan sind keine Artikel verfügbar.',
   'news.resetFilters': 'Filter zurücksetzen',
+  'news.sourceLabel': 'ANBIETER:',
+  'news.sourceAll': 'Alle Anbieter',
+  'news.savedFilter': 'Gespeichert',
+  'news.save': 'Bericht speichern',
+  'news.unsave': 'Aus Merkliste entfernen',
+  'news.savedEmpty': 'Du hast noch keine Berichte gespeichert.',
+  'news.savedLoadError':
+      'Gespeicherte Berichte konnten nicht geladen werden: {error}',
   'news.loadError': 'Fehler beim Laden der Neuigkeiten: {error}',
   'news.readMore': 'Weiterlesen',
 
-  // Bots Management
+  'benchmark.title': 'Benchmark',
+  'benchmark.subtitle':
+      'Tagesaktuelle Wertungen aus der LMArena: echte Menschen vergleichen zwei Antworten und stimmen ab.',
+  'benchmark.tabOverview': 'Überblick',
+  'benchmark.tabLeaderboard': 'Rangliste',
+  'benchmark.tabCompare': 'Vergleich',
+
+  'benchmark.board.arena_text': 'LMArena · Text',
+
+  'benchmark.refreshAction': 'Aktualisieren',
+  'benchmark.refreshStarted': 'Abgleich läuft – das dauert einen Moment.',
+  'benchmark.loadingTitle': 'Rangliste wird geladen',
+  'benchmark.loadingProgress': '{loaded} von {total} Läufen',
+  'benchmark.loadingHint':
+      'Der erste Abgleich holt den kompletten Datensatz und legt ihn lokal ab.',
+  'benchmark.loadFailed': 'Benchmark-Daten konnten nicht geladen werden.',
+
+  'benchmark.statModels': 'Modelle',
+  'benchmark.statEntries': 'Ausgewertete Läufe',
+  'benchmark.statMetrics': 'Kategorien',
+  'benchmark.statTop': 'Beste Gesamtwertung',
+  'benchmark.typeShareTitle': 'Wie sich das Feld verteilt',
+  'benchmark.behindLeader': '{diff} hinter Platz 1',
+
+  'benchmark.metricsTitle': 'Was hier eigentlich gemessen wird',
+  'benchmark.metricsSubtitle':
+      'Jede Kategorie fragt eine andere Fähigkeit ab; die Gesamtwertung fasst alle Abstimmungen zusammen.',
+  'benchmark.metricMedian': 'Median {value}',
+  'benchmark.metricBest': 'Bestwert {value}',
+  'benchmark.orgTitle': 'Anbieter in dieser Rangliste',
+
+  'benchmark.metric.hard_prompts.desc':
+      'Nur die anspruchsvollsten Nutzeranfragen der Arena – hier trennen sich die Spitzenmodelle.',
+  'benchmark.metric.coding.desc':
+      'Abstimmungen zu Programmieraufgaben: Wer schreibt den Code, den Menschen vorziehen?',
+  'benchmark.metric.math.desc':
+      'Abstimmungen zu Rechen- und Beweisaufgaben aus der Arena.',
+  'benchmark.metric.creative_writing.desc':
+      'Freies Schreiben: Geschichten, Texte, Stil. Bewertet von Menschen im direkten Vergleich.',
+  'benchmark.metric.instruction_following.desc':
+      'Wie genau hält sich das Modell an das, was tatsächlich gefragt war?',
+  'benchmark.metric.multi_turn.desc':
+      'Gespräche über mehrere Runden – dort fällt auf, wer den Faden verliert.',
+  'benchmark.metric.longer_query.desc':
+      'Lange, ausführliche Anfragen statt Einzeiler.',
+  'benchmark.metric.non_english.desc':
+      'Anfragen in anderen Sprachen als Englisch.',
+
+  'benchmark.family.instruction': 'Anweisungen',
+  'benchmark.family.reasoning': 'Schlussfolgern',
+  'benchmark.family.math': 'Mathematik',
+  'benchmark.family.coding': 'Programmieren',
+  'benchmark.family.creative': 'Kreatives',
+  'benchmark.family.conversation': 'Gespräch',
+  'benchmark.family.language': 'Sprachen',
+
+  'benchmark.topOverall': 'Spitzenreiter gesamt',
+  'benchmark.metricNoData':
+      'Für diese Wertung liegen im aktuellen Abzug keine Werte vor.',
+  'benchmark.showAll': 'Ganze Rangliste ansehen',
+  'benchmark.showAllCount': 'noch {count} weitere Modelle',
+
+  'benchmark.searchHint': 'Modell, Anbieter oder Architektur suchen…',
+  'benchmark.filterType': 'TYP:',
+  'benchmark.filterOrg': 'ANBIETER:',
+  'benchmark.filterAll': 'Alle',
+  'benchmark.filterReset': 'Filter zurücksetzen',
+  'benchmark.sortLabel': 'SORTIERUNG:',
+  'benchmark.sortAverage': 'Gesamtwertung',
+  'benchmark.sortName': 'Name',
+  'benchmark.resultCount': '{count} Modelle',
+  'benchmark.empty': 'Keine Modelle passen zu diesen Filtern.',
+  'benchmark.loadMore': 'Weitere laden',
+
+  'benchmark.columnRank': 'Platz',
+  'benchmark.columnModel': 'Modell',
+  'benchmark.columnOrg': 'Anbieter',
+  'benchmark.columnType': 'Typ',
+  'benchmark.metricWindowRange': '{from}–{to} von {total}',
+
+  'benchmark.type.open_weights': 'Open Source',
+  'benchmark.type.proprietary': 'API',
+
+  'benchmark.detailRank': 'Platz {rank} von {total}',
+  'benchmark.detailPercentile': 'Stärker als {value} % aller Läufe',
+  'benchmark.detailScores': 'Teilwertungen',
+  'benchmark.detailVsMedianUp': '{diff} über dem Median',
+  'benchmark.detailVsMedianDown': '{diff} unter dem Median',
+  'benchmark.detailRankShort': 'Platz {rank}',
+  'benchmark.detailRuns': 'Ausgewertete Läufe',
+  'benchmark.detailFacts': 'Eckdaten',
+  'benchmark.factLicense': 'Lizenz',
+  'benchmark.factType': 'Typ',
+  'benchmark.factOrg': 'Anbieter',
+  'benchmark.factSubmitted': 'Stand der Auswertung',
+
+  'benchmark.detail.votes': 'Abstimmungen',
+  'benchmark.detail.confidence': 'Vertrauensbereich',
+  'benchmark.detail.variance': 'Streuung der Wertung',
+  'benchmark.detail.arena_rank': 'Platz laut Arena',
+
+  'benchmark.hubTitle': 'Live vom Hugging-Face-Hub',
+  'benchmark.hubDownloads': 'Downloads (30 Tage)',
+  'benchmark.hubDownloadsTotal': 'Downloads gesamt',
+  'benchmark.hubLikes': 'Likes',
+  'benchmark.hubTrending': 'Trend-Punkte',
+  'benchmark.hubUpdated': 'Zuletzt geändert',
+  'benchmark.hubGated': 'Zugang beschränkt',
+  'benchmark.hubProviders': 'Anbieter mit API',
+  'benchmark.hubParams': 'Parameter laut Gewichten',
+  'benchmark.hubMissing':
+      'Dieses Repository liegt nicht mehr auf dem Hub – gelöscht oder umbenannt.',
+  'benchmark.cardResults': 'Herstellerangaben aus der Model-Card',
+  'benchmark.cardResultsNote': 'Selbst gemeldet, nicht unabhängig geprüft.',
+  'benchmark.peers': 'Vergleichbare Modelle',
+  'benchmark.openOnHub': 'Quelle des Modells öffnen',
+  'benchmark.openLinkFailed': 'Link konnte nicht geöffnet werden: {url}',
+  'benchmark.addToCompare': 'Zum Vergleich',
+  'benchmark.noLeaderboardEntry':
+      'Zu diesem Modell gibt es keinen Arena-Eintrag – es wurde dort noch nicht bewertet. Unten stehen die Live-Zahlen des Hubs.',
+
+  'benchmark.compareEmpty':
+      'Wähle in der Rangliste bis zu vier Modelle für den direkten Vergleich.',
+  'benchmark.compareRemove': 'Aus Vergleich entfernen',
+  'benchmark.compareCount': '{count} Modelle im Vergleich',
+  'benchmark.compareClear': 'Vergleich leeren',
+  'benchmark.compareLimit':
+      'Mehr als zwölf Modelle lassen sich nicht vergleichen.',
+  'benchmark.compareAdded': '{model} steht jetzt im Vergleich.',
+  'benchmark.compareAlready': '{model} steht bereits im Vergleich.',
+  'benchmark.compareScores': 'Wertungen im Vergleich',
+  'benchmark.compareBest': 'Bester Wert der Auswahl',
+  'benchmark.compareNoData': 'Für dieses Modell liegen keine Wertungen vor.',
+
   'bots.title': 'Bot-Verwaltung',
   'bots.subtitle':
       'Erstelle und verwalte spezialisierte KI-Assistenten und Bots.',
@@ -551,7 +630,6 @@ const Map<String, String> appStringsDe = {
   'bots.lockedBotHint':
       'System-Bot (kann nicht bearbeitet oder gelöscht werden)',
 
-  // Training
   'training.title': 'Feintuning starten (Axolotl / Unsloth)',
   'training.subtitle':
       'Passe bestehende Sprachmodelle auf eigene Datensätze an.',
@@ -562,7 +640,6 @@ const Map<String, String> appStringsDe = {
   'training.queueTitle': 'Trainings-Queue & Jobs',
   'training.emptyJobs': 'Keine aktiven Trainings-Jobs.',
 
-  // Quantisierung
   'quantization.title': 'Modell quantisieren (llama.cpp)',
   'quantization.subtitle':
       'Komprimiere GGUF/Safetensors Modelle für mehr Geschwindigkeit.',
@@ -573,7 +650,6 @@ const Map<String, String> appStringsDe = {
   'quantization.queueTitle': 'Quantisierungs-Queue & Jobs',
   'quantization.emptyJobs': 'Keine aktiven Quantisierungs-Jobs.',
 
-  // GenStudio
   'genstudio.imageGenTab': 'Bildgenerierung',
   'genstudio.videoGenTab': 'Videogenerierung',
   'genstudio.imageTitle': 'Bild generieren',
@@ -587,7 +663,6 @@ const Map<String, String> appStringsDe = {
   'genstudio.submitImage': 'Bild generieren',
   'genstudio.submitVideo': 'Video generieren',
 
-  // Marketplace
   'marketplace.title': 'Modell-Marktplatz',
   'marketplace.searchHint': 'Suche nach Modellen, Anbietern oder Tags...',
   'marketplace.providerAll': 'Alle Provider',
@@ -606,7 +681,6 @@ const Map<String, String> appStringsDe = {
   'marketplace.details': 'Details anzeigen',
   'marketplace.noResults': 'Keine passenden Modelle gefunden.',
 
-  // Engine
   'engine.title': 'Engine & Instanzen',
   'engine.subtitle': 'Verwalte lokale Modell-Instanzen und Server-Auslastung.',
   'engine.syncStatus': 'SYSTEMDATEN WERDEN AUTOMATISCH SYNCHRONISIERT',

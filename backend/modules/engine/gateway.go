@@ -51,8 +51,7 @@ func newLocalGateway(keys *engineKeyStore, lookup func(string) (gatewayModel, bo
 
 func newLoopbackHTTPClient() *http.Client {
 	return &http.Client{Transport: &http.Transport{
-		// Worker traffic is always loopback-only and must never inherit a cloud
-		// proxy or provider credentials from the management environment.
+
 		Proxy: nil, DisableCompression: true, MaxIdleConnsPerHost: 16,
 	}}
 }
@@ -190,10 +189,7 @@ func (g *localGateway) handleInference(w http.ResponseWriter, request *http.Requ
 	}
 	baseProxyContext, cancelProxy := context.WithCancel(request.Context())
 	defer cancelProxy()
-	// For an HTTP/1 client that disconnects after its complete request body was
-	// read, Request.Context can remain alive until the handler next writes. Ask
-	// the response writer for its close signal as well so a worker blocked before
-	// response headers is still cancelled promptly.
+
 	if notifier, ok := w.(http.CloseNotifier); ok { //nolint:staticcheck // needed for HTTP/1 disconnect detection
 		closed := notifier.CloseNotify()
 		proxyDone := baseProxyContext.Done()
@@ -229,10 +225,7 @@ func (g *localGateway) handleInference(w http.ResponseWriter, request *http.Requ
 	if model.WorkerSecret != "" {
 		upstream.Header.Set("Authorization", "Bearer "+model.WorkerSecret)
 	}
-	// Request contexts normally cancel Transport round trips on their own. The
-	// explicit transport cancellation also tears down a connection whose worker
-	// has not sent response headers yet; otherwise some Go/platform combinations
-	// can return from Do while leaving that decoder request alive upstream.
+
 	stopCancellation := func() bool { return true }
 	if transport, ok := g.client.Transport.(interface{ CancelRequest(*http.Request) }); ok {
 		stopCancellation = context.AfterFunc(proxyContext, func() {
@@ -308,9 +301,7 @@ func exceedsApproximateContext(body map[string]interface{}, limit int) bool {
 	case json.Number:
 		maxTokens, _ = strconv.Atoi(string(value))
 	}
-	// This preflight only rejects requests that are certainly excessive under
-	// a generous one-token-per-Unicode-scalar upper bound. The worker tokenizer
-	// performs the exact check and also returns OpenAI-compatible 422.
+
 	textScalars := 0
 	if prompt, ok := body["prompt"].(string); ok {
 		textScalars += len([]rune(prompt))

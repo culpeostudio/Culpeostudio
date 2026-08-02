@@ -19,9 +19,6 @@ func (s *SQLiteStore) UpsertSearchDocument(document memory.SearchDocument) error
 	})
 }
 
-// upsertSearchDocument writes the document metadata and the FTS row. It
-// resets the embedding columns so the vector layer (or the background
-// reindexer) re-embeds the changed body.
 func upsertSearchDocument(q queryer, document memory.SearchDocument) error {
 	tagsJSON := mustJSON(document.Tags)
 	if _, err := q.Exec(`

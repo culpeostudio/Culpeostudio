@@ -13,10 +13,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// runLimitedWorker deliberately remains as a small supervising parent on
-// Darwin. macOS has no PR_SET_PDEATHSIG; an inherited pipe therefore acts as
-// the kernel-backed backend-lifetime token. EOF means the backend died and the
-// complete worker process group is killed before it can become an orphan.
 func runLimitedWorker(payload resourceLauncherPayload, maximum uint64) (int, error) {
 	fd, err := strconv.Atoi(os.Getenv(resourceLauncherLifetimeFD))
 	if err != nil || fd < 3 {
@@ -73,9 +69,7 @@ func runLimitedWorker(payload resourceLauncherPayload, maximum uint64) (int, err
 		}
 		return 126, waitErr
 	case lifetimeErr := <-lifetimeEnded:
-		// The launcher and every worker descendant share this dedicated group.
-		// SIGKILL is intentional: after backend death there is nobody left to
-		// confirm a graceful drain or enforce a deadline.
+
 		group := unix.Getpgrp()
 		if group != os.Getpid() {
 			_ = worker.Process.Kill()

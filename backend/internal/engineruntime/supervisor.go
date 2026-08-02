@@ -27,15 +27,10 @@ type ProcessSpec struct {
 	Progress           func(ProcessProgress) `json:"-"`
 	GracePeriod        time.Duration         `json:"-"`
 	ResourceLimits     ResourceLimits        `json:"-"`
-	// SpawnAdmission serializes the final process creation with engine
-	// pressure/shutdown transitions. Its release is called after ResourceLimiter
-	// Bind has released the actual worker (not merely after a suspended launcher
-	// was created), never after the health check.
+
 	SpawnAdmission func(context.Context) (func(), error) `json:"-"`
 }
 
-// ProcessProgress reports observable worker startup milestones. Progress is a
-// phase boundary, never a fabricated byte/token percentage.
 type ProcessProgress struct {
 	Phase         string
 	Progress      float64
@@ -134,9 +129,6 @@ func NewSupervisor(options SupervisorOptions) *Supervisor {
 	return &Supervisor{instances: make(map[string]*InstanceHandle), options: options}
 }
 
-// Start allocates a random loopback port, starts one child process, and waits
-// until its health endpoint succeeds. The child is placed in its own process
-// group on POSIX so Stop also terminates grandchildren.
 func (s *Supervisor) Start(ctx context.Context, spec ProcessSpec) (*InstanceHandle, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -186,9 +178,7 @@ func (s *Supervisor) Start(ctx context.Context, spec ProcessSpec) (*InstanceHand
 	cmd.Env = workerEnvironment(spec.InheritEnvironment, spec.Environment)
 	cmd.Stdout = io.Writer(handle.stdout)
 	cmd.Stderr = io.Writer(handle.stderr)
-	// RingBuffer writers make os/exec create copy pipes. A descendant can keep
-	// those FDs open after the monitored main process exits and otherwise block
-	// Cmd.Wait forever before the watcher gets a chance to kill the group.
+
 	cmd.WaitDelay = 500 * time.Millisecond
 	configureProcessGroup(cmd)
 	if preparer, ok := s.options.ResourceLimiter.(ResourceLimitPreparer); ok {
@@ -248,10 +238,7 @@ func (s *Supervisor) Start(ctx context.Context, spec ProcessSpec) (*InstanceHand
 		s.failBeforeStart(handle, fmt.Errorf("bind worker resource limits: %w", err))
 		return handle, err
 	}
-	// Linux Bind first attaches the blocked launcher to cgroup v2 and sends its
-	// start byte; Windows Bind assigns the suspended process to a Job Object and
-	// resumes it. Keep admission held through that boundary so a guard/shutdown
-	// transition cannot become visible and then be followed by worker release.
+
 	releaseSpawn()
 	reportProcessProgress(spec, ProcessProgress{
 		Phase: "loading_model", Progress: 0.70,
@@ -331,9 +318,6 @@ func (s *Supervisor) Stop(ctx context.Context, id string) error {
 	return s.StopHandle(ctx, handle)
 }
 
-// StopHandle stops exactly the supplied process generation. Unlike Stop, it
-// never resolves an instance ID again, so a delayed caller cannot signal a
-// replacement generation that has taken the same logical ID.
 func (s *Supervisor) StopHandle(ctx context.Context, handle *InstanceHandle) error {
 	if handle == nil {
 		return errors.New("instance handle is required")
@@ -344,9 +328,6 @@ func (s *Supervisor) StopHandle(ctx context.Context, handle *InstanceHandle) err
 	return s.stop(ctx, handle, StateStopped, nil)
 }
 
-// ForceStop skips the graceful drain and immediately kills the process group.
-// It still waits for the watcher to reap the process, so a nil return is proof
-// that the worker no longer owns RAM/VRAM.
 func (s *Supervisor) ForceStop(ctx context.Context, id string) error {
 	handle, ok := s.Instance(id)
 	if !ok {
@@ -355,8 +336,6 @@ func (s *Supervisor) ForceStop(ctx context.Context, id string) error {
 	return s.ForceStopHandle(ctx, handle)
 }
 
-// ForceStopHandle is the immediate counterpart to StopHandle and likewise
-// targets only one immutable supervisor generation.
 func (s *Supervisor) ForceStopHandle(ctx context.Context, handle *InstanceHandle) error {
 	if handle == nil {
 		return errors.New("instance handle is required")
@@ -391,11 +370,6 @@ func (s *Supervisor) ForceStopHandle(ctx context.Context, handle *InstanceHandle
 	}
 }
 
-// validateStopHandle accepts a stale map entry only when that exact handle is
-// already terminal. A live handle must still be the supervisor's current
-// generation at the identity check; after that check, all signalling uses the
-// pointer directly. Since Start cannot replace a non-terminal handle, no
-// replacement can be targeted in the intervening window.
 func (s *Supervisor) validateStopHandle(handle *InstanceHandle) error {
 	snapshot := handle.Snapshot()
 	if snapshot.State == StateStopped || snapshot.State == StateFailed || snapshot.State == StateFailedRollback {
@@ -405,9 +379,7 @@ func (s *Supervisor) validateStopHandle(handle *InstanceHandle) error {
 	current := s.instances[snapshot.InstanceID]
 	s.mu.RUnlock()
 	if current != handle {
-		// The watcher may have made this handle terminal while Start replaced
-		// the map entry between the first snapshot and the identity check. That
-		// is already a successful stop of the requested generation.
+
 		snapshot = handle.Snapshot()
 		if snapshot.State == StateStopped || snapshot.State == StateFailed || snapshot.State == StateFailedRollback {
 			return nil
@@ -446,11 +418,7 @@ func (s *Supervisor) waitHealthy(ctx context.Context, handle *InstanceHandle, sp
 	var lastError error
 	lastReportedPhase := ""
 
-	// Loading a large model from a cold disk can legitimately take longer
-	// than any fixed timeout. While the worker's resident memory keeps
-	// growing it is demonstrably loading weights, so the health timeout is
-	// extended — bounded by a hard cap so a genuine hang still dies.
-	const rssGrowthMinimum = 32 << 20 // 32 MiB per probe interval
+	const rssGrowthMinimum = 32 << 20
 	const extensionCap = 30 * time.Minute
 	workerPID := handle.Snapshot().PID
 	lastRSS := processResidentBytes(workerPID)
@@ -547,9 +515,7 @@ func reportProcessProgress(spec ProcessSpec, progress ProcessProgress) {
 
 func (s *Supervisor) watch(handle *InstanceHandle) {
 	err := handle.cmd.Wait()
-	// The main runtime process may exit while a tokenizer/server child keeps
-	// running in the dedicated group. Reap the entire group before releasing
-	// cgroup/job/lifetime handles or announcing terminal state.
+
 	_ = signalProcessGroup(handle.cmd, true)
 	handle.mu.Lock()
 	cleanup := handle.lifetimeCleanup
@@ -585,8 +551,7 @@ func (s *Supervisor) watch(handle *InstanceHandle) {
 func summarizeWorkerExit(exitCode int, stderr string, processErr error) string {
 	code, summary := FormatWorkerExit(exitCode, stderr, processErr)
 	if code == "worker_exit" {
-		// Undiagnosed exits keep the plain text so existing consumers and log
-		// readers see the raw last stderr line unchanged.
+
 		return summary
 	}
 	return MarkDiagnosis(code, summary)
@@ -631,9 +596,7 @@ func (s *Supervisor) stop(ctx context.Context, handle *InstanceHandle, terminal 
 		killErr := signalProcessGroup(cmd, true)
 		select {
 		case <-handle.done:
-			// A caller deadline is not a stop failure once the force-kill has
-			// observably reaped the process. Callers may only release resource
-			// reservations after this channel closes.
+
 			return nil
 		case <-time.After(2 * time.Second):
 			if killErr != nil {

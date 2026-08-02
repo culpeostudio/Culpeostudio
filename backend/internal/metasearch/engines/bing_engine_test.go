@@ -11,13 +11,9 @@ import (
 	"github.com/fillyengine/backend/internal/metasearch"
 )
 
-// TestBingEngineEnd2End mocked den Bing-HTML-Output ueber httptest und
-// prueft, dass die XPath-Extraction und Bing-URL-Unwrapping durch den
-// echten Engine laufen.
 func TestBingEngineEnd2End(t *testing.T) {
-	// Aufgebautes Mock-HTML im Stil von Bing-Suchtreffern.
-	// Die Klassen `b_algo` und das hrefpattern entsprechen dem Original.
-	encoded := "aHR0cHM6Ly93d3cuZXhhbXBsZS5jb20v" // = "https://www.example.com/"
+
+	encoded := "aHR0cHM6Ly93d3cuZXhhbXBsZS5jb20v"
 	html := `<!DOCTYPE html><html><body><ol>
 <li class="b_algo"><h2><a href="https://www.bing.com/ck/a?u=aX` + encoded + `">Hello World</a></h2><p>This is the body text</p></li>
 <li class="b_algo"><h2><a href="https://example.org/page">Second hit</a></h2><p>Body two</p></li>
@@ -30,8 +26,6 @@ func TestBingEngineEnd2End(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// Wir bauen Bing-Engine manuell und ueberschreiben die URL, damit der
-	// Mock-Server angesprochen wird statt www.bing.com.
 	client, err := metasearch.NewHttpClient(metasearch.ClientOptions{Timeout: 5 * time.Second})
 	if err != nil {
 		t.Fatalf("client: %v", err)
@@ -40,13 +34,7 @@ func TestBingEngineEnd2End(t *testing.T) {
 		Search(ctx context.Context, p metasearch.SearchParams) ([]metasearch.Result, error)
 		Info() metasearch.EngineInfo
 	})
-	// URL des XPathEngine aendern - wir greifen via Reflexion sonst nicht ran;
-	// stattdessen lesen wir das EngineInfo und ueberschreiben Search-URL
-	// ueber das sidestepping von BuildPayload: Dort wird requestURL=""
-	// zurueckgegeben, also nutzen wir e.URL. Damit das Mock greift, testen
-	// wir direkt, dass die Engine mit der angegebenen URL aufruft - dafuer
-	// muessen wir e.URL aendern. Da das Feld public ist, koennen wir das
-	// via Type-Assertion machen.
+
 	if xe, ok := eng.(*metasearch.XPathEngine); ok {
 		xe.URL = srv.URL
 	} else {
@@ -70,7 +58,7 @@ func TestBingEngineEnd2End(t *testing.T) {
 	if results[0].Title != "Hello World" {
 		t.Errorf("results[0].Title = %q, want 'Hello World'", results[0].Title)
 	}
-	// Bing URL Unwrap sollte /ck/a?u=aX<base64> zu https://www.example.com/ dekodieren.
+
 	if !strings.HasPrefix(results[0].Href, "https://") {
 		t.Errorf("Href[0] = %q, expected unwrapped https-URL", results[0].Href)
 	}

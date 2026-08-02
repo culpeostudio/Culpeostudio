@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/chat_aux_strings.dart';
 
-/// Nachfrage-Panel, wenn ein Projekt-Tool auf etwas ausserhalb des
-/// Projekt-Ordners zugreifen will. Der Chat haelt die Anfrage-Daten und
-/// beantwortet die Entscheidung ueber [onRespond] ('deny'/'once'/'session').
 class PermissionPanel extends StatelessWidget {
   const PermissionPanel({
     super.key,

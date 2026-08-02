@@ -14,7 +14,7 @@ import shutil
 import subprocess
 from typing import TextIO
 
-# Add Go to PATH if not already present
+
 def _setup_go_path() -> None:
     if shutil.which("go"):
         return
@@ -41,8 +41,8 @@ def _setup_go_path() -> None:
                 os.environ["PATH"] = directory
             break
 
-# Add Flutter to PATH if not already present (so the console works even
-# outside an interactive shell where ~/.bashrc has already run).
+
+
 def _setup_flutter_path() -> None:
     if shutil.which("flutter"):
         return
@@ -211,8 +211,8 @@ class BackendConsoleApp(App):
         self._log(f"Backend command: {' '.join(self.backend.command)}", source="console.lifecycle")
         self._log(f"Frontend command: {' '.join(self.frontend.command)}", source="console.lifecycle")
 
-        # Unabhaengige Vorbereitungen sofort parallel starten. So ist der
-        # spaetere Klick auf "Start all" kein versteckter Installationsschritt.
+
+
         await asyncio.gather(
             self._ensure_go_dependencies(),
             self._ensure_philoengine_hardware_dependency(),
@@ -276,9 +276,9 @@ class BackendConsoleApp(App):
             try:
                 process_options: dict[str, object] = {}
                 if os.name == "posix":
-                    # `go run` starts the compiled server as a child. Keep the
-                    # complete backend tree out of the console's own process
-                    # group so stop/restart cannot leave an old server behind.
+
+
+
                     process_options["start_new_session"] = True
                 elif os.name == "nt":
                     process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -1016,10 +1016,10 @@ class BackendConsoleApp(App):
 
 
 def main() -> None:
-    # Manche Terminals (z.B. das VS-Code-integrierte Terminal) zeigen bei
-    # aktivierter Maus-Unterstuetzung rohe Escape-Sequenzen an, statt Klicks
-    # und Scroll-Events zu verarbeiten. Mit TUI_MOUSE=0 laesst sich das
-    # umgehen; Bedienung dann komplett per Tastatur (Tab/Enter/Pfeiltasten).
+
+
+
+
     mouse_enabled = os.getenv("TUI_MOUSE", "1").strip().lower() not in ("0", "false", "no")
     BackendConsoleApp().run(mouse=mouse_enabled)
 

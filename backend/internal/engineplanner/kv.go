@@ -1,3 +1,6 @@
+// Package engineplanner works out whether a model fits the machine: it sizes the
+// KV cache, proposes a context length that will hold, and produces the fallbacks
+// to try when the first plan does not.
 package engineplanner
 
 import (
@@ -5,9 +8,6 @@ import (
 	"math"
 )
 
-// KVBytesForContext returns the exact packed byte count for K and V across all
-// cached layers and sequences. Q4 uses four bits per scalar; the final partial
-// byte, if any, is rounded up exactly once.
 func KVBytesForContext(model Model, context, sequences int, dtype KVCacheDType) (int64, error) {
 	if err := validateModel(model); err != nil {
 		return 0, err
@@ -58,7 +58,7 @@ func KVBytesForContext(model Model, context, sequences int, dtype KVCacheDType) 
 			return 0, fmt.Errorf("KV cache size overflow: %w", err)
 		}
 	}
-	// elements currently means bits.
+
 	if elements > math.MaxInt64-7 {
 		return 0, fmt.Errorf("KV cache size overflow")
 	}

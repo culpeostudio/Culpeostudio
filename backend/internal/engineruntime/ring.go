@@ -2,9 +2,6 @@ package engineruntime
 
 import "sync"
 
-// RingBuffer is a concurrency-safe io.Writer retaining the newest max bytes.
-// Runtime logs are diagnostic data, so dropping the oldest bytes is preferable
-// to letting an unbounded child-process log exhaust backend memory.
 type RingBuffer struct {
 	mu  sync.Mutex
 	max int

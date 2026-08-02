@@ -52,19 +52,17 @@ func TestInstruction(t *testing.T) {
 		}
 	}
 
-	// Chat and agent surfaces render different text.
 	if Instruction(ModeMax, SurfaceChat) == Instruction(ModeMax, SurfaceAgent) {
 		t.Error("expected chat and agent surfaces to differ for ModeMax")
 	}
 
-	// Unknown modes fall back to the medium definition.
 	if Instruction("bogus", SurfaceChat) != Instruction(ModeMedium, SurfaceChat) {
 		t.Error("unknown mode should fall back to ModeMedium")
 	}
 }
 
 func TestReasoningFor(t *testing.T) {
-	// none requests no native reasoning; medium/max escalate the effort.
+
 	if got := ReasoningFor(ModeNone).Effort; got != "" {
 		t.Errorf("ModeNone effort = %q, want empty", got)
 	}
@@ -75,7 +73,6 @@ func TestReasoningFor(t *testing.T) {
 		t.Errorf("ModeMax effort = %q, want high", got)
 	}
 
-	// Temperature climbs with the level and stays in a sane range.
 	none, medium, mx := ReasoningFor(ModeNone), ReasoningFor(ModeMedium), ReasoningFor(ModeMax)
 	if !(none.Temperature < medium.Temperature && medium.Temperature < mx.Temperature) {
 		t.Errorf("expected temperature none<medium<max, got %.2f/%.2f/%.2f",
@@ -87,7 +84,6 @@ func TestReasoningFor(t *testing.T) {
 		}
 	}
 
-	// Unknown modes fall back to ModeMedium.
 	if ReasoningFor("bogus").Effort != ReasoningFor(ModeMedium).Effort {
 		t.Error("unknown mode should fall back to ModeMedium reasoning config")
 	}

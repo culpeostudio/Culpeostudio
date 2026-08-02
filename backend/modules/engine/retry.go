@@ -212,9 +212,6 @@ func contextSearchMidpoint(lower, upper int) int {
 	return middle
 }
 
-// nextContextAfterFailure keeps a confirmed working context as the lower
-// bound of an explicit maximum search. Ordinary starts retain the conservative
-// deficit calculation/halving behaviour.
 func nextContextAfterFailure(current int, kvBytesPerToken int64, cause error, verifiedFloor int, search bool) int {
 	reduced := computeReducedContext(current, kvBytesPerToken, cause)
 	if !search || verifiedFloor <= 0 {
@@ -236,12 +233,6 @@ func nextContextAfterSuccess(current, failedCeiling int) int {
 	return contextSearchMidpoint(current, failedCeiling)
 }
 
-// computeReducedContext derives the next context size mathematically instead
-// of guessing: when the failure carries the exact memory deficit, the number
-// of tokens to cut is deficit / KV-bytes-per-token plus a 25% safety margin,
-// rounded down to a 256-token step. Without structured numbers (a worker that
-// died mid-load) the context is halved. Returns 0 when no useful reduction
-// remains.
 func computeReducedContext(current int, kvBytesPerToken int64, cause error) int {
 	if current <= contextFloorTokens {
 		return 0
@@ -251,11 +242,10 @@ func computeReducedContext(current int, kvBytesPerToken int64, cause error) int 
 	if errors.As(cause, &conflict) && kvBytesPerToken > 0 {
 		deficit := conflict.RequiredBytes - conflict.AvailableBytes
 		if deficit > 0 {
-			// 25% safety margin over the exact shortfall.
+
 			tokensToCut := int((deficit + deficit/4 + kvBytesPerToken - 1) / kvBytesPerToken)
 			computed := current - tokensToCut
-			// The exact computation wins when it cuts less than halving would;
-			// a deficit larger than half the KV budget falls back to halving.
+
 			if computed > reduced {
 				reduced = computed
 			}
@@ -271,9 +261,6 @@ func computeReducedContext(current int, kvBytesPerToken int64, cause error) int 
 	return reduced
 }
 
-// isMemoryExhaustionError reports whether a start failed because memory ran
-// out for real (worker killed by the OS, CUDA allocation failure) or because
-// the guard predicted it would.
 func isMemoryExhaustionError(err error) bool {
 	if err == nil {
 		return false
