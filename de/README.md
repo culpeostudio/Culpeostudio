@@ -15,10 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/culpeohq/CulpeoStudio/releases"><img alt="Neuestes Release" src="https://img.shields.io/github/v/release/culpeohq/CulpeoStudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
+  <a href="https://github.com/culpeostudio/Culpeostudio/releases"><img alt="Neuestes Release" src="https://img.shields.io/github/v/release/culpeohq/CulpeoStudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
   <img alt="Projektstatus: Beta" src="https://img.shields.io/badge/status-beta-F59E0B?style=for-the-badge">
   <img alt="Linux, Windows und macOS" src="https://img.shields.io/badge/desktop-Linux%20%7C%20Windows%20%7C%20macOS-5A78FF?style=for-the-badge">
-  <a href="https://github.com/culpeohq/CulpeoStudio/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
+  <a href="https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
 </p>
 
 ## Überblick
@@ -43,7 +43,7 @@ Das Projekt befindet sich noch in Phase 1 Beta. Die wichtigsten Abläufe funktio
 
 | Abschnitt | Beschreibung |
 |:---|:---|
-| [Download](https://github.com/culpeohq/CulpeoStudio/releases) | Veröffentlichte Pakete und Release-Notes |
+| [Download](https://github.com/culpeostudio/Culpeostudio/releases) | Veröffentlichte Pakete und Release-Notes |
 | [Installation](#install) | Schnellinstallation und Quellcode-Start |
 | [Zwei Betriebsarten](#ein-studio-zwei-wege) | Lokale Runtimes und optionale API-Anbieter |
 | [Highlights](#was-culpeo-studio-unterscheidet) | Engine, Scouts, Memory, Suche und Marktplatz |
@@ -127,7 +127,7 @@ Das Projekt befindet sich noch in Phase 1 Beta. Die wichtigsten Abläufe funktio
 
 ### Schnellinstallation (Quick Install)
 
-Lade das **Quick Install**-Archiv für deine Plattform von der [Releases-Seite](https://github.com/culpeohq/CulpeoStudio/releases) herunter. Entpacke das Archiv einmalig und starte `culpeostudio` (unter Windows `culpeostudio.exe`).
+Lade das **Quick Install**-Archiv für deine Plattform von der [Releases-Seite](https://github.com/culpeostudio/Culpeostudio/releases) herunter. Entpacke das Archiv einmalig und starte `culpeostudio` (unter Windows `culpeostudio.exe`).
 
 | Zielplattform | Datei-Endung |
 |---|---|
@@ -138,8 +138,8 @@ Lade das **Quick Install**-Archiv für deine Plattform von der [Releases-Seite](
 ### Quellcode-Start
 
 ```bash
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 ./start.sh
 ```
 
@@ -149,11 +149,11 @@ Voraussetzungen: Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3 und C/C++-Buildt
 
 ## Mitwirken, Sicherheit und Lizenz
 
-Beiträge sind willkommen! Starte mit [CONTRIBUTING.md](CONTRIBUTING.md). Pull Requests erfordern die Zustimmung zur [CLA](https://github.com/culpeohq/CulpeoStudio/blob/main/CLA.md) und signierte Commits (`git commit -s`).
+Beiträge sind willkommen! Starte mit [CONTRIBUTING.md](CONTRIBUTING.md). Pull Requests erfordern die Zustimmung zur [CLA](https://github.com/culpeostudio/Culpeostudio/blob/main/CLA.md) und signierte Commits (`git commit -s`).
 
-Sicherheitslücken bitte vertraulich an `security@culpeohq.com` melden (siehe [SECURITY.md](https://github.com/culpeohq/CulpeoStudio/blob/main/SECURITY.md)).
+Sicherheitslücken bitte vertraulich an `security@culpeohq.com` melden (siehe [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md)).
 
-Culpeo Studio steht unter der [GNU AGPL-3.0 Lizenz](https://github.com/culpeohq/CulpeoStudio/blob/main/LICENSE). Siehe auch die [Markenrichtlinien](https://github.com/culpeohq/CulpeoStudio/blob/main/TRADEMARK.md).
+Culpeo Studio steht unter der [GNU AGPL-3.0 Lizenz](https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE). Siehe auch die [Markenrichtlinien](https://github.com/culpeostudio/Culpeostudio/blob/main/TRADEMARK.md).
 
 ---
 

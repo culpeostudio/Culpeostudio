@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	defaultManifestURL = "https://raw.githubusercontent.com/culpeohq/CulpeoStudio/main/quikinstall/manifest.json"
-	defaultRepository  = "https://github.com/culpeohq/CulpeoStudio.git"
+	defaultManifestURL = "https://raw.githubusercontent.com/culpeostudio/Culpeostudio/main/quikinstall/manifest.json"
+	defaultRepository  = "https://github.com/culpeostudio/Culpeostudio.git"
 )
 
 var launcherVersion = "dev"

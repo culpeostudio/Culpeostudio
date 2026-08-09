@@ -99,8 +99,8 @@ func TestGitHubOriginPolicyAcceptsReleaseDownloads(t *testing.T) {
 	t.Parallel()
 
 	for _, rawURL := range []string{
-		"https://raw.githubusercontent.com/culpeohq/CulpeoStudio/main/quikinstall/manifest.json",
-		"https://github.com/culpeohq/CulpeoStudio/releases/download/v1.0.0/culpeostudio-1.0.0-linux-x64.tar.gz",
+		"https://raw.githubusercontent.com/culpeostudio/Culpeostudio/main/quikinstall/manifest.json",
+		"https://github.com/culpeostudio/Culpeostudio/releases/download/v1.0.0/culpeostudio-1.0.0-linux-x64.tar.gz",
 		"https://objects.githubusercontent.com/some/redirected/path",
 		"https://release-assets.githubusercontent.com/some/redirected/path",
 	} {

@@ -262,7 +262,7 @@ def render_frame(frame_num):
         
         # Link box
         draw.rectangle([WIDTH//2 - 400, 480, WIDTH//2 + 400, 560], fill=COLOR_BG_CARD, outline=COLOR_RUST, width=3)
-        draw.text((WIDTH//2, 520), "github.com/culpeohq/CulpeoStudio", fill=COLOR_EMBER, font=font_card_title, anchor="mm")
+        draw.text((WIDTH//2, 520), "github.com/culpeostudio/Culpeostudio", fill=COLOR_EMBER, font=font_card_title, anchor="mm")
         
         draw.text((WIDTH//2, 630), "Linux · Windows · macOS", fill=COLOR_CYAN, font=font_small, anchor="mm")
 

@@ -15,10 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/culpeohq/CulpeoStudio/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/culpeohq/CulpeoStudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
+  <a href="https://github.com/culpeostudio/Culpeostudio/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/culpeostudio/Culpeostudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
   <img alt="Project status: Beta" src="https://img.shields.io/badge/status-beta-F59E0B?style=for-the-badge">
   <img alt="Linux, Windows and macOS" src="https://img.shields.io/badge/desktop-Linux%20%7C%20Windows%20%7C%20macOS-5A78FF?style=for-the-badge">
-  <a href="https://github.com/culpeohq/CulpeoStudio/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
+  <a href="https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
 </p>
 
 ## Overview
@@ -43,7 +43,7 @@ The app is still in Phase 1 Beta. The main workflows are usable, while some modu
 
 | Section | Description |
 |:---|:---|
-| [Download](https://github.com/culpeohq/CulpeoStudio/releases) | Published desktop bundles and release notes |
+| [Download](https://github.com/culpeostudio/Culpeostudio/releases) | Published desktop bundles and release notes |
 | [Installation](#install) | Quick install and source build instructions |
 | [Two Ways to Run](#one-studio-two-ways-to-run) | Local runtimes vs hosted API providers |
 | [Highlights](#what-makes-it-different) | Hardware engine, Scouts, memory, search, marketplace |
@@ -176,7 +176,7 @@ The app is still in Phase 1 Beta. The main workflows are usable, while some modu
 
 ### Quick install
 
-Download the precompiled **Quick Install** package from the [releases page](https://github.com/culpeohq/CulpeoStudio/releases). Extract the archive and launch `culpeostudio` (`culpeostudio.exe` on Windows). The launcher verifies SHA-256 integrity, manages atomic updates, and supports rollback.
+Download the precompiled **Quick Install** package from the [releases page](https://github.com/culpeostudio/Culpeostudio/releases). Extract the archive and launch `culpeostudio` (`culpeostudio.exe` on Windows). The launcher verifies SHA-256 integrity, manages atomic updates, and supports rollback.
 
 | Target Platform | Quick Install Filename Ending |
 |---|---|
@@ -191,8 +191,8 @@ Quick-install users do not need Flutter or Go pre-installed. See the [installati
 On Linux systems, clone the repository and start Culpeo Studio with the development script:
 
 ```bash
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 ./start.sh
 ```
 
@@ -217,11 +217,11 @@ Source builds require Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3, and a C/C+
 
 ## Contributing, security, and licence
 
-Contributions are welcome! Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Pull requests require acceptance of the [CLA](https://github.com/culpeohq/CulpeoStudio/blob/main/CLA.md) and signed-off commits (`git commit -s`).
+Contributions are welcome! Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Pull requests require acceptance of the [CLA](https://github.com/culpeostudio/Culpeostudio/blob/main/CLA.md) and signed-off commits (`git commit -s`).
 
-Report security vulnerabilities privately to `security@culpeohq.com` as outlined in [SECURITY.md](https://github.com/culpeohq/CulpeoStudio/blob/main/SECURITY.md).
+Report security vulnerabilities privately to `security@culpeohq.com` as outlined in [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md).
 
-Culpeo Studio source code is licensed under the [GNU AGPL-3.0](https://github.com/culpeohq/CulpeoStudio/blob/main/LICENSE). See the [trademark policy](https://github.com/culpeohq/CulpeoStudio/blob/main/TRADEMARK.md) for name and logo usage guidelines.
+Culpeo Studio source code is licensed under the [GNU AGPL-3.0](https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE). See the [trademark policy](https://github.com/culpeostudio/Culpeostudio/blob/main/TRADEMARK.md) for name and logo usage guidelines.
 
 ---
 

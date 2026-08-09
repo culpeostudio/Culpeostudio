@@ -16,7 +16,7 @@ func TestPublishedManifestIsDecodable(t *testing.T) {
 		t.Skipf("published manifest is not available: %v", err)
 	}
 	defer payload.Close()
-	base, err := url.Parse("https://raw.githubusercontent.com/culpeohq/CulpeoStudio/main/quikinstall/manifest.json")
+	base, err := url.Parse("https://raw.githubusercontent.com/culpeostudio/Culpeostudio/main/quikinstall/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}

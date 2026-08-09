@@ -12,8 +12,8 @@ Vielen Dank für dein Interesse, zu **Culpeo Studio** beizutragen.
 ## Quick Start für Entwickler
 
 ```bash
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 ./start.sh
 ```
 

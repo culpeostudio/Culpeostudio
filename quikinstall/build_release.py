@@ -33,7 +33,7 @@ from urllib.parse import quote
 SCHEMA_VERSION = 1
 DEFAULT_HEALTH_URL = "http://127.0.0.1:8080/health"
 DEFAULT_DOWNLOAD_BASE_URL = (
-    "https://raw.githubusercontent.com/culpeohq/CulpeoStudio/"
+    "https://raw.githubusercontent.com/culpeostudio/Culpeostudio/"
     "main/quikinstall/releases/{version}"
 )
 SEMVER_PATTERN = re.compile(
