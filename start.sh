@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Quelle für das Quellcode-Update. Solange sie leer ist, startet der Launcher
 # ohne Netzzugriff — nötig, bis das Repository unter culpeohq wirklich steht.
 # Danach genügt:
-#   CULPEOSTUDIO_REPOSITORY=https://github.com/culpeohq/CulpeoStudio.git ./start.sh
+#   CULPEOSTUDIO_REPOSITORY=https://github.com/culpeostudio/Culpeostudio.git ./start.sh
 # Achtung: Das Update überschreibt lokale Änderungen am Quellcode.
 REPOSITORY="${CULPEOSTUDIO_REPOSITORY:-}"
 

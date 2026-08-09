@@ -400,7 +400,7 @@ def render_scene_5(frame_num, progress):
     draw.text((WIDTH//2, btn_y + btn_h//2), "JETZT KOSTENLOS HERUNTERLADEN ➔", fill=(15, 17, 23), font=font_card_title, anchor="mm")
 
     # GitHub Repository link & badges
-    draw.text((WIDTH//2, 920), "GitHub: github.com/culpeohq/CulpeoStudio", fill=COLOR_CYAN, font=font_card_title, anchor="mm")
+    draw.text((WIDTH//2, 920), "GitHub: github.com/culpeostudio/Culpeostudio", fill=COLOR_CYAN, font=font_card_title, anchor="mm")
     draw.text((WIDTH//2, 965), "Open Source unter AGPL-3.0 License · Linux · Windows · macOS", fill=COLOR_GRAY, font=font_small, anchor="mm")
 
     return img

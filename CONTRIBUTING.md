@@ -15,8 +15,8 @@ This document outlines the guidelines and workflow for contributing code, docume
 
 ```bash
 # Clone the repository
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 
 # Start backend and frontend development console
 ./start.sh
@@ -24,7 +24,7 @@ cd CulpeoStudio
 
 ## How to Submit Changes
 
-1. **Contributor License Agreement (CLA):** All contributors must sign the [Culpeo Studio CLA](https://github.com/culpeohq/CulpeoStudio/blob/main/CLA.md).
+1. **Contributor License Agreement (CLA):** All contributors must sign the [Culpeo Studio CLA](https://github.com/culpeostudio/Culpeostudio/blob/main/CLA.md).
 2. **Developer Certificate of Origin (DCO):** Sign off your commits using `git commit -s`.
 3. **Create a Feature Branch:** `git checkout -b feature/my-cool-feature`
 4. **Commit Guidelines:** Write clear, descriptive commit messages.

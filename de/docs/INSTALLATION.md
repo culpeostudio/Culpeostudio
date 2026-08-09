@@ -10,7 +10,7 @@ Quick-Install-Pakete sind vorkompiliert und enthalten alles Nötige. Flutter, Go
 
 ### Download-Pakete
 
-Öffne die [GitHub-Releases](https://github.com/culpeohq/CulpeoStudio/releases)-Seite und wähle das passende Archiv:
+Öffne die [GitHub-Releases](https://github.com/culpeostudio/Culpeostudio/releases)-Seite und wähle das passende Archiv:
 
 | Plattform | Architektur | Archiv-Name | Starter-Datei |
 |---|---|---|---|
@@ -32,8 +32,8 @@ Quick-Install-Pakete sind vorkompiliert und enthalten alles Nötige. Flutter, Go
 ### Starten
 
 ```bash
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 ./start.sh
 ```
 

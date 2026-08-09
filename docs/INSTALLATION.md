@@ -10,7 +10,7 @@ Quick Install packages are precompiled and self-contained. You do not need Flutt
 
 ### Downloads
 
-Open the [GitHub Releases](https://github.com/culpeohq/CulpeoStudio/releases) page and choose the archive for your system:
+Open the [GitHub Releases](https://github.com/culpeostudio/Culpeostudio/releases) page and choose the archive for your system:
 
 | Platform | Target | Archive Format | Executable Name |
 |---|---|---|---|
@@ -34,8 +34,8 @@ For a source build, install:
 ### Building & Running
 
 ```bash
-git clone https://github.com/culpeohq/CulpeoStudio.git
-cd CulpeoStudio
+git clone https://github.com/culpeostudio/Culpeostudio.git
+cd Culpeostudio
 ./start.sh
 ```
 
