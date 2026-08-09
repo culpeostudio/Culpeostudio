@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/culpeostudio/Culpeostudio/releases"><img alt="Neuestes Release" src="https://img.shields.io/github/v/release/culpeohq/CulpeoStudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
+  <a href="https://github.com/culpeostudio/Culpeostudio/releases"><img alt="Neuestes Release" src="https://img.shields.io/github/v/release/culpeostudio/Culpeostudio?include_prereleases&amp;sort=semver&amp;style=for-the-badge&amp;color=C1440E"></a>
   <img alt="Projektstatus: Beta" src="https://img.shields.io/badge/status-beta-F59E0B?style=for-the-badge">
   <img alt="Linux, Windows und macOS" src="https://img.shields.io/badge/desktop-Linux%20%7C%20Windows%20%7C%20macOS-5A78FF?style=for-the-badge">
   <a href="https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE"><img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-8B5CF6?style=for-the-badge"></a>
