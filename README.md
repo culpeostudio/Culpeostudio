@@ -142,19 +142,6 @@ The app is still in Phase 1 Beta. The main workflows are usable, while some modu
 
 ---
 
-## Why choose Culpeo Studio?
-
-| Capability | Culpeo Studio | Traditional Local LLM Clients |
-|:---|:---:|:---:|
-| **Hardware Awareness & Auto-Fallback** | Full RAM/VRAM probe & guarded context retry | Manual trial and error on OOM |
-| **Control Plane Protocol** | High-performance Go gRPC (`culpeostudio.*.v1`) | REST HTTP polling or monolithic electron |
-| **Agent Tool Execution** | Scouts with planning mode, path bounds & diffs | Basic chat-only prompts |
-| **Hybrid Long-Term Memory** | SQLite FTS5 + Vector Retrieval | Session-only sliding window |
-| **UI Design System** | Flutter Material 3 CulpeoGrid | Generic web wrappers |
-| **Open Source License** | 100% Free AGPL-3.0 | Proprietary or closed components |
-
----
-
 ## Local-first, with explicit network boundaries
 
 “Local-first” means accounts, settings, chats, memory, and GGUF model files remain strictly on your machine:

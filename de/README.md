@@ -110,19 +110,6 @@ Das Projekt befindet sich noch in Phase 1 Beta. Die wichtigsten Abläufe funktio
 
 ---
 
-## Warum Culpeo Studio?
-
-| Funktion | Culpeo Studio | Herkömmliche Lokale LLM Clients |
-|:---|:---:|:---:|
-| **Hardware-Erkennung & Auto-Fallback** | Vollständiger RAM/VRAM-Probe & automatisches Fallback | Manuelles Testen nach OOM-Abstürzen |
-| **Control-Plane-Protokoll** | Hochperformantes Go gRPC (`culpeostudio.*.v1`) | REST HTTP-Polling oder Electron |
-| **Agenten-Werkzeuge** | Scouts mit Planungsmodus, Pfadgrenzen & Diffs | Reine Chat-Prompts |
-| **Hybrider Vektorspeicher** | SQLite FTS5 + Vektor-Retrieval | Nur sitzungsbasierter Kontext |
-| **UI Design-System** | Flutter Material 3 CulpeoGrid | Generische Web-Wrapper |
-| **Open-Source-Lizenz** | 100% Kostenlos AGPL-3.0 | Proprietäre Komponenten |
-
----
-
 ## Installation
 
 ### Schnellinstallation (Quick Install)
