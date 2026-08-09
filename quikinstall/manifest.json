@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "version": "1.2.0-alpha",
+  "version": "2.0.0",
   "assets": {
     "linux-x64": {
-      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-linux-x64.tar.gz",
-      "sha256": "966692438dd91cc6b00b5b52dc393170d0cc1575233cd4b79a129dc24e8d216b",
-      "size": 27584305,
+      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v2.0.0/culpeostudio-2.0.0-linux-x64.tar.gz",
+      "sha256": "a50938655dd20ce6c2a5d6c74de7c8120028090ccb75fbb62e48706866194195",
+      "size": 28340533,
       "format": "tar.gz",
       "launcher": {
         "path": "launcher/culpeostudio",
@@ -22,9 +22,9 @@
       "health_url": "http://127.0.0.1:8080/health"
     },
     "macos-arm64": {
-      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-macos-arm64.tar.gz",
-      "sha256": "d1b1b5428eaeb9cd9e86c54492f7656a243dd234895ff925cc3a49dc19365e3f",
-      "size": 36530612,
+      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v2.0.0/culpeostudio-2.0.0-macos-arm64.tar.gz",
+      "sha256": "5e2684e435709c41e3dbc09fe005fb4d568bab815ba75cfe0f2e30e3e5341ea1",
+      "size": 39086805,
       "format": "tar.gz",
       "launcher": {
         "path": "launcher/culpeostudio",
@@ -41,9 +41,9 @@
       "health_url": "http://127.0.0.1:8080/health"
     },
     "windows-x64": {
-      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-windows-x64.zip",
-      "sha256": "b5e3f140a3946787a9cbad545117a4c4b8ec532c50b7d35bea08fec67a10d015",
-      "size": 30177495,
+      "url": "https://github.com/culpeostudio/Culpeostudio/releases/download/v2.0.0/culpeostudio-2.0.0-windows-x64.zip",
+      "sha256": "4dc17dcbbf01504efe7adf736d5da8162282df6b67c26e62491f58e18b9fe331",
+      "size": 31022716,
       "format": "zip",
       "launcher": {
         "path": "launcher/culpeostudio.exe",
@@ -60,5 +60,5 @@
       "health_url": "http://127.0.0.1:8080/health"
     }
   },
-  "published_at": "2026-08-02T20:17:59Z"
+  "published_at": "2026-08-09T19:56:09Z"
 }
