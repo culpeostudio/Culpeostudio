@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "version": "1.2.0-alpha",
+  "assets": {
+    "linux-x64": {
+      "url": "https://github.com/culpeohq/CulpeoStudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-linux-x64.tar.gz",
+      "sha256": "966692438dd91cc6b00b5b52dc393170d0cc1575233cd4b79a129dc24e8d216b",
+      "size": 27584305,
+      "format": "tar.gz",
+      "launcher": {
+        "path": "launcher/culpeostudio",
+        "args": []
+      },
+      "backend": {
+        "path": "backend/culpeostudio-server",
+        "args": []
+      },
+      "frontend": {
+        "path": "frontend/culpeostudio",
+        "args": []
+      },
+      "health_url": "http://127.0.0.1:8080/health"
+    },
+    "macos-arm64": {
+      "url": "https://github.com/culpeohq/CulpeoStudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-macos-arm64.tar.gz",
+      "sha256": "d1b1b5428eaeb9cd9e86c54492f7656a243dd234895ff925cc3a49dc19365e3f",
+      "size": 36530612,
+      "format": "tar.gz",
+      "launcher": {
+        "path": "launcher/culpeostudio",
+        "args": []
+      },
+      "backend": {
+        "path": "backend/culpeostudio-server",
+        "args": []
+      },
+      "frontend": {
+        "path": "frontend/culpeostudio.app/Contents/MacOS/culpeostudio",
+        "args": []
+      },
+      "health_url": "http://127.0.0.1:8080/health"
+    },
+    "windows-x64": {
+      "url": "https://github.com/culpeohq/CulpeoStudio/releases/download/v1.2.0-alpha/culpeostudio-1.2.0-alpha-windows-x64.zip",
+      "sha256": "b5e3f140a3946787a9cbad545117a4c4b8ec532c50b7d35bea08fec67a10d015",
+      "size": 30177495,
+      "format": "zip",
+      "launcher": {
+        "path": "launcher/culpeostudio.exe",
+        "args": []
+      },
+      "backend": {
+        "path": "backend/culpeostudio-server.exe",
+        "args": []
+      },
+      "frontend": {
+        "path": "frontend/culpeostudio.exe",
+        "args": []
+      },
+      "health_url": "http://127.0.0.1:8080/health"
+    }
+  },
+  "published_at": "2026-08-02T20:17:59Z"
+}

@@ -1,0 +1,87 @@
+name: culpeo_studio
+description: "Culpeo Studio - lokale KI-Orchestrierung von culpeohq."
+
+
+publish_to: 'none'
+
+
+
+
+
+
+
+
+
+
+
+
+
+version: 1.2.0+1
+
+environment:
+  sdk: ^3.12.2
+
+
+
+
+
+
+
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Not for the backend - that is gRPC. This reaches the arbitrary URL a user
+  # enters for a custom node, to check whether it answers.
+  http: ^1.2.0
+  qr_flutter: ^4.1.0
+
+
+
+  cupertino_icons: ^1.0.8
+  file_picker: ^11.0.2
+  desktop_drop: ^0.7.1
+  url_launcher: ^6.3.2
+  flutter_markdown: ^0.7.7+1
+  flutter_markdown_latex: ^0.3.4
+  markdown: ^7.3.1
+  grpc: ^5.1.0
+  protobuf: ^6.0.0
+  fixnum: ^1.1.1
+  google_fonts: ^6.2.1
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+
+
+  integration_test:
+    sdk: flutter
+  url_launcher_platform_interface: ^2.3.2
+
+
+
+
+
+
+  flutter_lints: ^6.0.0
+
+
+
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/wordmark.png
+    - assets/wordmark_light.png
+    - assets/huggingface.png
+    - assets/openrouter.png
+    - assets/featherless.png

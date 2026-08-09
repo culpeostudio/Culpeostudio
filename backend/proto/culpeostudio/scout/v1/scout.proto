@@ -1,0 +1,329 @@
+syntax = "proto3";
+
+package culpeostudio.scout.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/scout/v1;scoutv1";
+
+// ScoutService backs the chat: sessions and their history, the bots that answer
+// in them, and the reply itself - either as one message or streamed.
+service ScoutService {
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  rpc RenameSession(RenameSessionRequest) returns (RenameSessionResponse);
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+  rpc SetSessionProject(SetSessionProjectRequest) returns (SetSessionProjectResponse);
+  rpc SetSessionModel(SetSessionModelRequest) returns (SetSessionModelResponse);
+  rpc GetSessionTree(GetSessionTreeRequest) returns (GetSessionTreeResponse);
+
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // The streamed counterpart of SendMessage. This replaces the Server-Sent
+  // Events the HTTP API wrote by hand: the events are typed, a client that
+  // goes away cancels the context instead of the handler discovering a dead
+  // writer, and the call carries the same credentials as every other method.
+  rpc StreamMessage(StreamMessageRequest) returns (stream StreamMessageResponse);
+
+  rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
+  rpc SaveBot(SaveBotRequest) returns (SaveBotResponse);
+  rpc DeleteBot(DeleteBotRequest) returns (DeleteBotResponse);
+}
+
+// ChatMessage is one turn of a conversation.
+message ChatMessage {
+  string role = 1;
+  string content = 2;
+  string bot_id = 3;
+  string bot_name = 4;
+}
+
+// ModelBinding pins a bot to one model, either a hosted one or a local
+// instance the engine runs.
+message ModelBinding {
+  string kind = 1;
+  string model_ref = 2;
+  string provider = 3;
+  string model_id = 4;
+  string instance_id = 5;
+  string display_name = 6;
+}
+
+// Bot is one configured assistant: its prompt, when it is picked, and what it
+// is allowed to reach.
+message Bot {
+  string id = 1;
+  string name = 2;
+  string system_prompt = 3;
+  repeated string keywords = 4;
+  string response_style = 5;
+  bool agentic_enabled = 6;
+  repeated string allowed_roots = 7;
+  bool is_default = 8;
+  // Absent when the bot answers with whatever model the session selected.
+  ModelBinding model_binding = 9;
+}
+
+message SessionSummary {
+  string session_id = 1;
+  string title = 2;
+  string preview = 3;
+  string provider = 4;
+  string model_id = 5;
+  string display_name = 6;
+  string locked_bot_id = 7;
+  string project_id = 8;
+  int32 message_count = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// FileNode is one entry of the project folder listing. The HTTP API handed this
+// out as an untyped tree; the shape was always this.
+message FileNode {
+  string name = 1;
+  // Relative to the project root.
+  string path = 2;
+  bool is_dir = 3;
+  repeated FileNode children = 4;
+}
+
+// ChatOptions are the knobs a turn is answered with. They travel with each
+// message rather than being stored, because the UI lets them change per turn.
+message ChatOptions {
+  string thinking_level = 1;
+  string response_style = 2;
+  // Rewrites the conversation from this message on. Absent means append.
+  optional int32 edit_message_index = 3;
+  string mode = 4;
+  repeated string allowed_roots = 5;
+  bool approve_plan = 6;
+  bool planning = 7;
+}
+
+message CreateSessionRequest {
+  string model_ref = 1;
+  string provider = 2;
+  string model_id = 3;
+  string instance_id = 4;
+  string bot_id = 5;
+  string thinking_level = 6;
+  string response_style = 7;
+  string project_id = 8;
+}
+
+message CreateSessionResponse {
+  string session_id = 1;
+  string model_ref = 2;
+  string provider = 3;
+  string model_id = 4;
+  string display_name = 5;
+  string thinking = 6;
+  string style = 7;
+  string bot_id = 8;
+  string bot_name = 9;
+  string locked_bot_id = 10;
+  // Only set for a local model: which engine instance answers, and how much
+  // context it was started with.
+  string instance_id = 11;
+  int32 context_limit = 12;
+}
+
+message ListSessionsRequest {}
+
+message ListSessionsResponse {
+  repeated SessionSummary sessions = 1;
+}
+
+message GetHistoryRequest {
+  string session_id = 1;
+}
+
+message GetHistoryResponse {
+  string session_id = 1;
+  string provider = 2;
+  string model_id = 3;
+  string model_ref = 4;
+  string display_name = 5;
+  int32 context_limit = 6;
+  string locked_bot_id = 7;
+  string active_bot_id = 8;
+  repeated ChatMessage messages = 9;
+}
+
+message RenameSessionRequest {
+  string session_id = 1;
+  // Trimmed to 120 characters.
+  string title = 2;
+}
+
+message RenameSessionResponse {
+  SessionSummary session = 1;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionResponse {}
+
+// An empty project_id detaches the session from its project.
+message SetSessionProjectRequest {
+  string session_id = 1;
+  string project_id = 2;
+}
+
+message SetSessionProjectResponse {
+  SessionSummary session = 1;
+}
+
+message SetSessionModelRequest {
+  string session_id = 1;
+  string provider = 2;
+  string model_id = 3;
+  string model_ref = 4;
+  string display_name = 5;
+  int32 context_limit = 6;
+}
+
+message SetSessionModelResponse {
+  SessionSummary session = 1;
+}
+
+message GetSessionTreeRequest {
+  string session_id = 1;
+}
+
+message GetSessionTreeResponse {
+  // Absolute path of the project folder.
+  string root = 1;
+  FileNode tree = 2;
+  // True when the walk hit its depth or entry limit, so the tree is partial.
+  bool truncated = 3;
+}
+
+message SendMessageRequest {
+  string session_id = 1;
+  string message = 2;
+  ChatOptions options = 3;
+}
+
+message SendMessageResponse {
+  string session_id = 1;
+  string reply = 2;
+  string bot_id = 3;
+  string bot_name = 4;
+  string thinking_level = 5;
+  string response_style = 6;
+  // Set when the turn was handled by the bot builder and produced a new bot.
+  Bot created_bot = 7;
+}
+
+message StreamMessageRequest {
+  string session_id = 1;
+  string message = 2;
+  ChatOptions options = 3;
+}
+
+// One character of the reply. Emitted per grapheme, which is why it is a
+// message of its own rather than a generic payload - this is the hot path.
+message TextDelta {
+  string chunk = 1;
+}
+
+// One character of the model's reasoning, kept apart from the reply so the UI
+// can fold it away.
+message ReasoningDelta {
+  string chunk = 1;
+}
+
+message BotSelected {
+  string id = 1;
+  string name = 2;
+}
+
+message BotCreated {
+  Bot bot = 1;
+}
+
+message StatusUpdate {
+  string action = 1;
+}
+
+// ModelWarmup reports a local model being made ready, which can take long
+// enough that the UI shows its own progress for it.
+message ModelWarmup {
+  string operation_id = 1;
+  string instance_id = 2;
+  string status = 3;
+  string phase = 4;
+  double progress = 5;
+  int32 queue_position = 6;
+  string placement = 7;
+  string message = 8;
+}
+
+message StreamDone {
+  string session_id = 1;
+  string thinking_level = 2;
+  string response_style = 3;
+}
+
+// StreamError ends the stream with a reason. It stays an event rather than a
+// gRPC status because the reply may already be half-written, and the client
+// needs the code to tell a warm-up problem from a real failure.
+message StreamError {
+  string message = 1;
+  string code = 2;
+  // Seconds to wait before retrying, for the codes that are worth retrying.
+  int32 retry_after = 3;
+}
+
+// AgentEvent carries what the agent loop reports while it works: tool calls,
+// plans, permission prompts, file changes. The payload stays dynamic on
+// purpose - it is produced by the tool layer in the spark module, where each
+// tool decides what its result looks like, and the client stores it as an
+// opaque record next to the message. Typing it here would pin this schema to
+// spark's internal tool protocol.
+message AgentEvent {
+  string type = 1;
+  google.protobuf.Struct data = 2;
+}
+
+// One event of a streamed reply. Named after the RPC rather than after what it
+// is, because the schema lint ties a response message to its method.
+message StreamMessageResponse {
+  oneof event {
+    TextDelta text_delta = 1;
+    ReasoningDelta reasoning_delta = 2;
+    BotSelected bot_selected = 3;
+    BotCreated bot_created = 4;
+    StatusUpdate status = 5;
+    ModelWarmup model_warmup = 6;
+    StreamDone done = 7;
+    StreamError error = 8;
+    AgentEvent agent = 9;
+  }
+}
+
+message ListBotsRequest {}
+
+message ListBotsResponse {
+  repeated Bot bots = 1;
+}
+
+// An empty id creates a bot; the backend assigns one.
+message SaveBotRequest {
+  Bot bot = 1;
+}
+
+message SaveBotResponse {
+  Bot bot = 1;
+}
+
+message DeleteBotRequest {
+  string id = 1;
+}
+
+message DeleteBotResponse {}

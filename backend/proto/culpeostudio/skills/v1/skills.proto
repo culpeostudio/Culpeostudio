@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package culpeostudio.skills.v1;
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/skills/v1;skillsv1";
+
+// SkillsService manages the locally installed skill definitions: listing them,
+// importing new ones from disk, toggling them and removing them again.
+service SkillsService {
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  rpc ImportSkill(ImportSkillRequest) returns (ImportSkillResponse);
+  rpc UpdateSkill(UpdateSkillRequest) returns (UpdateSkillResponse);
+  rpc DeleteSkill(DeleteSkillRequest) returns (DeleteSkillResponse);
+  rpc RescanSkills(RescanSkillsRequest) returns (RescanSkillsResponse);
+}
+
+message ListSkillsRequest {}
+
+message ListSkillsResponse {
+  repeated SkillRecord skills = 1;
+  int32 count = 2;
+}
+
+message ImportSkillRequest {
+  string source_path = 1;
+  bool enabled = 2;
+}
+
+message ImportSkillResponse {
+  SkillRecord skill = 1;
+  string message = 2;
+}
+
+message UpdateSkillRequest {
+  string name = 1;
+  bool enabled = 2;
+}
+
+message UpdateSkillResponse {
+  SkillRecord skill = 1;
+  string message = 2;
+}
+
+message DeleteSkillRequest {
+  string name = 1;
+}
+
+message DeleteSkillResponse {
+  string name = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message RescanSkillsRequest {}
+
+message RescanSkillsResponse {
+  repeated SkillRecord skills = 1;
+  int32 count = 2;
+}
+
+message SkillRecord {
+  string name = 1;
+  string description = 2;
+  bool enabled = 3;
+  string path = 4;
+  int64 imported_at_unix = 5;
+  int64 updated_at_unix = 6;
+  string license = 7;
+  string compatibility = 8;
+  string metadata_json = 9;
+  string allowed_tools = 10;
+  bool valid = 11;
+  repeated string errors = 12;
+  SkillFileSummary file_summary = 13;
+}
+
+message SkillFileSummary {
+  int32 file_count = 1;
+  int32 directory_count = 2;
+  bool has_scripts = 3;
+  bool has_references = 4;
+  bool has_assets = 5;
+}

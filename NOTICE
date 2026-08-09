@@ -1,0 +1,68 @@
+Culpeo Studio
+Copyright (C) 2026 culpeohq
+Kontakt: kontakt@culpeohq.com
+
+Rechteinhaber ist der unter dieser Adresse erreichbare Betreiber von
+culpeohq. Sobald eine Gesellschaft gegruendet ist, gehen die Rechte per
+Vertrag auf sie ueber und dieser Vermerk wird entsprechend angepasst.
+
+Dieses Programm ist freie Software: Sie koennen es unter den Bedingungen der
+GNU Affero General Public License, Version 3, weitergeben und/oder aendern,
+wie sie von der Free Software Foundation veroeffentlicht wurde.
+
+Die Veroeffentlichung erfolgt in der Hoffnung, dass es nuetzlich ist, aber
+OHNE JEDE GEWAEHRLEISTUNG - sogar ohne die implizite Gewaehrleistung der
+MARKTGAENGIGKEIT oder EIGNUNG FUER EINEN BESTIMMTEN ZWECK. Einzelheiten
+stehen in der GNU Affero General Public License (Datei LICENSE).
+
+Sollten Sie keine Kopie erhalten haben: <https://www.gnu.org/licenses/>.
+
+
+VERWENDETE FREMDKOMPONENTEN
+---------------------------
+
+Culpeo Studio startet und verwaltet Laufzeitumgebungen, die nicht Teil dieses
+Projekts sind und unter eigenen Lizenzen stehen:
+
+  llama.cpp        MIT          https://github.com/ggml-org/llama.cpp
+  vLLM             Apache-2.0   https://github.com/vllm-project/vllm
+  Transformers     Apache-2.0   https://github.com/huggingface/transformers
+  whichllm         MIT          https://github.com/Andyyyy64/whichllm
+
+Die Modelle selbst unterliegen jeweils eigenen Lizenzen der Anbieter. Wer
+Modelle herunterlaedt, betreibt oder anbietet, ist fuer die Einhaltung dieser
+Bedingungen selbst verantwortlich - insbesondere bei kommerzieller Nutzung
+(z. B. Llama Community License, Gemma Terms of Use, teils rein
+nicht-kommerzielle Lizenzen).
+
+
+WHICHLLM-LIZENZHINWEIS
+----------------------
+
+Die Culpeo-Studio-Systemerkennung verwendet whichllm als optionale
+Python-Abhaengigkeit. Teile der in Go portierten Modell- und
+Hardware-Kompatibilitaetslogik wurden ebenfalls aus whichllm abgeleitet.
+Produktname und Integrationscode von Culpeo Studio aendern die folgende
+Upstream-Lizenz und Urhebernennung nicht.
+
+MIT License
+
+Copyright (c) 2026 Andyyyy64
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

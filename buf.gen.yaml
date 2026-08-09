@@ -1,0 +1,18 @@
+version: v2
+
+# Both output trees are generated in full on every run. Nothing hand-written
+# may live there: `clean` wipes them before protoc-gen-* writes.
+clean: true
+
+plugins:
+  - local: protoc-gen-go
+    out: backend/gen/go
+    opt: paths=source_relative
+
+  - local: protoc-gen-go-grpc
+    out: backend/gen/go
+    opt: paths=source_relative
+
+  - local: protoc-gen-dart
+    out: frontend/lib/generated
+    opt: grpc

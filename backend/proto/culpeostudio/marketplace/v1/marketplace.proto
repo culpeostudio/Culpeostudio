@@ -1,0 +1,289 @@
+syntax = "proto3";
+
+package culpeostudio.marketplace.v1;
+
+import "culpeostudio/hardware/v1/hardware.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/marketplace/v1;marketplacev1";
+
+// MarketplaceService backs the model marketplace: searching the model hosts,
+// the detail view, the download jobs and the hosted models activated for chat.
+service MarketplaceService {
+  rpc SearchModels(SearchModelsRequest) returns (SearchModelsResponse);
+  rpc GetModelDetail(GetModelDetailRequest) returns (GetModelDetailResponse);
+  rpc GetHardwareProfile(GetHardwareProfileRequest) returns (GetHardwareProfileResponse);
+
+  rpc StartDownload(StartDownloadRequest) returns (StartDownloadResponse);
+  rpc ListDownloadJobs(ListDownloadJobsRequest) returns (ListDownloadJobsResponse);
+  rpc GetDownloadJob(GetDownloadJobRequest) returns (GetDownloadJobResponse);
+  rpc DeleteDownloadJob(DeleteDownloadJobRequest) returns (DeleteDownloadJobResponse);
+
+  rpc StartApiModel(StartApiModelRequest) returns (StartApiModelResponse);
+  rpc ListActiveApiModels(ListActiveApiModelsRequest) returns (ListActiveApiModelsResponse);
+  rpc DeleteActiveApiModel(DeleteActiveApiModelRequest) returns (DeleteActiveApiModelResponse);
+}
+
+// Provider names a model host. The HTTP API took it as a free-form string and
+// normalised aliases such as "hf" or "open-router" on every request; the enum
+// settles the value set at the schema instead. PROVIDER_ALL only makes sense
+// when searching - asking for the detail of a model without saying where it
+// lives was already an error.
+enum Provider {
+  PROVIDER_UNSPECIFIED = 0;
+  PROVIDER_ALL = 1;
+  PROVIDER_HUGGINGFACE = 2;
+  PROVIDER_OPENROUTER = 3;
+  PROVIDER_FEATHERLESS = 4;
+}
+
+// Category filters the search by what a model is for. The HTTP API silently
+// widened an unknown category to "all"; an unknown value cannot be sent here.
+enum Category {
+  // No category filter, which is what "all" meant.
+  CATEGORY_UNSPECIFIED = 0;
+  CATEGORY_CHAT = 1;
+  CATEGORY_CODE = 2;
+  CATEGORY_REASONING = 3;
+  CATEGORY_VISION = 4;
+  CATEGORY_EMBEDDING = 5;
+}
+
+// SortMode orders the search results. The HTTP API accepted a pile of German
+// and English aliases for each mode ("neu", "newest", "neu_zuerst"); the enum
+// replaces all of them.
+enum SortMode {
+  // Falls back to SORT_MODE_POPULARITY, the default the screen opens with.
+  SORT_MODE_UNSPECIFIED = 0;
+  SORT_MODE_POPULARITY = 1;
+  SORT_MODE_INTELLIGENCE = 2;
+  SORT_MODE_CONTEXT = 3;
+  SORT_MODE_NEWEST = 4;
+  // The price modes drop every model whose price is unknown, so they are only
+  // offered for the hosted providers.
+  SORT_MODE_PRICE_LOW_HIGH = 5;
+  SORT_MODE_PRICE_HIGH_LOW = 6;
+}
+
+enum DownloadStatus {
+  DOWNLOAD_STATUS_UNSPECIFIED = 0;
+  DOWNLOAD_STATUS_QUEUED = 1;
+  DOWNLOAD_STATUS_RUNNING = 2;
+  DOWNLOAD_STATUS_DONE = 3;
+  DOWNLOAD_STATUS_FAILED = 4;
+}
+
+// DownloadOption is one downloadable variant of a model: a single file, or a
+// set of shards that only make sense together.
+message DownloadOption {
+  string label = 1;
+  string asset_id = 2;
+  repeated string asset_ids = 3;
+  string format = 4;
+  int64 size_bytes = 5;
+  string url = 6;
+}
+
+// ModelSummary is one search hit, enriched by the backend with what it derived
+// about the model and how it would run on the detected hardware.
+message ModelSummary {
+  string id = 1;
+  Provider provider = 2;
+  string model_id = 3;
+  string display_name = 4;
+  string name = 5;
+  string description = 6;
+  // Formats stay strings: they are inferred from the file names a repository
+  // happens to carry, so the value set is open.
+  string format = 7;
+  repeated string formats = 8;
+  repeated string quantizations = 9;
+  string author = 10;
+  int64 downloads = 11;
+  int64 size_bytes = 12;
+  string parameter_badge = 13;
+  double parameter_count_b = 14;
+  string provider_badge = 15;
+  // Always one of the Category values, but carried as the derived string so a
+  // category the enrichment learns later still reaches the client.
+  string category = 16;
+  repeated string capability_tags = 17;
+  string price_per_1m = 18;
+  double price_per_1m_input = 19;
+  double price_per_1m_output = 20;
+  int32 context_length = 21;
+  int32 intelligence_score = 22;
+  double estimated_vram_gb = 23;
+  bool vram_estimated = 24;
+  bool fits_detected_gpu = 25;
+  string runtime_fit = 26;
+  repeated string runtime_warnings = 27;
+  double runtime_ram_offload_gb = 28;
+  double recommendation_score = 29;
+  bool local_model = 30;
+  int64 new_score = 31;
+  repeated DownloadOption download_options = 32;
+}
+
+// ModelDetail is the summary plus what only the detail lookup fetches. The Go
+// type embeds ModelSummary and the JSON flattened it; here it stays a nested
+// field and the client flattens it back for the dialog.
+message ModelDetail {
+  ModelSummary summary = 1;
+  repeated string tags = 2;
+  // Free-form provider notes. The JSON carried arbitrary values here, but
+  // every provider only ever sets a "source" entry naming itself, so strings
+  // are enough.
+  map<string, string> metadata = 3;
+}
+
+message SearchModelsRequest {
+  Provider provider = 1;
+  string query = 2;
+  string format = 3;
+  string quantization = 4;
+  Category category = 5;
+  SortMode sort = 6;
+  // Both are HuggingFace-only, as is quantization: the hosted providers serve
+  // models over an API, so there is nothing to fit into local VRAM.
+  bool gpu_fit = 7;
+  bool local_only = 8;
+  // One-based. Zero means the first page, which is what an omitted page did.
+  int32 page = 9;
+  // Zero means the default of 20; anything above 1000 is clamped to 1000.
+  int32 page_size = 10;
+}
+
+message SearchModelsResponse {
+  repeated ModelSummary models = 1;
+  // Across all pages, before pagination.
+  int32 total = 2;
+  int32 returned = 3;
+  // True when at least one provider failed; the hits of the others are still
+  // in models, and errors says who was left out.
+  bool partial = 4;
+  repeated string errors = 5;
+  int32 page = 6;
+  int32 page_size = 7;
+  bool has_more = 8;
+  // The profile the fit flags on every model were computed against.
+  culpeostudio.hardware.v1.HardwareProfile hardware = 9;
+}
+
+message GetModelDetailRequest {
+  Provider provider = 1;
+  string id = 2;
+}
+
+message GetModelDetailResponse {
+  ModelDetail detail = 1;
+}
+
+message GetHardwareProfileRequest {}
+
+message GetHardwareProfileResponse {
+  culpeostudio.hardware.v1.HardwareProfile profile = 1;
+}
+
+message StartDownloadRequest {
+  Provider provider = 1;
+  string model_id = 2;
+  string asset_id = 3;
+  // A bundle of shards to fetch together. When empty, asset_id is used alone.
+  repeated string asset_ids = 4;
+  // Defaults to "main".
+  string revision = 5;
+  // Relative to the configured model directory, or absolute inside it. Empty
+  // means the model directory itself.
+  string target_dir = 6;
+  // What the client expects to download. When set, the backend refuses the job
+  // up front if the disk cannot hold it plus a ten percent margin.
+  int64 size_bytes = 7;
+}
+
+message StartDownloadResponse {
+  string job_id = 1;
+  DownloadStatus status = 2;
+  // True when the model was already downloading and job_id names that job
+  // rather than a new one.
+  bool existing = 3;
+  string target_dir = 4;
+}
+
+message DownloadJob {
+  string id = 1;
+  Provider provider = 2;
+  string model_id = 3;
+  string asset_id = 4;
+  repeated string asset_ids = 5;
+  string revision = 6;
+  string commit_sha = 7;
+  string target_dir = 8;
+  DownloadStatus status = 9;
+  // Percent, 0 to 100.
+  int32 progress = 10;
+  string error = 11;
+  string output_path = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  google.protobuf.Timestamp started_at = 15;
+  google.protobuf.Timestamp finished_at = 16;
+  int64 downloaded_bytes = 17;
+  int64 speed_bytes_per_sec = 18;
+  int64 total_bytes = 19;
+}
+
+message ListDownloadJobsRequest {}
+
+message ListDownloadJobsResponse {
+  repeated DownloadJob jobs = 1;
+}
+
+message GetDownloadJobRequest {
+  string id = 1;
+}
+
+message GetDownloadJobResponse {
+  DownloadJob job = 1;
+}
+
+message DeleteDownloadJobRequest {
+  string id = 1;
+}
+
+message DeleteDownloadJobResponse {}
+
+// ActiveApiModel is a hosted model the user activated for chat.
+message ActiveApiModel {
+  Provider provider = 1;
+  string model_id = 2;
+  string display_name = 3;
+  // Stable handle the chat binds to, derived from provider and model id.
+  string model_ref = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+}
+
+// Only the hosted providers can be started: a HuggingFace repository is
+// downloaded and run by the engine, not called over an API.
+message StartApiModelRequest {
+  Provider provider = 1;
+  string model_id = 2;
+  string display_name = 3;
+}
+
+message StartApiModelResponse {
+  ActiveApiModel model = 1;
+}
+
+message ListActiveApiModelsRequest {}
+
+message ListActiveApiModelsResponse {
+  repeated ActiveApiModel models = 1;
+}
+
+message DeleteActiveApiModelRequest {
+  string model_ref = 1;
+}
+
+message DeleteActiveApiModelResponse {}

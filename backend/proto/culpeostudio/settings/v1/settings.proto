@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package culpeostudio.settings.v1;
+
+import "culpeostudio/hardware/v1/hardware.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/settings/v1;settingsv1";
+
+// SettingsService backs the settings screen: the stored studio settings, the
+// detected system information and the provider connection tests.
+service SettingsService {
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+  rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse);
+  rpc TestProvider(TestProviderRequest) returns (TestProviderResponse);
+}
+
+// Provider names the model hosts a token can be tested against. The HTTP API
+// took this as a free-form path segment and rejected unknown values at
+// runtime; as an enum the schema rules them out up front.
+enum Provider {
+  PROVIDER_UNSPECIFIED = 0;
+  PROVIDER_HUGGINGFACE = 1;
+  PROVIDER_OPENROUTER = 2;
+  PROVIDER_FEATHERLESS = 3;
+}
+
+// Settings is what the client may see. The provider tokens themselves never
+// leave the backend - only whether one is stored.
+message Settings {
+  string model_dir = 1;
+  bool model_dir_valid = 2;
+  string model_dir_error = 3;
+  bool huggingface_token_set = 4;
+  bool openrouter_token_set = 5;
+  bool featherless_token_set = 6;
+  map<string, string> shortcuts = 7;
+  // Optional so an unconfigured reserve stays distinguishable from a reserve
+  // deliberately set to zero.
+  optional int64 engine_ram_reserve_bytes = 8;
+  optional int64 engine_gpu_reserve_bytes = 9;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  Settings settings = 1;
+}
+
+// Every changeable field is optional: an absent field is left untouched, which
+// is what the nil pointers in the JSON body used to express.
+message UpdateSettingsRequest {
+  optional string model_dir = 1;
+  optional string huggingface_token = 2;
+  optional string openrouter_token = 3;
+  optional string featherless_token = 4;
+  map<string, string> shortcuts = 5;
+  optional int64 engine_ram_reserve_bytes = 6;
+  optional int64 engine_gpu_reserve_bytes = 7;
+  bool reset_engine_reserves = 8;
+}
+
+message UpdateSettingsResponse {
+  Settings settings = 1;
+  string message = 2;
+  // Reserve sizes that were accepted but leave little room for models.
+  repeated string warnings = 3;
+}
+
+message GetSystemInfoRequest {}
+
+message GetSystemInfoResponse {
+  culpeostudio.hardware.v1.HardwareProfile profile = 1;
+}
+
+message TestProviderRequest {
+  Provider provider = 1;
+}
+
+message TestProviderResponse {
+  Provider provider = 1;
+  bool reachable = 2;
+  string message = 3;
+}

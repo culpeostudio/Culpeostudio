@@ -1,0 +1,307 @@
+syntax = "proto3";
+
+package culpeostudio.benchmark.v1;
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/benchmark/v1;benchmarkv1";
+
+// BenchmarkService serves the public model leaderboards: the registered boards,
+// their load state, the ranked list, a single model's standing and side-by-side
+// comparisons.
+service BenchmarkService {
+  rpc ListBoards(ListBoardsRequest) returns (ListBoardsResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetOverview(GetOverviewRequest) returns (GetOverviewResponse);
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
+  rpc GetModel(GetModelRequest) returns (GetModelResponse);
+  rpc CompareModels(CompareModelsRequest) returns (CompareModelsResponse);
+  rpc RefreshBoards(RefreshBoardsRequest) returns (RefreshBoardsResponse);
+}
+
+// BoardState is how far a board got with loading its snapshot.
+enum BoardState {
+  BOARD_STATE_UNSPECIFIED = 0;
+  // Nothing loaded yet, which is what a board reports before its first fetch.
+  BOARD_STATE_EMPTY = 1;
+  BOARD_STATE_LOADING = 2;
+  BOARD_STATE_READY = 3;
+  BOARD_STATE_ERROR = 4;
+}
+
+enum SortOrder {
+  // Falls back to descending, which is what every leaderboard opens with.
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_ASC = 1;
+  SORT_ORDER_DESC = 2;
+}
+
+// Detail is one free-form fact the source published about an entry, such as the
+// number of votes behind a rating.
+message Detail {
+  string key = 1;
+  string value = 2;
+}
+
+// Entry is one measured result: a model on a board, with its primary score and
+// whatever per-category scores the source carried.
+message Entry {
+  string board = 1;
+  string key = 2;
+  string name = 3;
+  string model_id = 4;
+  string org = 5;
+  string license = 6;
+  string url = 7;
+  string type = 8;
+  bool open_weights = 9;
+  // As published by the source, in whatever precision it used - not
+  // necessarily a full date, so it stays text.
+  string eval_date = 10;
+  double primary = 11;
+  // Keyed by metric key. A metric the model was never measured on is absent
+  // rather than zero.
+  map<string, double> scores = 12;
+  int32 rank = 13;
+  repeated Detail details = 14;
+}
+
+// MetricInfo describes one scoring category of a board. The keys are data, not
+// schema: a board declares its own set, and the client only ever looks them up.
+message MetricInfo {
+  string key = 1;
+  string label = 2;
+  string family = 3;
+  string shots = 4;
+  string dataset = 5;
+  string url = 6;
+}
+
+message MetricStats {
+  string key = 1;
+  double min = 2;
+  double max = 3;
+  double mean = 4;
+  double median = 5;
+  string top_model = 6;
+  double top_score = 7;
+  int32 evaluated = 8;
+}
+
+message SourceInfo {
+  string provider = 1;
+  string dataset = 2;
+  string url = 3;
+  bool live = 4;
+  bool archived = 5;
+  string archived_at = 6;
+  // Published by the source; fetched_at is ours. Both stay text because the
+  // client only displays them and the source's precision varies.
+  string published_at = 7;
+  string fetched_at = 8;
+  bool from_cache = 9;
+  int32 entries = 10;
+  int32 models = 11;
+  BoardState state = 12;
+  string error = 13;
+}
+
+message BoardInfo {
+  string key = 1;
+  string label = 2;
+  string kind = 3;
+  string score_kind = 4;
+  string primary_label = 5;
+  double score_max = 6;
+  repeated MetricInfo metrics = 7;
+  SourceInfo source = 8;
+}
+
+// HubStats is what the Hugging Face hub knows about a model, looked up
+// alongside the board result.
+message HubStats {
+  string model_id = 1;
+  int32 likes = 2;
+  int64 downloads_30d = 3;
+  int64 downloads_all_time = 4;
+  double trending_score = 5;
+  string last_modified = 6;
+  string pipeline_tag = 7;
+  bool gated = 8;
+  int64 params_total = 9;
+  repeated string tags = 10;
+  repeated string inference_providers = 11;
+  // True when the hub has no such model, which is how a detail lookup stays a
+  // valid answer instead of an error.
+  bool missing = 12;
+}
+
+// CardResult is a self-reported score from a model card, which is not the same
+// evidence as a board measurement and is shown apart from it.
+message CardResult {
+  string task = 1;
+  string dataset = 2;
+  string metric = 3;
+  double value = 4;
+  bool verified = 5;
+}
+
+// Delta compares one score against the board's median for that metric.
+message Delta {
+  double value = 1;
+  double median = 2;
+  double diff = 3;
+}
+
+message ModelDetail {
+  string board = 1;
+  string model_id = 2;
+  string name = 3;
+  repeated Entry entries = 4;
+  // The highest-scoring of the model's entries. Absent when the board knows
+  // nothing about it and only the hub answered.
+  Entry best = 5;
+  map<string, int32> metric_ranks = 6;
+  double percentile = 7;
+  repeated Entry peers = 8;
+  HubStats hub = 9;
+  repeated CardResult card_results = 10;
+  map<string, Delta> deltas = 11;
+  repeated MetricInfo metrics = 12;
+  SourceInfo source = 13;
+  map<string, int32> totals = 14;
+  string score_kind = 15;
+}
+
+message FacetValue {
+  string value = 1;
+  string label = 2;
+  int32 count = 3;
+}
+
+message Facets {
+  repeated FacetValue types = 1;
+  repeated FacetValue orgs = 2;
+  repeated FacetValue licenses = 3;
+}
+
+// EntryList wraps a repeated field so it can be a map value, which proto does
+// not allow directly.
+message EntryList {
+  repeated Entry entries = 1;
+}
+
+message ListBoardsRequest {}
+
+message ListBoardsResponse {
+  repeated BoardInfo boards = 1;
+  string default_board = 2;
+}
+
+// An unknown or empty board falls back to the default one, the way the query
+// parameter did. Boards are a registry the backend owns, so the key stays a
+// string rather than an enum that would have to change with the data.
+message GetStatusRequest {
+  string board = 1;
+}
+
+message GetStatusResponse {
+  BoardState state = 1;
+  // Rows read so far, against how many the snapshot announced.
+  int32 loaded = 2;
+  int32 expected = 3;
+  string error = 4;
+  bool refreshing = 5;
+  repeated BoardInfo boards = 6;
+  SourceInfo source = 7;
+}
+
+message GetOverviewRequest {
+  string board = 1;
+}
+
+message GetOverviewResponse {
+  BoardInfo board = 1;
+  repeated BoardInfo boards = 2;
+  int32 total_entries = 3;
+  int32 total_models = 4;
+  repeated MetricStats metric_stats = 5;
+  repeated Entry top_overall = 6;
+  // Keyed by metric key. A metric nothing was measured on is left out.
+  map<string, EntryList> top_by_metric = 7;
+  repeated Entry top_open_weights = 8;
+  map<string, EntryList> top_open_by_metric = 9;
+  repeated FacetValue type_share = 10;
+  repeated FacetValue org_share = 11;
+}
+
+message GetLeaderboardRequest {
+  string board = 1;
+  string query = 2;
+  // The HTTP API took these as one comma-separated parameter, which no value
+  // containing a comma survived.
+  repeated string types = 3;
+  repeated string orgs = 4;
+  repeated string licenses = 5;
+  bool open_weights_only = 6;
+  // Optional because it defaults to true: a plain bool could not tell "not
+  // asked for" from "explicitly off", and would silently show every duplicate
+  // entry of a model.
+  optional bool best_per_model = 7;
+  // A metric key, or "primary"/"average"/"name". Anything the board does not
+  // measure falls back to the primary score.
+  string sort = 8;
+  SortOrder order = 9;
+  int32 offset = 10;
+  // Zero means the default of 50; anything above 200 is clamped to 200.
+  int32 limit = 11;
+}
+
+message GetLeaderboardResponse {
+  BoardInfo board = 1;
+  repeated Entry items = 2;
+  // Matching the filters, before pagination.
+  int32 total = 3;
+  int32 offset = 4;
+  int32 limit = 5;
+  string sort = 6;
+  SortOrder order = 7;
+  Facets facets = 8;
+  // Set when the list was served from a board that is not ready, so the client
+  // can say why it looks thin.
+  BoardState warning = 9;
+}
+
+message GetModelRequest {
+  string board = 1;
+  string id = 2;
+  // Optional because it defaults to true: the hub lookup is what lets a model
+  // the board never rated still resolve.
+  optional bool with_hub = 3;
+}
+
+message GetModelResponse {
+  ModelDetail detail = 1;
+}
+
+message CompareModelsRequest {
+  string board = 1;
+  // Capped at twelve; anything beyond that is dropped.
+  repeated string ids = 2;
+  optional bool with_hub = 3;
+}
+
+message CompareModelsResponse {
+  repeated ModelDetail models = 1;
+  BoardInfo board = 2;
+}
+
+// An empty board refreshes every registered board.
+message RefreshBoardsRequest {
+  string board = 1;
+}
+
+// The refresh runs in the background, so the response only names what was
+// started. The HTTP API said so with a 202 and a "started" flag that was never
+// anything but true.
+message RefreshBoardsResponse {
+  repeated string boards = 1;
+}
