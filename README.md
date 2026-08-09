@@ -206,7 +206,7 @@ Source builds require Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3, and a C/C+
 
 Contributions are welcome! Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Pull requests require acceptance of the [CLA](https://github.com/culpeostudio/Culpeostudio/blob/main/CLA.md) and signed-off commits (`git commit -s`).
 
-Report security vulnerabilities privately to `security@culpeohq.com` as outlined in [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md).
+Report security vulnerabilities privately to `security@culpeostudio.com` as outlined in [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md).
 
 Culpeo Studio source code is licensed under the [GNU AGPL-3.0](https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE). See the [trademark policy](https://github.com/culpeostudio/Culpeostudio/blob/main/TRADEMARK.md) for name and logo usage guidelines.
 

@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security issues **privately** to <security@culpeohq.com> —
+Please report security issues **privately** to <security@culpeostudio.com> —
 not through a public issue, so the problem can be fixed before it becomes
 widely known.
 

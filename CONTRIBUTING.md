@@ -35,7 +35,7 @@ cd Culpeostudio
 Do **NOT** report security vulnerabilities via public GitHub issues.
 
 Please send an encrypted email or private security report to:
-`security@culpeohq.com`
+`security@culpeostudio.com`
 
 See [SECURITY.md](SECURITY.md) for more details.
 

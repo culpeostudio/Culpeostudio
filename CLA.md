@@ -1,7 +1,7 @@
 # Contributor License Agreement (CLA)
 
 **Projektinhaber** im Sinne dieser Vereinbarung ist der Betreiber von
-**culpeohq**, erreichbar unter <kontakt@culpeohq.com>. Wird eine
+**culpeohq**, erreichbar unter <kontakt@culpeostudio.com>. Wird eine
 Gesellschaft gegründet, tritt diese als Rechtsnachfolgerin an seine Stelle;
 die hier eingeräumten Rechte gehen dabei mit über (siehe Ziffer 2:
 übertragbar).

@@ -20,7 +20,7 @@ cd Culpeostudio
 ## Sicherheitslücken melden
 
 Bitte melde Sicherheitslücken nicht über öffentliche GitHub-Issues, sondern vertraulich per E-Mail an:
-`security@culpeohq.com`
+`security@culpeostudio.com`
 
 Weitere Informationen findest du in [SECURITY.md](../SECURITY.md).
 

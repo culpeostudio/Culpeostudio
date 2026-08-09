@@ -138,7 +138,7 @@ Voraussetzungen: Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3 und C/C++-Buildt
 
 Beiträge sind willkommen! Starte mit [CONTRIBUTING.md](CONTRIBUTING.md). Pull Requests erfordern die Zustimmung zur [CLA](https://github.com/culpeostudio/Culpeostudio/blob/main/CLA.md) und signierte Commits (`git commit -s`).
 
-Sicherheitslücken bitte vertraulich an `security@culpeohq.com` melden (siehe [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md)).
+Sicherheitslücken bitte vertraulich an `security@culpeostudio.com` melden (siehe [SECURITY.md](https://github.com/culpeostudio/Culpeostudio/blob/main/SECURITY.md)).
 
 Culpeo Studio steht unter der [GNU AGPL-3.0 Lizenz](https://github.com/culpeostudio/Culpeostudio/blob/main/LICENSE). Siehe auch die [Markenrichtlinien](https://github.com/culpeostudio/Culpeostudio/blob/main/TRADEMARK.md).
 

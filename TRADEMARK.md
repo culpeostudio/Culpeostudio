@@ -16,4 +16,4 @@ Namen, Logos oder dem Erscheinungsbild.
 - Namen oder Logo als Produkt-, Dienst- oder Firmenname verwenden
 - ein Angebot so benennen oder gestalten, dass der Eindruck entsteht, es stamme vom Projektinhaber oder werde von ihm unterstützt
 
-Anfragen: <kontakt@culpeohq.com>
+Anfragen: <kontakt@culpeostudio.com>
