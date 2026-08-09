@@ -1,0 +1,45 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:culpeo_studio/core/app_strings.dart';
+import 'package:culpeo_studio/core/app_strings_de.dart';
+import 'package:culpeo_studio/core/app_strings_en.dart';
+import 'package:culpeo_studio/modules/engine/engine_strings.dart';
+
+void main() {
+  test('German and English localization bundles expose identical keys', () {
+    final germanKeys = {...appStringsDe.keys, ...engineStringsDe.keys};
+    final englishKeys = {...appStringsEn.keys, ...engineStringsEn.keys};
+
+    expect(englishKeys, equals(germanKeys));
+  });
+
+  test(
+    'translation resolves the selected language and replaces parameters',
+    () {
+      final previousLanguage = appLanguage;
+      addTearDown(() => appLanguage = previousLanguage);
+
+      appLanguage = 'en';
+      expect(tr('engineWidget.status.ready'), 'Ready');
+      expect(
+        tr('engineWidget.placement.planned', {'label': 'GPU'}),
+        'Planned: GPU',
+      );
+
+      appLanguage = 'de';
+      expect(tr('engineWidget.status.ready'), 'Bereit');
+    },
+  );
+
+  test('localization bundles do not expose light-mode controls', () {
+    const removedKeys = [
+      'dashboard.tooltipLightTheme',
+      'dashboard.tooltipDarkTheme',
+      'settings.shortcuts.action.toggleTheme',
+    ];
+
+    for (final key in removedKeys) {
+      expect(appStringsDe, isNot(contains(key)));
+      expect(appStringsEn, isNot(contains(key)));
+    }
+  });
+}

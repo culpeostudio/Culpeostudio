@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package culpeostudio.login.v1;
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/login/v1;loginv1";
+
+// LoginService issues the session tokens and manages the accounts, the
+// authenticator and the per-user preferences.
+//
+// Everything except the two preference calls is reachable without a token -
+// they are what a client uses before it has one. See publicGRPCMethods in
+// cmd/server.
+service LoginService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc GetAuthStatus(GetAuthStatusRequest) returns (GetAuthStatusResponse);
+  rpc StartAuthenticatorSetup(StartAuthenticatorSetupRequest) returns (StartAuthenticatorSetupResponse);
+  rpc ConfirmAuthenticatorSetup(ConfirmAuthenticatorSetupRequest) returns (ConfirmAuthenticatorSetupResponse);
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+  rpc GetUserPreferences(GetUserPreferencesRequest) returns (GetUserPreferencesResponse);
+  rpc UpdateUserPreferences(UpdateUserPreferencesRequest) returns (UpdateUserPreferencesResponse);
+}
+
+// SessionDuration is how long an issued token stays valid. The HTTP API took
+// this as a string and quietly fell back to 24h for anything it did not
+// recognise; UNSPECIFIED keeps that fallback but makes it explicit.
+enum SessionDuration {
+  SESSION_DURATION_UNSPECIFIED = 0;
+  SESSION_DURATION_8H = 1;
+  SESSION_DURATION_24H = 2;
+  SESSION_DURATION_48H = 3;
+  SESSION_DURATION_PERMANENT = 4;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  SessionDuration session_duration = 3;
+}
+
+message LoginResponse {
+  string token = 1;
+  string username = 2;
+  // The duration actually granted, which is the resolved value rather than
+  // whatever the request asked for.
+  SessionDuration session_duration = 3;
+}
+
+message GetAuthStatusRequest {}
+
+message GetAuthStatusResponse {
+  bool totp_configured = 1;
+  string authenticator_app = 2;
+}
+
+message StartAuthenticatorSetupRequest {}
+
+message StartAuthenticatorSetupResponse {
+  string secret = 1;
+  string otpauth_url = 2;
+}
+
+message ConfirmAuthenticatorSetupRequest {
+  string code = 1;
+  string app = 2;
+}
+
+message ConfirmAuthenticatorSetupResponse {
+  bool totp_configured = 1;
+}
+
+message CreateAccountRequest {
+  string username = 1;
+  string password = 2;
+  string totp_code = 3;
+}
+
+message CreateAccountResponse {
+  string username = 1;
+}
+
+message ResetPasswordRequest {
+  string username = 1;
+  string new_password = 2;
+  string totp_code = 3;
+}
+
+message ResetPasswordResponse {
+  string username = 1;
+  bool password_reset = 2;
+}
+
+message UserPreferences {
+  bool configured = 1;
+  string language = 2;
+  string frontend_version = 3;
+}
+
+message GetUserPreferencesRequest {}
+
+message GetUserPreferencesResponse {
+  UserPreferences preferences = 1;
+}
+
+message UpdateUserPreferencesRequest {
+  string language = 1;
+  string frontend_version = 2;
+}
+
+message UpdateUserPreferencesResponse {
+  UserPreferences preferences = 1;
+}

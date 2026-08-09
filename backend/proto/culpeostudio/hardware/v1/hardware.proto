@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package culpeostudio.hardware.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/hardware/v1;hardwarev1";
+
+// HardwareProfile is the detected machine profile. It is shared: the settings
+// screen shows it as system information and the marketplace matches models
+// against it.
+message HardwareProfile {
+  string os = 1;
+  string arch = 2;
+  int32 ram_gb = 3;
+  int32 vram_gb = 4;
+  bool has_gpu = 5;
+  string gpu_name = 6;
+  string gpu_vendor = 7;
+  double gpu_memory_bandwidth_gbps = 8;
+  repeated DetectedGpu gpus = 9;
+  string cpu_name = 10;
+  int32 cpu_cores = 11;
+  bool has_avx2 = 12;
+  bool has_avx512 = 13;
+  string disk_free = 14;
+  int64 disk_free_bytes = 15;
+  bool detected = 16;
+  string detection_source = 17;
+  int64 ram_total_bytes = 18;
+  int64 ram_available_bytes = 19;
+  google.protobuf.Timestamp captured_at = 20;
+  repeated EngineGpu engine_gpus = 21;
+}
+
+// DetectedGpu is the summarised view the marketplace matches against.
+message DetectedGpu {
+  string id = 1;
+  int32 index = 2;
+  string name = 3;
+  string vendor = 4;
+  string backend = 5;
+  int32 vram_gb = 6;
+  int64 vram_total_bytes = 7;
+  int64 vram_used_bytes = 8;
+  int64 vram_free_bytes = 9;
+  bool shared_memory = 10;
+  double memory_bandwidth_gbps = 11;
+  string compute_capability = 12;
+}
+
+// EngineGpu is the fuller reading taken from the live hardware snapshot,
+// including telemetry the summarised view drops.
+message EngineGpu {
+  string id = 1;
+  int32 index = 2;
+  string name = 3;
+  string vendor = 4;
+  string backend = 5;
+  int64 vram_total_bytes = 6;
+  int64 vram_used_bytes = 7;
+  int64 vram_free_bytes = 8;
+  bool vram_telemetry_unavailable = 9;
+  bool shared_memory = 10;
+  string compute_capability = 11;
+  string driver_version = 12;
+  double memory_bandwidth_gbps = 13;
+}

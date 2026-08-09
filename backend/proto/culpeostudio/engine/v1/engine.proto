@@ -1,0 +1,1100 @@
+syntax = "proto3";
+
+package culpeostudio.engine.v1;
+
+import "culpeostudio/hardware/v1/hardware.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1;enginev1";
+
+// EngineService runs models on this machine: the on-disk catalog, the instances
+// started from it, the runtimes those need, and the keys the local gateway
+// accepts.
+//
+// The gateway itself stays on HTTP. It speaks the OpenAI API so that an
+// unmodified SDK can point at it, and an SDK that already speaks HTTP gains
+// nothing from a second dialect - it would only lose the ability to connect.
+// Everything the Studio client calls lives here.
+service EngineService {
+  // The model catalog on disk.
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc RescanModels(RescanModelsRequest) returns (RescanModelsResponse);
+  rpc DeleteModel(DeleteModelRequest) returns (DeleteModelResponse);
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+  rpc GetRecommendation(GetRecommendationRequest) returns (GetRecommendationResponse);
+  rpc SimulateParallelLoad(SimulateParallelLoadRequest) returns (SimulateParallelLoadResponse);
+
+  // The instances started from it.
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
+  rpc CreateInstance(CreateInstanceRequest) returns (CreateInstanceResponse);
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+  rpc GetInstanceMetrics(GetInstanceMetricsRequest) returns (GetInstanceMetricsResponse);
+  rpc UpdateInstance(UpdateInstanceRequest) returns (UpdateInstanceResponse);
+  rpc EnsureInstanceReady(EnsureInstanceReadyRequest) returns (EnsureInstanceReadyResponse);
+  rpc DeleteInstance(DeleteInstanceRequest) returns (DeleteInstanceResponse);
+
+  // What the worker process itself printed. The summary on a failed instance
+  // is a diagnosis; this is the evidence behind it.
+  rpc GetInstanceLogs(GetInstanceLogsRequest) returns (GetInstanceLogsResponse);
+
+  // The long-running work they schedule, and the feed that reports on it.
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse);
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse);
+  rpc StreamEvents(StreamEventsRequest) returns (stream StreamEventsResponse);
+
+  // Re-quantising a local GGUF into a smaller one. The tool for this ships
+  // inside the llama.cpp archive the runtime installer already unpacks, so
+  // nothing further is downloaded to make it work.
+  rpc ListQuantizationTypes(ListQuantizationTypesRequest) returns (ListQuantizationTypesResponse);
+  rpc PreflightQuantization(PreflightQuantizationRequest) returns (PreflightQuantizationResponse);
+  rpc StartQuantization(StartQuantizationRequest) returns (StartQuantizationResponse);
+
+  // Saved configurations. A preset is an EngineConfig under a name, so it
+  // applies to any model rather than being bound to the one it came from.
+  rpc ListPresets(ListPresetsRequest) returns (ListPresetsResponse);
+  rpc SavePreset(SavePresetRequest) returns (SavePresetResponse);
+  rpc DeletePreset(DeletePresetRequest) returns (DeletePresetResponse);
+  rpc ExportPresets(ExportPresetsRequest) returns (ExportPresetsResponse);
+  rpc ImportPresets(ImportPresetsRequest) returns (ImportPresetsResponse);
+
+  // The runtimes and the system packages they build against.
+  rpc ListRuntimes(ListRuntimesRequest) returns (ListRuntimesResponse);
+  rpc InstallRuntime(InstallRuntimeRequest) returns (InstallRuntimeResponse);
+
+  // The keys the local gateway accepts.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse);
+  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse);
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse);
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+}
+
+// RuntimeKind names an inference runtime. RUNTIME_KIND_AUTO is only meaningful
+// in a config, where it asks the engine to pick; an instance that is running
+// reports the runtime it actually got.
+enum RuntimeKind {
+  RUNTIME_KIND_UNSPECIFIED = 0;
+  RUNTIME_KIND_AUTO = 1;
+  RUNTIME_KIND_LLAMA_CPP = 2;
+
+  // 3 and 4 were vLLM and Transformers. The engine runs llama.cpp only; the
+  // numbers stay retired so an old client cannot mean one of them by accident.
+  reserved 3, 4;
+  reserved "RUNTIME_KIND_VLLM", "RUNTIME_KIND_TRANSFORMERS";
+}
+
+// ContextMode decides how the context window is sized. The HTTP API took it as
+// a string and rejected anything but these two after the fact.
+enum ContextMode {
+  // Unset means auto_max, which is what an omitted field meant.
+  CONTEXT_MODE_UNSPECIFIED = 0;
+  CONTEXT_MODE_AUTO_MAX = 1;
+  CONTEXT_MODE_FIXED = 2;
+}
+
+// Priority weighs an instance against the others when memory runs short.
+// PRIORITY_PINNED is not a weight but an exemption: a pinned instance is not
+// evicted.
+enum Priority {
+  // Unset means normal.
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_NORMAL = 2;
+  PRIORITY_HIGH = 3;
+  PRIORITY_PINNED = 4;
+}
+
+// KvCachePolicy is the wish for the KV cache before the runtime has had its
+// say; the resolved type is reported as KvCacheDtype on the plan.
+enum KvCachePolicy {
+  // Unset means prefer_4bit.
+  KV_CACHE_POLICY_UNSPECIFIED = 0;
+  KV_CACHE_POLICY_NATIVE = 1;
+  KV_CACHE_POLICY_PREFER_4BIT = 2;
+}
+
+// KvCacheDtype is what the planner settled on.
+enum KvCacheDtype {
+  KV_CACHE_DTYPE_UNSPECIFIED = 0;
+  // Q4 is q4_0, the smallest cache type llama.cpp supports, and the default.
+  KV_CACHE_DTYPE_Q4 = 1;
+  KV_CACHE_DTYPE_FP16 = 3;
+  KV_CACHE_DTYPE_BF16 = 4;
+  KV_CACHE_DTYPE_FP32 = 5;
+  KV_CACHE_DTYPE_Q4_1 = 6;
+  KV_CACHE_DTYPE_IQ4_NL = 7;
+  KV_CACHE_DTYPE_Q5_0 = 8;
+  KV_CACHE_DTYPE_Q5_1 = 9;
+  KV_CACHE_DTYPE_Q8_0 = 10;
+  // Two-bit K-quant. Upstream llama.cpp rejects it for the KV cache; only a
+  // build that reports it can be planned with it.
+  KV_CACHE_DTYPE_Q2_K = 11;
+
+  // 2 was FP8, which only the removed vLLM runtime had.
+  reserved 2;
+  reserved "KV_CACHE_DTYPE_FP8";
+}
+
+// InstanceState is the lifecycle of a single instance.
+enum InstanceState {
+  INSTANCE_STATE_UNSPECIFIED = 0;
+  INSTANCE_STATE_INSTALLING = 1;
+  INSTANCE_STATE_QUEUED = 2;
+  INSTANCE_STATE_STARTING = 3;
+  INSTANCE_STATE_READY = 4;
+  INSTANCE_STATE_DRAINING = 5;
+  INSTANCE_STATE_RESTARTING = 6;
+  INSTANCE_STATE_STOPPED = 7;
+  INSTANCE_STATE_FAILED = 8;
+  INSTANCE_STATE_FAILED_ROLLBACK = 9;
+}
+
+// OperationState is the lifecycle of a scheduled operation.
+enum OperationState {
+  OPERATION_STATE_UNSPECIFIED = 0;
+  OPERATION_STATE_QUEUED = 1;
+  OPERATION_STATE_RUNNING = 2;
+  OPERATION_STATE_COMPLETED = 3;
+  OPERATION_STATE_FAILED = 4;
+  OPERATION_STATE_CANCELLED = 5;
+}
+
+// Placement says where the weights and the cache ended up.
+enum Placement {
+  // Unset means unknown, which is what the engine reports before it has
+  // planned the instance.
+  PLACEMENT_UNSPECIFIED = 0;
+  PLACEMENT_GPU = 1;
+  PLACEMENT_RAM = 2;
+  PLACEMENT_HYBRID = 3;
+}
+
+// GuardState is how close the resource guard is to intervening.
+enum GuardState {
+  // Unset means normal.
+  GUARD_STATE_UNSPECIFIED = 0;
+  GUARD_STATE_NORMAL = 1;
+  GUARD_STATE_WARNING = 2;
+  GUARD_STATE_CRITICAL = 3;
+  GUARD_STATE_EMERGENCY = 4;
+}
+
+// ModelFormat is the on-disk shape of a catalog entry.
+enum ModelFormat {
+  MODEL_FORMAT_UNSPECIFIED = 0;
+  MODEL_FORMAT_GGUF = 1;
+
+  // 2 was SafeTensors, which needed the removed Transformers and vLLM runtimes.
+  reserved 2;
+  reserved "MODEL_FORMAT_SAFETENSORS";
+}
+
+// ModelStatus summarises whether a catalog entry can be started. The HTTP API
+// derived it from the complete and startable flags on every response; it is
+// derived here too, and the flags are still carried so the reason survives.
+enum ModelStatus {
+  MODEL_STATUS_UNSPECIFIED = 0;
+  MODEL_STATUS_READY = 1;
+  MODEL_STATUS_INVALID = 2;
+  MODEL_STATUS_INCOMPLETE = 3;
+}
+
+// IssueSeverity grades a catalog validation finding.
+enum IssueSeverity {
+  ISSUE_SEVERITY_UNSPECIFIED = 0;
+  ISSUE_SEVERITY_WARNING = 1;
+  ISSUE_SEVERITY_ERROR = 2;
+}
+
+// ChangeMode says whether a config field can be changed on a running instance.
+enum ChangeMode {
+  CHANGE_MODE_UNSPECIFIED = 0;
+  CHANGE_MODE_LIVE = 1;
+  CHANGE_MODE_RESTART_REQUIRED = 2;
+}
+
+// Confidence separates a measured reading from an estimate.
+enum Confidence {
+  CONFIDENCE_UNSPECIFIED = 0;
+  CONFIDENCE_MEASURED = 1;
+  CONFIDENCE_ESTIMATED = 2;
+}
+
+// EngineConfig is what the caller asks for. Every field the HTTP API accepted
+// as a JSON patch is spelled out here, except runtime_options and
+// generation_defaults: those are passed through to the runtime and to the
+// sampler untouched, so they stay free-form.
+message EngineConfig {
+  RuntimeKind runtime = 1;
+  ContextMode context_mode = 2;
+  // Only read when context_mode is fixed. Unset asks for the planner's choice.
+  optional int32 context_tokens = 3;
+  int32 max_sequences = 4;
+  Priority priority = 5;
+  KvCachePolicy kv_cache_policy = 6;
+  // Unset means the engine may fall back to a weaker placement rather than
+  // refusing to start. It defaults to true.
+  optional bool allow_fallback = 7;
+  bool autostart = 8;
+  google.protobuf.Struct runtime_options = 9;
+  google.protobuf.Struct generation_defaults = 10;
+  // 11 was trust_remote_code, which consented to running a SafeTensors model's
+  // own Python. GGUF carries no executable code, so there is nothing to trust.
+  reserved 11;
+  reserved "trust_remote_code";
+
+  // Let the local OpenAI gateway load this instance when a request arrives for
+  // it, instead of answering "not ready". Off by default: a request that
+  // silently loads tens of gigabytes is not something to do unasked.
+  bool gateway_autostart = 12;
+  // Bring the instance back after its worker process died on its own. Also off
+  // by default, so a model that cannot load stops instead of looping.
+  bool restart_on_crash = 13;
+  // How long the instance may sit unused before it is unloaded. Unset follows
+  // the engine default; a negative value keeps it loaded until it is stopped
+  // by hand.
+  optional int32 idle_timeout_seconds = 14;
+}
+
+// ModelMetadata is what the catalog read out of the model files.
+message ModelMetadata {
+  string name = 1;
+  string architecture = 2;
+  int32 layers = 3;
+  int32 attention_heads = 4;
+  int32 kv_heads = 5;
+  int32 head_dimension = 6;
+  int32 embedding_dimension = 7;
+  int32 context_length = 8;
+  int32 sliding_window = 9;
+  int64 parameter_count = 10;
+  string quantization = 11;
+  string stored_tensor_data_type = 12;
+  // How many bytes of this model are Mixture-of-Experts weight, and how many
+  // blocks carry any. Both zero for a dense model, which is what makes them a
+  // reliable test for whether an expert offload applies at all.
+  int64 expert_weight_bytes = 13;
+  int32 expert_layers = 14;
+}
+
+// ValidationIssue is one reason a catalog entry is not startable, or one
+// caveat about starting it.
+message ValidationIssue {
+  string code = 1;
+  IssueSeverity severity = 2;
+  string message = 3;
+  string remediation = 4;
+}
+
+// ModelRecord is one entry in the on-disk catalog.
+message ModelRecord {
+  string id = 1;
+  string fingerprint = 2;
+  string name = 3;
+  string relative_path = 4;
+  ModelFormat format = 5;
+  bool complete = 6;
+  bool startable = 7;
+  int64 size_bytes = 8;
+  repeated string files = 9;
+  ModelMetadata metadata = 10;
+  repeated RuntimeKind runtime_candidates = 11;
+  repeated ValidationIssue issues = 12;
+  ModelStatus status = 13;
+}
+
+// HardwareSnapshot is the live reading the engine plans against. It reuses the
+// GPU message the marketplace and the settings screen already receive, so the
+// client has one GPU shape to parse rather than two.
+message HardwareSnapshot {
+  string os = 1;
+  string arch = 2;
+  string cpu_name = 3;
+  int32 cpu_cores = 4;
+  int64 ram_total_bytes = 5;
+  int64 ram_available_bytes = 6;
+  int64 disk_free_bytes = 7;
+  repeated culpeostudio.hardware.v1.EngineGpu gpus = 8;
+  bool gpu_telemetry_incomplete = 9;
+  google.protobuf.Timestamp captured_at = 10;
+  string source = 11;
+}
+
+// RuntimeCapability is what one runtime can do on this machine right now.
+message RuntimeCapability {
+  RuntimeKind kind = 1;
+  // The pinned llama.cpp release tag this build comes from.
+  string version = 2;
+  bool installed = 3;
+  bool healthy = 4;
+  string environment = 5;
+  repeated string gpu_backends = 6;
+  repeated string kv_cache_modes = 7;
+  // Which config fields this runtime honours, and whether a change to one of
+  // them can be applied live.
+  map<string, ChangeMode> config_fields = 8;
+  string probe_error = 9;
+  google.protobuf.Timestamp last_probed_at = 10;
+  // Free-form because it also carries installer progress states, which grow
+  // with the installer rather than with the schema.
+  string status = 11;
+  string status_message = 12;
+  double progress = 13;
+  string error_code = 14;
+  // Which prebuilt binary this machine resolves to: cuda, vulkan, sycl, metal
+  // or cpu.
+  string variant = 15;
+  // Absolute path of the installed llama-server, once it is installed.
+  string server_path = 16;
+  // What the installed binary reported for --version.
+  string build_version = 17;
+}
+
+// EngineDefaults are the values the engine applies when a config leaves a
+// field out, plus the reserves it currently holds back. The HTTP API returned
+// this as a free-form object the client picked keys out of.
+message EngineDefaults {
+  int32 minimum_context_tokens = 1;
+  int32 context_step_tokens = 2;
+  // Human-readable formulas, shown next to the numbers below.
+  string ram_reserve = 3;
+  string gpu_reserve = 4;
+  string emergency_ram_floor = 5;
+  string emergency_gpu_floor = 6;
+  KvCachePolicy kv_cache_policy = 7;
+  int32 max_sequences = 8;
+  bool autostart = 9;
+  string gateway_url = 10;
+  string weight_quantization = 11;
+  int64 ram_reserve_bytes = 12;
+  // The largest of the per-GPU reserves, kept for a single-GPU summary.
+  int64 gpu_reserve_bytes = 13;
+  map<string, int64> gpu_reserve_bytes_by_id = 14;
+  // False when the user has overridden the reserve in the settings.
+  bool ram_reserve_is_automatic = 15;
+  bool gpu_reserve_is_automatic = 16;
+}
+
+// MemoryAllocation is one line of the memory budget: what it costs in RAM and
+// what it costs on each GPU.
+message MemoryAllocation {
+  int64 ram_bytes = 1;
+  map<string, int64> gpu_bytes = 2;
+}
+
+// ResourceBreakdown is the whole budget, split by what claims it.
+message ResourceBreakdown {
+  MemoryAllocation weights = 1;
+  MemoryAllocation kv_cache = 2;
+  MemoryAllocation runtime = 3;
+  MemoryAllocation reserve = 4;
+  MemoryAllocation total = 5;
+}
+
+// PreflightCheck is one gate passed before a start is attempted. Its state is
+// free-form: the checks are a diagnostic list that grows, and the client shows
+// it rather than branching on it.
+message PreflightCheck {
+  string id = 1;
+  string state = 2;
+  string label = 3;
+  string detail = 4;
+}
+
+// PreflightReport ties the checks to the hardware and model they ran against.
+message PreflightReport {
+  string hardware_snapshot_id = 1;
+  string model_fingerprint = 2;
+  string metadata_confidence = 3;
+  repeated PreflightCheck checks = 4;
+}
+
+// ContextPlan is what the planner decided: how much context fits, where it
+// fits, and what it costs.
+message ContextPlan {
+  int32 model_context_limit_tokens = 1;
+  int32 gpu_only_max_context_tokens = 2;
+  int32 hybrid_max_context_tokens = 3;
+  int32 effective_context_tokens = 4;
+  // The context length above which the cache spills into RAM. Unset when it
+  // never does.
+  optional int32 ram_required_after_tokens = 5;
+  int64 kv_bytes_per_token_at_start = 6;
+  int32 max_sequences = 7;
+  KvCacheDtype kv_cache_dtype = 8;
+  Priority priority = 9;
+  bool pinned = 10;
+  bool restart_required = 11;
+  bool uses_ram = 12;
+  ResourceBreakdown memory = 13;
+  Confidence confidence = 14;
+  repeated string warnings = 15;
+  repeated string affected_restart_instances = 16;
+  PreflightReport preflight = 17;
+}
+
+// Fallback records one setting the engine had to give up on, and why.
+message Fallback {
+  string setting = 1;
+  string from = 2;
+  string to = 3;
+  string reason = 4;
+}
+
+// SuggestedFix is the one-click remedy offered for a failure. The action is
+// what UpdateInstance takes as apply_fix.
+message SuggestedFix {
+  string action = 1;
+  string label = 2;
+}
+
+// EngineInstance is one served model.
+message EngineInstance {
+  string id = 1;
+  InstanceState state = 2;
+  string model_id = 3;
+  string served_model_name = 4;
+  EngineConfig requested_config = 5;
+  EngineConfig effective_config = 6;
+  ContextPlan plan = 7;
+  RuntimeKind runtime = 8;
+  Priority priority = 9;
+  bool pinned = 10;
+  bool autostart = 11;
+  bool show_in_chat_picker = 12;
+  Placement placement = 13;
+  int32 active_requests = 14;
+  google.protobuf.Timestamp last_used_at = 15;
+  google.protobuf.Timestamp idle_expires_at = 16;
+  GuardState guard_state = 17;
+  repeated string restart_required_fields = 18;
+  repeated Fallback fallbacks = 19;
+  string error = 20;
+  string error_summary = 21;
+  string error_code = 22;
+  SuggestedFix suggested_fix = 23;
+  string phase = 24;
+  string detail_message = 25;
+  double progress = 26;
+  string endpoint_name = 27;
+  int64 plan_revision = 28;
+  google.protobuf.Timestamp created_at = 29;
+  google.protobuf.Timestamp updated_at = 30;
+  // Mirrors of the config switches, so a list view does not have to reach into
+  // requested_config to render the toggles beside the instance.
+  bool gateway_autostart = 31;
+  bool restart_on_crash = 32;
+  optional int32 idle_timeout_seconds = 33;
+}
+
+// ResourceConflict says which resource was short and by how much. It is
+// carried on a failed operation and, as an error detail, on the call that
+// could not be scheduled.
+message ResourceConflict {
+  string resource = 1;
+  int64 required_bytes = 2;
+  int64 available_bytes = 3;
+  int64 reserve_bytes = 4;
+  int64 total_bytes = 5;
+  string reason = 6;
+  // Set when the conflict is attributed to a specific instance.
+  string instance_id = 7;
+}
+
+// EngineOperation is a scheduled unit of work. Its type is free-form on
+// purpose: it labels the work for the UI, and new kinds of work should not
+// need a schema change to be reportable.
+message EngineOperation {
+  string id = 1;
+  string type = 2;
+  OperationState state = 3;
+  string instance_id = 4;
+  int32 queue_position = 5;
+  double progress = 6;
+  string message = 7;
+  string detail_message = 8;
+  string phase = 9;
+  string error = 10;
+  string error_summary = 11;
+  string error_code = 12;
+  SuggestedFix suggested_fix = 13;
+  ResourceConflict resource_conflict = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp finished_at = 17;
+  repeated string evicted_instance_ids = 18;
+}
+
+// EngineError is attached as a status detail when a call fails for a reason
+// the client acts on. The HTTP API put the same fields in the error body, and
+// the client read them back off the JSON.
+message EngineError {
+  string code = 1;
+  string message = 2;
+  // Set when code is resource_conflict.
+  ResourceConflict conflict = 3;
+  // Set when code is gpu_runtime_unavailable.
+  string reason = 4;
+  string remediation = 5;
+  // 7 and 8 carried the remote-code consent hashes.
+  reserved 7, 8;
+  reserved "python_files_hash", "python_file_count";
+  // Retired with the SafeTensors runtimes:
+  // would have to cover.
+  string model_fingerprint = 6;
+}
+
+message ListModelsRequest {}
+
+message ListModelsResponse {
+  repeated ModelRecord models = 1;
+  string model_dir = 2;
+}
+
+message RescanModelsRequest {}
+
+message RescanModelsResponse {
+  repeated ModelRecord models = 1;
+  string model_dir = 2;
+}
+
+message DeleteModelRequest {
+  string model_id = 1;
+}
+
+// The catalog after the deletion, so a client does not have to list again.
+message DeleteModelResponse {
+  repeated ModelRecord models = 1;
+  string model_dir = 2;
+}
+
+message GetCapabilitiesRequest {}
+
+message GetCapabilitiesResponse {
+  HardwareSnapshot hardware = 1;
+  repeated RuntimeCapability runtimes = 2;
+  EngineDefaults defaults = 3;
+}
+
+message GetRecommendationRequest {
+  string model_id = 1;
+  // Merged over the engine defaults, the same way the HTTP body was.
+  EngineConfig config = 2;
+}
+
+message GetRecommendationResponse {
+  ContextPlan plan = 1;
+}
+
+
+// SimulateModelEntry is one model to plan for, without starting it.
+message SimulateModelEntry {
+  string model_id = 1;
+  EngineConfig config = 2;
+}
+
+message SimulateParallelLoadRequest {
+  // Between 1 and 8 entries.
+  repeated SimulateModelEntry models = 1;
+  // Whether the instances already holding memory are counted against the
+  // budget. Unset means true, which is what an omitted field meant.
+  optional bool include_running = 2;
+}
+
+// SimulatedModel is how one entry of the request fared.
+message SimulatedModel {
+  string model = 1;
+  bool fits = 2;
+  int32 effective_context_tokens = 3;
+  Placement placement = 4;
+  MemoryAllocation memory = 5;
+  repeated string warnings = 6;
+  // Set instead of the numbers above when the planner reserved no budget.
+  string reason = 7;
+}
+
+// SimulatedGpuBudget is one GPU measured against what the simulation planned.
+message SimulatedGpuBudget {
+  string id = 1;
+  string name = 2;
+  int64 vram_total_bytes = 3;
+  int64 vram_free_bytes = 4;
+  int64 planned_bytes = 5;
+}
+
+message SimulatedHost {
+  int64 ram_total_bytes = 1;
+  int64 ram_available_bytes = 2;
+  int64 ram_reserve_bytes = 3;
+  repeated SimulatedGpuBudget gpus = 4;
+}
+
+message SimulateParallelLoadResponse {
+  bool feasible = 1;
+  repeated SimulatedModel models = 2;
+  MemoryAllocation totals = 3;
+  SimulatedHost host = 4;
+  // Running instances that would be replanned with a smaller context.
+  repeated string affected_running_instances = 5;
+  repeated string recommendations = 6;
+  // Set when nothing could be planned at all, in which case models is empty.
+  string reason = 7;
+}
+
+message ListInstancesRequest {}
+
+message ListInstancesResponse {
+  repeated EngineInstance instances = 1;
+}
+
+message CreateInstanceRequest {
+  string model_id = 1;
+  // Defaults to the model's name.
+  string served_model_name = 2;
+  EngineConfig config = 3;
+}
+
+// The response to every call that schedules work on an instance: the instance
+// as it stands now, and the operation that will change it.
+message CreateInstanceResponse {
+  EngineInstance instance = 1;
+  string operation_id = 2;
+  OperationState state = 3;
+  int32 queue_position = 4;
+}
+
+message GetInstanceRequest {
+  string instance_id = 1;
+}
+
+message GetInstanceResponse {
+  EngineInstance instance = 1;
+}
+
+message GetInstanceMetricsRequest {
+  string instance_id = 1;
+}
+
+message GetInstanceMetricsResponse {
+  // Free-form: this is a telemetry blob for display, and pinning its shape
+  // would mean a schema change for every counter added.
+  google.protobuf.Struct metrics = 1;
+}
+
+// SetVisibility shows or hides a stopped instance in the chat model picker.
+message SetVisibility {
+  bool show_in_chat_picker = 1;
+}
+
+// SetGenerationDefaults replaces the sampler defaults. It applies live.
+message SetGenerationDefaults {
+  google.protobuf.Struct generation_defaults = 1;
+}
+
+// StartInstance starts a stopped instance or restarts a running one.
+message StartInstance {
+  // Unset keeps the config the instance already asked for. A config that is
+  // set replaces it, with every field it leaves out taking the engine default
+  // rather than the instance's previous value - the two free-form maps are the
+  // exception and are merged over what the instance already had, because they
+  // are passed through to the runtime key by key.
+  EngineConfig requested_config = 1;
+  // Whether a running instance is stopped first. A start on a running instance
+  // was accepted as a restart by the HTTP API and is here too.
+  bool restart = 2;
+}
+
+message StopInstance {}
+
+// ApplyFix restarts with the config change a SuggestedFix names.
+message ApplyFix {
+  // One of reduce_context, retry_on_cpu or retry_with_ram.
+  string fix = 1;
+}
+
+// SetRequestedConfig stores a config without acting on it. The fields that
+// need a restart take effect the next time the instance starts.
+message SetRequestedConfig {
+  EngineConfig requested_config = 1;
+}
+
+// UpdateInstanceRequest carries exactly one change. The HTTP API took a JSON
+// object and worked out which change was meant from which keys were present,
+// which is why it had to reject a visibility change bundled with anything
+// else; the oneof makes that impossible to express instead of an error to
+// return.
+message UpdateInstanceRequest {
+  string instance_id = 1;
+  oneof change {
+    SetVisibility visibility = 2;
+    SetGenerationDefaults generation_defaults = 3;
+    StartInstance start = 4;
+    StopInstance stop = 5;
+    ApplyFix apply_fix = 6;
+    SetRequestedConfig requested_config = 7;
+  }
+}
+
+message UpdateInstanceResponse {
+  EngineInstance instance = 1;
+  // Empty for the changes that take effect at once.
+  string operation_id = 2;
+  OperationState state = 3;
+  int32 queue_position = 4;
+  // Echoes ApplyFix.fix so a client can tell which fix was applied.
+  string applied_fix = 5;
+}
+
+message EnsureInstanceReadyRequest {
+  string instance_id = 1;
+}
+
+message EnsureInstanceReadyResponse {
+  EngineInstance instance = 1;
+  // Both empty when the instance was already ready.
+  string operation_id = 2;
+  OperationState state = 3;
+  int32 queue_position = 4;
+  // True when no operation had to be scheduled.
+  bool already_ready = 5;
+}
+
+message DeleteInstanceRequest {
+  string instance_id = 1;
+}
+
+message DeleteInstanceResponse {
+  EngineInstance instance = 1;
+  string operation_id = 2;
+}
+
+message GetOperationRequest {
+  string operation_id = 1;
+}
+
+message GetOperationResponse {
+  EngineOperation operation = 1;
+}
+
+message CancelOperationRequest {
+  string operation_id = 1;
+}
+
+message CancelOperationResponse {
+  EngineOperation operation = 1;
+}
+
+// StreamEventsRequest opens the engine feed. It carries nothing: the HTTP
+// version needed a single-use ticket because an EventSource cannot send an
+// Authorization header, and a gRPC stream authenticates itself like every
+// other call.
+message StreamEventsRequest {}
+
+// StreamEventsResponse is one entry of the feed. The first one on every stream
+// is a snapshot of the instances, so a client that has just connected does not
+// have to list them separately.
+message StreamEventsResponse {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof event {
+    InstanceSnapshot snapshot = 2;
+    EngineInstance instance_created = 3;
+    EngineInstance instance_changed = 4;
+    InstanceDeleted instance_deleted = 5;
+    EngineOperation operation = 6;
+    ModelsRescanned models_rescanned = 7;
+    ModelDeleted model_deleted = 8;
+    GuardStateChanged guard_state = 9;
+    // The escape hatch for an event the engine publishes that has no case
+    // above yet, so it reaches the client as something ignorable rather than
+    // disappearing from the feed.
+    GenericEvent generic = 10;
+  }
+}
+
+message InstanceSnapshot {
+  repeated EngineInstance instances = 1;
+}
+
+message InstanceDeleted {
+  string instance_id = 1;
+}
+
+message ModelsRescanned {
+  int32 count = 1;
+  // Set when the rescan was not asked for, e.g. after a download finished.
+  string reason = 2;
+}
+
+message ModelDeleted {
+  string model_id = 1;
+  string name = 2;
+}
+
+message GuardStateChanged {
+  GuardState state = 1;
+}
+
+message GenericEvent {
+  string type = 1;
+  google.protobuf.Struct data = 2;
+}
+
+message ListRuntimesRequest {}
+
+message ListRuntimesResponse {
+  repeated RuntimeCapability runtimes = 1;
+  repeated RuntimeInstallJob install_operations = 2;
+}
+
+// RuntimeInstallJob is the installer's own view of an install, which outlives
+// the operation that started it.
+message RuntimeInstallJob {
+  string id = 1;
+  // Identifies the exact set of archives this job installs.
+  string build_digest = 2;
+  RuntimeKind runtime = 3;
+  string version = 4;
+  string install_path = 5;
+  // Free-form for the same reason RuntimeCapability.status is.
+  string status = 6;
+  string phase = 7;
+  double progress = 8;
+  string message = 9;
+  string detail_message = 10;
+  string log = 11;
+  string error = 12;
+  string error_summary = 13;
+  string error_code = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  google.protobuf.Timestamp finished_at = 17;
+  string variant = 18;
+  string server_path = 19;
+}
+
+message InstallRuntimeRequest {
+  RuntimeKind runtime = 1;
+}
+
+message InstallRuntimeResponse {
+  string operation_id = 1;
+  RuntimeInstallJob runtime_install = 2;
+}
+
+// GatewayKey is a key the local gateway accepts, without its secret. The
+// secret is returned once, by the call that created or rotated it.
+message GatewayKey {
+  string id = 1;
+  string name = 2;
+  // Empty means the key reaches every instance.
+  repeated string instance_ids = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp last_used_at = 5;
+  google.protobuf.Timestamp revoked_at = 6;
+}
+
+message ListKeysRequest {}
+
+message ListKeysResponse {
+  repeated GatewayKey keys = 1;
+}
+
+message CreateKeyRequest {
+  string name = 1;
+  // Every id must name an existing instance. Empty scopes the key to all.
+  repeated string instance_ids = 2;
+}
+
+message CreateKeyResponse {
+  GatewayKey key = 1;
+  // The only time the secret is readable.
+  string plaintext = 2;
+}
+
+message RotateKeyRequest {
+  string key_id = 1;
+}
+
+message RotateKeyResponse {
+  GatewayKey key = 1;
+  string plaintext = 2;
+}
+
+message RevokeKeyRequest {
+  string key_id = 1;
+}
+
+message RevokeKeyResponse {
+  bool revoked = 1;
+}
+
+// The worker's own output. -------------------------------------------
+
+message GetInstanceLogsRequest {
+  string instance_id = 1;
+  // Number of trailing lines to return per stream. Zero returns everything the
+  // supervisor still holds, which is a bounded ring buffer either way.
+  int32 tail_lines = 2;
+}
+
+message GetInstanceLogsResponse {
+  string stdout = 1;
+  string stderr = 2;
+  // False when the process is gone: the buffers live with the process, so a
+  // stopped instance has no output to show.
+  bool available = 3;
+}
+
+// Quantisation. ------------------------------------------------------
+
+// QuantizationType is one target format the installed llama.cpp build can
+// write. The figures come from that build's own help output rather than from a
+// table maintained in Culpeo Studio, so they always describe the binary that
+// would actually do the work.
+message QuantizationType {
+  string name = 1;
+  string description = 2;
+  // Size and perplexity delta for the reference model the build names, which
+  // is the only quality comparison the tool itself provides.
+  double size_gib_at_reference = 3;
+  double perplexity_delta = 4;
+  string reference_model = 5;
+  // Reported instead of the pair above for the types described this way.
+  double bits_per_weight = 6;
+  // Set when this name resolves to another entry, such as Q4_K to Q4_K_M.
+  string alias = 7;
+}
+
+message ListQuantizationTypesRequest {}
+
+message ListQuantizationTypesResponse {
+  repeated QuantizationType types = 1;
+  // False when no local runtime is installed yet, in which case the tool that
+  // would answer this is not on disk.
+  bool available = 2;
+  string unavailable_reason = 3;
+}
+
+// QuantizationRequest names one conversion.
+message QuantizationRequest {
+  string source_model_id = 1;
+  // A name from ListQuantizationTypes, such as Q4_K_M.
+  string target_type = 2;
+  // Bare filename for the result, placed beside its source. Empty derives one
+  // from the source name and the target type.
+  string target_name = 3;
+  // Required when the source is already quantised. Re-quantising stacks loss on
+  // loss, so it is never implied.
+  bool allow_requantize = 4;
+  // Keep output.weight at its source precision: a little larger, noticeably
+  // better at the low end of the range.
+  bool leave_output_tensor = 5;
+  // Zero lets the tool pick.
+  int32 threads = 6;
+}
+
+// QuantizationPreflight is what the conversion would do, computed before
+// anything is written. The size is not estimated from bits per weight: it is
+// what the tool's own dry run reported.
+message QuantizationPreflight {
+  string source_model_id = 1;
+  string source_name = 2;
+  string source_quantization = 3;
+  int64 source_bytes = 4;
+  string target_type = 5;
+  string target_name = 6;
+  string target_relative_path = 7;
+  int64 estimated_bytes = 8;
+  int64 free_disk_bytes = 9;
+  int64 required_disk_bytes = 10;
+  double source_bits_per_weight = 11;
+  double target_bits_per_weight = 12;
+  // The source already carries a quantisation, so the result loses quality
+  // twice. Most local GGUFs are in this state, which makes it the single most
+  // important thing to show.
+  bool is_requantization = 13;
+  bool feasible = 14;
+  // Reasons the conversion cannot start. Empty when feasible.
+  repeated string blockers = 15;
+  // Reasons to think twice, which do not prevent it.
+  repeated string warnings = 16;
+}
+
+message PreflightQuantizationRequest {
+  QuantizationRequest request = 1;
+}
+
+message PreflightQuantizationResponse {
+  QuantizationPreflight preflight = 1;
+}
+
+message StartQuantizationRequest {
+  QuantizationRequest request = 1;
+}
+
+message StartQuantizationResponse {
+  string operation_id = 1;
+  OperationState state = 2;
+  QuantizationPreflight preflight = 3;
+}
+
+// Saved configurations. ----------------------------------------------
+
+message EnginePreset {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  EngineConfig config = 4;
+  // The model this was saved from, as a hint only. A preset is not bound to it.
+  string model_id = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  // Shipped with the engine: applicable and copyable, but not editable, so
+  // there is always something to fall back to.
+  bool built_in = 8;
+}
+
+message ListPresetsRequest {}
+
+message ListPresetsResponse {
+  repeated EnginePreset presets = 1;
+}
+
+message SavePresetRequest {
+  // Empty creates a new preset; an existing id replaces that one.
+  EnginePreset preset = 1;
+}
+
+message SavePresetResponse {
+  EnginePreset preset = 1;
+}
+
+message DeletePresetRequest {
+  string preset_id = 1;
+}
+
+message DeletePresetResponse {
+  bool deleted = 1;
+}
+
+message ExportPresetsRequest {
+  // Empty exports every preset the user saved themselves.
+  repeated string preset_ids = 1;
+}
+
+message ExportPresetsResponse {
+  // The transfer format, as JSON. The client writes it wherever it likes.
+  string document = 1;
+  // A filename the client can offer by default.
+  string suggested_filename = 2;
+}
+
+message ImportPresetsRequest {
+  string document = 1;
+}
+
+message ImportPresetsResponse {
+  // Every entry is imported under a fresh id, so importing the same file twice
+  // makes copies rather than silently overwriting.
+  repeated EnginePreset presets = 1;
+}

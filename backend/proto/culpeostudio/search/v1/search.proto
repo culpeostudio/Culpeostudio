@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package culpeostudio.search.v1;
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/search/v1;searchv1";
+
+// SearchService is CulpeoSearch: concurrent metasearch across public engines
+// and extraction of a single page.
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc Extract(ExtractRequest) returns (ExtractResponse);
+  rpc ListEngines(ListEnginesRequest) returns (ListEnginesResponse);
+}
+
+// Category was a path segment per category, which needed one route each.
+enum Category {
+  CATEGORY_UNSPECIFIED = 0;
+  CATEGORY_TEXT = 1;
+  CATEGORY_NEWS = 2;
+  CATEGORY_IMAGES = 3;
+  CATEGORY_VIDEOS = 4;
+  CATEGORY_BOOKS = 5;
+}
+
+enum ExtractFormat {
+  // Resolves to TEXT_MARKDOWN, which is what the missing parameter defaulted
+  // to on the HTTP API.
+  EXTRACT_FORMAT_UNSPECIFIED = 0;
+  EXTRACT_FORMAT_TEXT = 1;
+  EXTRACT_FORMAT_CONTENT = 2;
+  EXTRACT_FORMAT_TEXT_PLAIN = 3;
+  EXTRACT_FORMAT_TEXT_RICH = 4;
+  EXTRACT_FORMAT_TEXT_MARKDOWN = 5;
+}
+
+message SearchRequest {
+  Category category = 1;
+  string query = 2;
+  string region = 3;
+  string safesearch = 4;
+  string timelimit = 5;
+  int32 page = 6;
+  int32 max_results = 7;
+  string backend = 8;
+}
+
+// One hit. Which fields are filled depends on the category the search ran in.
+message SearchResult {
+  string title = 1;
+  string href = 2;
+  string body = 3;
+  string image = 4;
+  string thumbnail = 5;
+  string url = 6;
+  string height = 7;
+  string width = 8;
+  string source = 9;
+  string date = 10;
+  string content = 11;
+  string description = 12;
+  string duration = 13;
+  string embed_html = 14;
+  string embed_url = 15;
+  string image_token = 16;
+  string provider = 17;
+  string published = 18;
+  string publisher = 19;
+  string uploader = 20;
+  string author = 21;
+  string info = 22;
+}
+
+message SearchResponse {
+  string query = 1;
+  repeated SearchResult results = 2;
+  int32 count = 3;
+}
+
+message ExtractRequest {
+  string url = 1;
+  ExtractFormat format = 2;
+}
+
+message ExtractResponse {
+  string url = 1;
+  ExtractFormat format = 2;
+  // Filled for every textual format.
+  string content = 3;
+  // Filled for CONTENT: the raw bytes, which the JSON API had to base64
+  // encode and proto carries natively.
+  bytes raw_content = 4;
+}
+
+message ListEnginesRequest {}
+
+message ListEnginesResponse {
+  // Engine names per category. Proto maps cannot hold a repeated value
+  // directly, hence the wrapper.
+  map<string, EngineNames> engines = 1;
+}
+
+message EngineNames {
+  repeated string names = 1;
+}

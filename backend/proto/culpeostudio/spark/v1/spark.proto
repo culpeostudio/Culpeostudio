@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package culpeostudio.spark.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/spark/v1;sparkv1";
+
+// SparkService owns the agent's projects and answers the permission prompts a
+// running agent turn raises.
+service SparkService {
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc RenameProject(RenameProjectRequest) returns (RenameProjectResponse);
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+  rpc RespondToPermission(RespondToPermissionRequest) returns (RespondToPermissionResponse);
+}
+
+message Project {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string color = 4;
+  string path = 5;
+  string icon = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message ListProjectsRequest {}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  string color = 2;
+  string path = 3;
+  string icon = 4;
+}
+
+message CreateProjectResponse {
+  Project project = 1;
+}
+
+message RenameProjectRequest {
+  string id = 1;
+  string name = 2;
+  string color = 3;
+  string path = 4;
+  // Optional, because leaving it out keeps the current icon while sending an
+  // empty string clears it.
+  optional string icon = 5;
+}
+
+message RenameProjectResponse {
+  Project project = 1;
+}
+
+message DeleteProjectRequest {
+  string id = 1;
+}
+
+message DeleteProjectResponse {}
+
+message RespondToPermissionRequest {
+  string session_id = 1;
+  string request_id = 2;
+  string decision = 3;
+}
+
+message RespondToPermissionResponse {}

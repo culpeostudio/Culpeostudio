@@ -1,0 +1,485 @@
+syntax = "proto3";
+
+package culpeostudio.memory.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/memory/v1;memoryv1";
+
+// MemoryService is the programmatic side of the memory module: sessions and
+// what they accumulate, retrieval over it, and the live event feed.
+//
+// The user a call acts for is never a field in these messages. It comes from
+// the credential the call carries, the way the HTTP handlers took it from the
+// authenticated request rather than from the body.
+//
+// The browser-facing half of the module stays on HTTP, because the memory
+// viewer is a page served to a browser and a browser speaks neither gRPC nor
+// HTTP/2 trailers: /memory/view, its read-only queries, and the SSE feed at
+// /memory/events with the ticket handshake that gets a token past EventSource.
+// StreamEvents below is the same feed for callers that can send metadata, so
+// they need no ticket.
+service MemoryService {
+  // Sessions and their contents.
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+  rpc AddPrompt(AddPromptRequest) returns (AddPromptResponse);
+  rpc AddObservation(AddObservationRequest) returns (AddObservationResponse);
+  rpc CompleteSession(CompleteSessionRequest) returns (CompleteSessionResponse);
+
+  // Retrieval.
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc GetTimeline(GetTimelineRequest) returns (GetTimelineResponse);
+  rpc GetObservations(GetObservationsRequest) returns (GetObservationsResponse);
+  rpc GetContext(GetContextRequest) returns (GetContextResponse);
+
+  // Corrections to what was remembered.
+  rpc UpdateChangeRequestStatus(UpdateChangeRequestStatusRequest) returns (UpdateChangeRequestStatusResponse);
+  rpc DeleteObservation(DeleteObservationRequest) returns (DeleteObservationResponse);
+  rpc UpdateMemory(UpdateMemoryRequest) returns (UpdateMemoryResponse);
+
+  // Capture, which is throttled per caller.
+  rpc CaptureChatMessage(CaptureChatMessageRequest) returns (CaptureChatMessageResponse);
+  rpc CaptureEvent(CaptureEventRequest) returns (CaptureEventResponse);
+
+  // Live feed of everything the store changes, scoped to the caller.
+  rpc StreamEvents(StreamEventsRequest) returns (stream StreamEventsResponse);
+}
+
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  SESSION_STATUS_ACTIVE = 1;
+  SESSION_STATUS_COMPLETED = 2;
+}
+
+// PromptRole is who spoke. Unspecified is read as USER, which is what the
+// store did with any role it did not recognise.
+enum PromptRole {
+  PROMPT_ROLE_UNSPECIFIED = 0;
+  PROMPT_ROLE_USER = 1;
+  PROMPT_ROLE_ASSISTANT = 2;
+  PROMPT_ROLE_SYSTEM = 3;
+}
+
+// MemoryLayer separates what is true of the user from what is true of a
+// project. On a write, unspecified means PROJECT_DATA: memory a caller does not
+// place belongs to the project, not to the person. On a filter it means "any
+// layer", and search then infers one from the query.
+enum MemoryLayer {
+  MEMORY_LAYER_UNSPECIFIED = 0;
+  MEMORY_LAYER_USER_DATA = 1;
+  MEMORY_LAYER_PROJECT_DATA = 2;
+}
+
+// MemoryCategory is what kind of thing was remembered. On a write, unspecified
+// means STATUS; on a filter it means "any category".
+enum MemoryCategory {
+  MEMORY_CATEGORY_UNSPECIFIED = 0;
+  MEMORY_CATEGORY_STATUS = 1;
+  MEMORY_CATEGORY_BRAINSTORMING = 2;
+  MEMORY_CATEGORY_CHANGE_REQUEST = 3;
+}
+
+// ChangeRequestStatus is where a proposal stands. Unspecified is read as OPEN,
+// which is the state a proposal is recorded in.
+enum ChangeRequestStatus {
+  CHANGE_REQUEST_STATUS_UNSPECIFIED = 0;
+  CHANGE_REQUEST_STATUS_OPEN = 1;
+  CHANGE_REQUEST_STATUS_ACCEPTED = 2;
+  CHANGE_REQUEST_STATUS_REJECTED = 3;
+}
+
+message Prompt {
+  string id = 1;
+  string session_id = 2;
+  PromptRole role = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// ChangeRequestState is a proposal and the decision on it. Present only on an
+// observation that carries one.
+message ChangeRequestState {
+  ChangeRequestStatus status = 1;
+  string proposal = 2;
+  string reason_short = 3;
+  // Written by whoever decided, in whatever precision they used, so it stays
+  // text rather than a timestamp.
+  string decided_at = 4;
+}
+
+// Observation is one thing that happened, as the module recorded it.
+message Observation {
+  string id = 1;
+  string session_id = 2;
+  string project = 3;
+  string source = 4;
+  MemoryLayer layer = 5;
+  MemoryCategory category = 6;
+  // One of a fixed set the store normalises to: note, decision, task,
+  // tool_start, tool_result, insight, assistant_reply, event, summary,
+  // change_request, chat_memory. It stays a string because it is data the
+  // capture layer produces, not a schema both sides have to agree on.
+  string type = 7;
+  string title = 8;
+  string narrative = 9;
+  ChangeRequestState change_request = 10;
+  string speaker = 11;
+  int32 dialogue_id = 12;
+  repeated string keywords = 13;
+  repeated string persons = 14;
+  repeated string entities = 15;
+  string topic = 16;
+  string location = 17;
+  // When the fact started holding, as the caller wrote it - not necessarily a
+  // full date.
+  string valid_from = 18;
+  // Both are weights in (0,1]. Zero is read as "not rated" and becomes 0.5.
+  double importance = 19;
+  double confidence = 20;
+  // Id of the observation that replaced this one.
+  string superseded_by = 21;
+  string tool_name = 22;
+  string source_path = 23;
+  repeated string tags = 24;
+  string content_hash = 25;
+  // Set once the observation was folded into a compressed memory.
+  bool archived = 26;
+  string memory_id = 27;
+  // Set on a soft-deleted observation that is kept until the retention window
+  // passes.
+  string deleted_at = 28;
+  google.protobuf.Timestamp created_at = 29;
+}
+
+// CompressedMemory is what is left of a run of observations once they were
+// summarised, and what recall reads instead of them.
+message CompressedMemory {
+  string id = 1;
+  string session_id = 2;
+  MemoryLayer layer = 3;
+  MemoryCategory category = 4;
+  string summary = 5;
+  repeated string learned = 6;
+  repeated string open_tasks = 7;
+  repeated string observation_ids = 8;
+  // A memory the user edited by hand. Compression leaves it alone from then
+  // on rather than overwriting the correction.
+  bool corrected_by_user = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message SessionSummary {
+  string id = 1;
+  string session_id = 2;
+  repeated string learned = 3;
+  repeated string completed = 4;
+  repeated string next_steps = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message Session {
+  string id = 1;
+  string project = 2;
+  string source = 3;
+  SessionStatus status = 4;
+  repeated string goals = 5;
+  repeated Prompt prompts = 6;
+  repeated Observation active_observations = 7;
+  repeated Observation archived_observations = 8;
+  repeated CompressedMemory memories = 9;
+  repeated SessionSummary summaries = 10;
+  // Share of the context budget the session would spend, between 0 and 1.
+  double context_usage_estimate = 11;
+  int32 prompt_count = 12;
+  int32 observation_count = 13;
+  int32 compressed_memory_count = 14;
+  int32 summary_count = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+// SearchResult is a hit in the index, which is deliberately not the observation
+// itself: a caller filters on these and then fetches what it wants in full
+// through GetObservations.
+message SearchResult {
+  string doc_id = 1;
+  string session_id = 2;
+  // Id of the observation or memory the document was built from.
+  string ref_id = 3;
+  // Which of the two it is: "observation" or "memory".
+  string kind = 4;
+  string project = 5;
+  string source = 6;
+  MemoryLayer layer = 7;
+  MemoryCategory category = 8;
+  string type = 9;
+  string title = 10;
+  string snippet = 11;
+  // score is the merged ranking; the two below are what it was merged from, so
+  // a caller can see whether a hit is lexical or semantic.
+  double score = 12;
+  double text_score = 13;
+  double vector_score = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// ToolDefinition describes a retrieval tool to a model, so a prompt can tell it
+// how to ask for more instead of being handed everything up front.
+message ToolDefinition {
+  string name = 1;
+  string description = 2;
+  string json_shape = 3;
+}
+
+// ContextEnvelope is what gets injected into a prompt: the recall block itself,
+// what it was built from, and what it cost of the budget.
+message ContextEnvelope {
+  string session_id = 1;
+  string query = 2;
+  int32 budget_tokens = 3;
+  int32 used_tokens = 4;
+  string injection_prompt = 5;
+  repeated CompressedMemory memories = 6;
+  repeated Observation observations = 7;
+  SessionSummary summary = 8;
+  repeated ToolDefinition tool_hints = 9;
+}
+
+// An empty session_id opens a new session under a generated id.
+message CreateSessionRequest {
+  string session_id = 1;
+  string project = 2;
+  string source = 3;
+  repeated string goals = 4;
+}
+
+message CreateSessionResponse {
+  Session session = 1;
+}
+
+message ListSessionsRequest {}
+
+// Sessions carry their counts but not their contents. Reading one in full is
+// GetSession.
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message GetSessionResponse {
+  Session session = 1;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionResponse {}
+
+message AddPromptRequest {
+  string session_id = 1;
+  PromptRole role = 2;
+  string text = 3;
+}
+
+// The context is returned with the prompt because that is the point of adding
+// one: the caller gets back what to inject alongside it.
+message AddPromptResponse {
+  Prompt prompt = 1;
+  ContextEnvelope context = 2;
+}
+
+// Either title or narrative must be set. An observation whose category is
+// CHANGE_REQUEST gets a proposal built from its text if none is given.
+message AddObservationRequest {
+  string session_id = 1;
+  string project = 2;
+  string source = 3;
+  MemoryLayer layer = 4;
+  MemoryCategory category = 5;
+  string type = 6;
+  string title = 7;
+  string narrative = 8;
+  ChangeRequestState change_request = 9;
+  string speaker = 10;
+  int32 dialogue_id = 11;
+  repeated string keywords = 12;
+  repeated string persons = 13;
+  repeated string entities = 14;
+  string topic = 15;
+  string location = 16;
+  string valid_from = 17;
+  double importance = 18;
+  double confidence = 19;
+  string superseded_by = 20;
+  string tool_name = 21;
+  string source_path = 22;
+  repeated string tags = 23;
+}
+
+// An observation that repeats one recorded moments ago is not stored twice; the
+// existing one is returned instead.
+message AddObservationResponse {
+  Observation observation = 1;
+}
+
+message CompleteSessionRequest {
+  string session_id = 1;
+  repeated string learned = 2;
+  repeated string completed = 3;
+  repeated string next_steps = 4;
+}
+
+message CompleteSessionResponse {
+  SessionSummary summary = 1;
+}
+
+// An empty query lists what the filters match, ordered by recency, instead of
+// searching.
+message SearchRequest {
+  string query = 1;
+  string project = 2;
+  string source = 3;
+  MemoryLayer layer = 4;
+  MemoryCategory category = 5;
+  string type = 6;
+  // Zero means the default of 10.
+  int32 limit = 7;
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+}
+
+// Names a point in the session by observation id or by a query that finds one,
+// and reads the neighbours around it.
+message GetTimelineRequest {
+  string session_id = 1;
+  string observation_id = 2;
+  string query = 3;
+  // How many observations to include on either side. Zero means the default of
+  // two.
+  int32 before = 4;
+  int32 after = 5;
+}
+
+message GetTimelineResponse {
+  repeated Observation observations = 1;
+}
+
+message GetObservationsRequest {
+  repeated string ids = 1;
+}
+
+message GetObservationsResponse {
+  repeated Observation observations = 1;
+}
+
+message GetContextRequest {
+  string session_id = 1;
+  // Optional. A query focuses recall on what is relevant to it; without one
+  // the most recent memory is used.
+  string query = 2;
+  // Zero means the default of 8.
+  int32 limit = 3;
+}
+
+message GetContextResponse {
+  ContextEnvelope context = 1;
+}
+
+message UpdateChangeRequestStatusRequest {
+  string observation_id = 1;
+  ChangeRequestStatus status = 2;
+  string reason_short = 3;
+}
+
+message UpdateChangeRequestStatusResponse {
+  Observation observation = 1;
+}
+
+message DeleteObservationRequest {
+  string id = 1;
+}
+
+// An observation already folded into a compressed memory is tombstoned rather
+// than removed, so the memory does not lose what it was built from.
+message DeleteObservationResponse {
+  Observation observation = 1;
+  bool tombstoned = 2;
+}
+
+// StringList wraps a repeated field so that leaving it out can mean "do not
+// touch this list", which a bare repeated field cannot express.
+message StringList {
+  repeated string values = 1;
+}
+
+// Every field is optional and only what is set is written. Editing a memory
+// marks it as corrected by the user, and compression stops overwriting it.
+message UpdateMemoryRequest {
+  string id = 1;
+  optional string summary = 2;
+  StringList learned = 3;
+  StringList open_tasks = 4;
+}
+
+message UpdateMemoryResponse {
+  CompressedMemory memory = 1;
+}
+
+// One turn of a conversation. Turns are buffered into a window and only
+// condensed into an observation once it is full, so most calls record the turn
+// and return the context unchanged.
+message CaptureChatMessageRequest {
+  string session_id = 1;
+  string project = 2;
+  string prompt = 3;
+  string reply = 4;
+}
+
+message CaptureChatMessageResponse {
+  ContextEnvelope context = 1;
+}
+
+// An event from elsewhere in the backend. The payload stays dynamic because it
+// is whatever the emitting module put on the bus.
+message CaptureEventRequest {
+  string session_id = 1;
+  string project = 2;
+  string source = 3;
+  string type = 4;
+  google.protobuf.Struct data = 5;
+}
+
+message CaptureEventResponse {
+  Observation observation = 1;
+}
+
+message StreamEventsRequest {}
+
+// One change to the store. Named after the RPC rather than after what it is,
+// because the schema lint ties a response message to its method.
+//
+// The payload is typed where the publisher has a type for it; everything else -
+// the counts behind a compression, an indexing failure - is carried as the JSON
+// object the feed already delivered.
+message StreamEventsResponse {
+  string type = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  oneof payload {
+    Session session = 3;
+    Prompt prompt = 4;
+    Observation observation = 5;
+    CompressedMemory memory = 6;
+    SessionSummary summary = 7;
+    google.protobuf.Struct data = 8;
+  }
+}

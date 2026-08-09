@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package culpeostudio.news.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/news/v1;newsv1";
+
+// NewsService serves the fetched news feed and each user's reading list.
+service NewsService {
+  rpc ListNews(ListNewsRequest) returns (ListNewsResponse);
+  rpc GetNews(GetNewsRequest) returns (GetNewsResponse);
+  rpc ListSavedArticles(ListSavedArticlesRequest) returns (ListSavedArticlesResponse);
+  rpc SaveArticle(SaveArticleRequest) returns (SaveArticleResponse);
+  rpc DeleteSavedArticle(DeleteSavedArticleRequest) returns (DeleteSavedArticleResponse);
+}
+
+message NewsItem {
+  string id = 1;
+  string title = 2;
+  string content = 3;
+  string author = 4;
+  google.protobuf.Timestamp published_at = 5;
+  repeated string tags = 6;
+  string image_url = 7;
+  string url = 8;
+  string category = 9;
+}
+
+// SavedArticle keeps the item and when it was saved. The Go type embeds
+// NewsItem and the JSON flattened it; here it stays a nested field, and the
+// client flattens it back for the UI.
+message SavedArticle {
+  NewsItem item = 1;
+  google.protobuf.Timestamp saved_at = 2;
+}
+
+message ListNewsRequest {}
+
+message ListNewsResponse {
+  repeated NewsItem items = 1;
+}
+
+message GetNewsRequest {
+  string id = 1;
+}
+
+message GetNewsResponse {
+  NewsItem item = 1;
+}
+
+message ListSavedArticlesRequest {}
+
+message ListSavedArticlesResponse {
+  repeated SavedArticle articles = 1;
+}
+
+// The backend prefers its own cached copy of the item when it knows the id, so
+// a client cannot store a doctored article.
+message SaveArticleRequest {
+  NewsItem item = 1;
+}
+
+message SaveArticleResponse {
+  SavedArticle article = 1;
+}
+
+message DeleteSavedArticleRequest {
+  string id = 1;
+}
+
+message DeleteSavedArticleResponse {}

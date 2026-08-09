@@ -1,0 +1,91 @@
+import 'package:flutter/material.dart';
+
+import '../../core/design_tokens.dart';
+
+import './marketplace_detail_strings.dart';
+
+class MarketplaceFilterStylePreview extends StatelessWidget {
+  const MarketplaceFilterStylePreview({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const chat = CulpeoColors.metricBright;
+    const code = CulpeoColors.metricBright;
+    const reasoning = Color(0xFFBAA6FF);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: CulpeoColors.panel.withValues(alpha: 0.34),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
+      ),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            tr('marketplaceDetail.filter.category'),
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.chat'),
+            color: chat,
+            selected: true,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.code'),
+            color: code,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.reasoning'),
+            color: reasoning,
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.vision'),
+            color: const Color(0xFFF48FB1),
+          ),
+          PreviewFilterChip(
+            label: tr('marketplaceDetail.filter.localOnly'),
+            color: const Color(0xFFFFC107),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PreviewFilterChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool selected;
+
+  const PreviewFilterChip({
+    super.key,
+    required this.label,
+    required this.color,
+    this.selected = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: selected ? 0.38 : 0.075),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: selected ? 0.95 : 0.38),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : color.withValues(alpha: 0.86),
+          fontSize: 10.5,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
