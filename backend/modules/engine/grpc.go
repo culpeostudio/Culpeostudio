@@ -29,6 +29,7 @@ import (
 	"github.com/culpeohq/backend/internal/grpcmw"
 	"github.com/culpeohq/backend/internal/localinference"
 	"github.com/culpeohq/backend/internal/modelcatalog"
+	"github.com/culpeohq/backend/modules/node"
 )
 
 type grpcService struct {
@@ -112,7 +113,12 @@ func (s *grpcService) ListModels(ctx context.Context, _ *enginev1.ListModelsRequ
 	records := append([]modelcatalog.ModelRecord(nil), m.models...)
 	modelDir := m.modelDir
 	m.mu.RUnlock()
-	return &enginev1.ListModelsResponse{Models: modelRecordsToProto(records), ModelDir: modelDir}, nil
+	models := modelRecordsToProto(records)
+	// The catalogs of the nodes are listed beside the local one. A model on a
+	// node is a model this Studio can start; where it lies is a property of
+	// the entry, not a separate screen.
+	models = append(models, m.nodeModels(ctx)...)
+	return &enginev1.ListModelsResponse{Models: models, ModelDir: modelDir}, nil
 }
 
 func (s *grpcService) RescanModels(ctx context.Context, _ *enginev1.RescanModelsRequest) (*enginev1.RescanModelsResponse, error) {
@@ -122,12 +128,21 @@ func (s *grpcService) RescanModels(ctx context.Context, _ *enginev1.RescanModels
 		return nil, engineErrorStatus(err)
 	}
 	m.events.publish("models_rescanned", map[string]interface{}{"count": len(records)})
-	return &enginev1.RescanModelsResponse{Models: modelRecordsToProto(records), ModelDir: m.modelDir}, nil
+	models := modelRecordsToProto(records)
+	models = append(models, m.rescanNodeModels(ctx)...)
+	return &enginev1.RescanModelsResponse{Models: models, ModelDir: m.modelDir}, nil
 }
 
 func (s *grpcService) DeleteModel(ctx context.Context, req *enginev1.DeleteModelRequest) (*enginev1.DeleteModelResponse, error) {
 	m := s.module
-	records, err := m.deleteModel(ctx, strings.TrimSpace(req.GetModelId()))
+	modelID := strings.TrimSpace(req.GetModelId())
+	if target, client, localID, remote, err := m.nodeEngineFor(modelID); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.deleteModelOnNode(ctx, target, client, localID)
+	}
+	records, err := m.deleteModel(ctx, modelID)
 	if err != nil {
 		return nil, engineErrorStatus(err)
 	}
@@ -178,6 +193,22 @@ func (s *grpcService) GetCapabilities(ctx context.Context, _ *enginev1.GetCapabi
 func (s *grpcService) GetRecommendation(ctx context.Context, req *enginev1.GetRecommendationRequest) (*enginev1.GetRecommendationResponse, error) {
 	m := s.module
 	config := engineConfigFromProto(req.GetConfig())
+	// A recommendation is a plan against the hardware the model would run on,
+	// so it has to be computed there.
+	if target, client, localID, remote, err := m.nodeEngineFor(strings.TrimSpace(req.GetModelId())); remote {
+		if err != nil {
+			return nil, err
+		}
+		callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
+		defer cancel()
+		response, callErr := client.GetRecommendation(callCtx, &enginev1.GetRecommendationRequest{
+			ModelId: localID, Config: req.GetConfig(),
+		})
+		if callErr != nil {
+			return nil, nodeError(target, callErr)
+		}
+		return response, nil
+	}
 	plan, _, err := m.recommendation(ctx, strings.TrimSpace(req.GetModelId()), "recommendation", config)
 	if err != nil {
 		return nil, engineErrorStatus(err)
@@ -230,7 +261,9 @@ func (s *grpcService) SimulateParallelLoad(ctx context.Context, req *enginev1.Si
 
 func (s *grpcService) ListInstances(ctx context.Context, _ *enginev1.ListInstancesRequest) (*enginev1.ListInstancesResponse, error) {
 	m := s.module
-	return &enginev1.ListInstancesResponse{Instances: instancesToProto(m.listInstancesForUser(engineUserID(ctx)))}, nil
+	instances := instancesToProto(m.listInstancesForUser(engineUserID(ctx)))
+	instances = append(instances, m.nodeInstances(ctx)...)
+	return &enginev1.ListInstancesResponse{Instances: instances}, nil
 }
 
 func (s *grpcService) CreateInstance(ctx context.Context, req *enginev1.CreateInstanceRequest) (*enginev1.CreateInstanceResponse, error) {
@@ -238,6 +271,15 @@ func (s *grpcService) CreateInstance(ctx context.Context, req *enginev1.CreateIn
 	modelID := strings.TrimSpace(req.GetModelId())
 	if modelID == "" {
 		return nil, status.Error(codes.InvalidArgument, "model_id ist erforderlich")
+	}
+	// The node can be named outright or be implied by a model id that came
+	// from a node's catalog. Both mean the same thing, and a model id that
+	// already names a node wins: it is the entry the user actually picked.
+	if nodeID, localModelID, remote := node.Split(modelID); remote {
+		return m.createInstanceOnNode(ctx, nodeID, req, localModelID)
+	}
+	if nodeID := strings.TrimSpace(req.GetNodeId()); nodeID != "" {
+		return m.createInstanceOnNode(ctx, nodeID, req, modelID)
 	}
 	config := engineConfigFromProto(req.GetConfig())
 	instance, operation, err := m.createInstance(ctx, modelID, strings.TrimSpace(req.GetServedModelName()), config)
@@ -254,7 +296,14 @@ func (s *grpcService) CreateInstance(ctx context.Context, req *enginev1.CreateIn
 
 func (s *grpcService) GetInstance(ctx context.Context, req *enginev1.GetInstanceRequest) (*enginev1.GetInstanceResponse, error) {
 	m := s.module
-	instance, ok := m.getInstance(strings.TrimSpace(req.GetInstanceId()))
+	id := strings.TrimSpace(req.GetInstanceId())
+	if target, client, localID, remote, err := m.nodeEngineFor(id); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.getInstanceFromNode(ctx, target, client, localID)
+	}
+	instance, ok := m.getInstance(id)
 	if !ok {
 		return nil, engineErrorStatus(os.ErrNotExist)
 	}
@@ -263,7 +312,20 @@ func (s *grpcService) GetInstance(ctx context.Context, req *enginev1.GetInstance
 
 func (s *grpcService) GetInstanceMetrics(ctx context.Context, req *enginev1.GetInstanceMetricsRequest) (*enginev1.GetInstanceMetricsResponse, error) {
 	m := s.module
-	instance, ok := m.getInstance(strings.TrimSpace(req.GetInstanceId()))
+	id := strings.TrimSpace(req.GetInstanceId())
+	if target, client, localID, remote, err := m.nodeEngineFor(id); remote {
+		if err != nil {
+			return nil, err
+		}
+		callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
+		defer cancel()
+		response, callErr := client.GetInstanceMetrics(callCtx, &enginev1.GetInstanceMetricsRequest{InstanceId: localID})
+		if callErr != nil {
+			return nil, nodeError(target, callErr)
+		}
+		return response, nil
+	}
+	instance, ok := m.getInstance(id)
 	if !ok {
 		return nil, engineErrorStatus(os.ErrNotExist)
 	}
@@ -273,6 +335,15 @@ func (s *grpcService) GetInstanceMetrics(ctx context.Context, req *enginev1.GetI
 func (s *grpcService) UpdateInstance(ctx context.Context, req *enginev1.UpdateInstanceRequest) (*enginev1.UpdateInstanceResponse, error) {
 	m := s.module
 	id := strings.TrimSpace(req.GetInstanceId())
+	// Every change an instance takes - start, stop, config, visibility - is
+	// made where the instance lives. The oneof travels untouched, so a node
+	// applies the same change with the same code.
+	if target, client, localID, remote, err := m.nodeEngineFor(id); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.updateInstanceOnNode(ctx, target, client, req, localID)
+	}
 	instance, ok := m.getInstance(id)
 	if !ok {
 		return nil, engineErrorStatus(os.ErrNotExist)
@@ -386,6 +457,12 @@ func (e *engineUnsupportedFixError) Error() string { return e.cause.Error() }
 
 func (s *grpcService) EnsureInstanceReady(ctx context.Context, req *enginev1.EnsureInstanceReadyRequest) (*enginev1.EnsureInstanceReadyResponse, error) {
 	m := s.module
+	if target, client, localID, remote, err := m.nodeEngineFor(strings.TrimSpace(req.GetInstanceId())); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.ensureReadyOnNode(ctx, target, client, localID)
+	}
 	instance, operation, err := m.ensureReady(strings.TrimSpace(req.GetInstanceId()))
 	if err != nil {
 		return nil, engineErrorStatus(err)
@@ -404,6 +481,12 @@ func (s *grpcService) EnsureInstanceReady(ctx context.Context, req *enginev1.Ens
 
 func (s *grpcService) DeleteInstance(ctx context.Context, req *enginev1.DeleteInstanceRequest) (*enginev1.DeleteInstanceResponse, error) {
 	m := s.module
+	if target, client, localID, remote, err := m.nodeEngineFor(strings.TrimSpace(req.GetInstanceId())); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.deleteInstanceOnNode(ctx, target, client, localID)
+	}
 	instance, operation, err := m.scheduleDelete(strings.TrimSpace(req.GetInstanceId()))
 	if err != nil {
 		return nil, engineErrorStatus(err)
@@ -425,6 +508,20 @@ func (s *grpcService) DeleteInstance(ctx context.Context, req *enginev1.DeleteIn
 func (s *grpcService) GetInstanceLogs(ctx context.Context, req *enginev1.GetInstanceLogsRequest) (*enginev1.GetInstanceLogsResponse, error) {
 	m := s.module
 	id := strings.TrimSpace(req.GetInstanceId())
+	if target, client, localID, remote, routeErr := m.nodeEngineFor(id); remote {
+		if routeErr != nil {
+			return nil, routeErr
+		}
+		callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
+		defer cancel()
+		response, callErr := client.GetInstanceLogs(callCtx, &enginev1.GetInstanceLogsRequest{
+			InstanceId: localID, TailLines: req.GetTailLines(),
+		})
+		if callErr != nil {
+			return nil, nodeError(target, callErr)
+		}
+		return response, nil
+	}
 	if _, ok := m.getInstance(id); !ok {
 		return nil, engineErrorStatus(os.ErrNotExist)
 	}
@@ -452,6 +549,11 @@ func (s *grpcService) ListQuantizationTypes(ctx context.Context, _ *enginev1.Lis
 }
 
 func (s *grpcService) PreflightQuantization(ctx context.Context, req *enginev1.PreflightQuantizationRequest) (*enginev1.PreflightQuantizationResponse, error) {
+	// Quantising reads one file and writes another beside it, both on the
+	// machine that holds them. There is nothing sensible to forward.
+	if node.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
+		return nil, errNodeOnlyLocal("Quantisieren")
+	}
 	report, err := s.module.preflightQuantization(ctx, quantizeRequestFromProto(req.GetRequest()))
 	if err != nil {
 		return nil, engineErrorStatus(err)
@@ -460,6 +562,9 @@ func (s *grpcService) PreflightQuantization(ctx context.Context, req *enginev1.P
 }
 
 func (s *grpcService) StartQuantization(ctx context.Context, req *enginev1.StartQuantizationRequest) (*enginev1.StartQuantizationResponse, error) {
+	if node.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
+		return nil, errNodeOnlyLocal("Quantisieren")
+	}
 	operation, report, err := s.module.startQuantization(ctx, quantizeRequestFromProto(req.GetRequest()))
 	if err != nil {
 		// A refusal carries the preflight that explains it, so the client can
@@ -482,7 +587,14 @@ func (s *grpcService) StartQuantization(ctx context.Context, req *enginev1.Start
 
 func (s *grpcService) GetOperation(ctx context.Context, req *enginev1.GetOperationRequest) (*enginev1.GetOperationResponse, error) {
 	m := s.module
-	operation, ok := m.operation(strings.TrimSpace(req.GetOperationId()))
+	id := strings.TrimSpace(req.GetOperationId())
+	if target, client, localID, remote, err := m.nodeEngineFor(id); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.getOperationFromNode(ctx, target, client, localID)
+	}
+	operation, ok := m.operation(id)
 	if !ok {
 		return nil, engineErrorStatus(os.ErrNotExist)
 	}
@@ -491,7 +603,14 @@ func (s *grpcService) GetOperation(ctx context.Context, req *enginev1.GetOperati
 
 func (s *grpcService) CancelOperation(ctx context.Context, req *enginev1.CancelOperationRequest) (*enginev1.CancelOperationResponse, error) {
 	m := s.module
-	operation, err := m.cancelOperation(strings.TrimSpace(req.GetOperationId()))
+	id := strings.TrimSpace(req.GetOperationId())
+	if target, client, localID, remote, err := m.nodeEngineFor(id); remote {
+		if err != nil {
+			return nil, err
+		}
+		return m.cancelOperationOnNode(ctx, target, client, localID)
+	}
+	operation, err := m.cancelOperation(id)
 	if err != nil {
 		return nil, engineErrorStatus(err)
 	}
@@ -507,9 +626,13 @@ func (s *grpcService) CancelOperation(ctx context.Context, req *enginev1.CancelO
 func (s *grpcService) StreamEvents(req *enginev1.StreamEventsRequest, stream grpc.ServerStreamingServer[enginev1.StreamEventsResponse]) error {
 	m := s.module
 	userID := engineUserID(stream.Context())
+	// The snapshot has to carry the nodes too: the client replaces its list
+	// with it, so anything missing here is treated as gone.
+	snapshot := instancesToProto(m.listInstancesForUser(userID))
+	snapshot = append(snapshot, m.nodeInstances(stream.Context())...)
 	first := &enginev1.StreamEventsResponse{
 		Timestamp: nowTimestamp(),
-		Event:     &enginev1.StreamEventsResponse_Snapshot{Snapshot: &enginev1.InstanceSnapshot{Instances: instancesToProto(m.listInstancesForUser(userID))}},
+		Event:     &enginev1.StreamEventsResponse_Snapshot{Snapshot: &enginev1.InstanceSnapshot{Instances: snapshot}},
 	}
 	if err := stream.Send(first); err != nil {
 		return err

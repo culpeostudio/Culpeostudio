@@ -11,6 +11,7 @@ import '../../core/api_service.dart';
 import '../../core/app_state.dart';
 import '../../core/top_notification.dart';
 import '../bots/bot_management_screen.dart';
+import '../nodes/nodes_screen.dart';
 import '../scout/bot_picker.dart';
 import './provider_card.dart';
 import './settings_cards.dart';
@@ -458,6 +459,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildChatBotSettingsCard();
       case 5:
         return _buildSkillsCard();
+      case 6:
+        return const NodesScreen();
       default:
         return _buildGeneralSettingsCard();
     }
@@ -480,6 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'icon': Icons.auto_awesome_outlined,
       },
       {'label': tr('settings.nav.skills'), 'icon': Icons.extension_outlined},
+      {'label': tr('settings.nav.nodes'), 'icon': Icons.hub_outlined},
     ];
 
     return Container(

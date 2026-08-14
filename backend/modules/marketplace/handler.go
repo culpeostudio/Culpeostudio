@@ -23,7 +23,16 @@ import (
 	"github.com/culpeohq/backend/modules/marketplace/huggingface"
 	"github.com/culpeohq/backend/modules/marketplace/openrouter"
 	"github.com/culpeohq/backend/modules/marketplace/types"
+	"github.com/culpeohq/backend/modules/node"
 )
+
+// nodeCallTimeout bounds a call a user made. Starting a download schedules it
+// rather than waiting for it, so none of these calls is long-running.
+const nodeCallTimeout = 20 * time.Second
+
+// nodeListTimeout bounds the call behind the downloads list, which is polled
+// while the panel is open. A node that is off has to drop out of it quickly.
+const nodeListTimeout = 4 * time.Second
 
 type MarketplaceModule struct {
 	metadataClient *http.Client
@@ -33,6 +42,10 @@ type MarketplaceModule struct {
 	settingsStore *appsettings.Store
 	activeModels  *apimodels.Store
 	jobs          *DownloadJobStore
+
+	// nodes is nil until a node registry is wired in, which is what makes
+	// every download local by default.
+	nodes node.Directory
 
 	hfAPIBase string
 	orAPIBase string

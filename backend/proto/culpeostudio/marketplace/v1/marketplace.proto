@@ -199,6 +199,11 @@ message StartDownloadRequest {
   // What the client expects to download. When set, the backend refuses the job
   // up front if the disk cannot hold it plus a ten percent margin.
   int64 size_bytes = 7;
+  // Which machine fetches the model. Empty means this one. A node id sends the
+  // job to that node, which downloads from the model host itself - the weights
+  // never travel through the Studio, because a model of tens of gigabytes
+  // would arrive twice as slowly for no reason.
+  string node_id = 8;
 }
 
 message StartDownloadResponse {
@@ -231,6 +236,10 @@ message DownloadJob {
   int64 downloaded_bytes = 17;
   int64 speed_bytes_per_sec = 18;
   int64 total_bytes = 19;
+  // Empty for a job on this machine. On a node job the id is qualified with
+  // the node it belongs to, so the calls that act on a job route themselves.
+  string node_id = 20;
+  string node_name = 21;
 }
 
 message ListDownloadJobsRequest {}

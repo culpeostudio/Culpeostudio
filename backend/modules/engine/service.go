@@ -18,6 +18,7 @@ import (
 	"github.com/culpeohq/backend/internal/engineruntime"
 	"github.com/culpeohq/backend/internal/hardware"
 	"github.com/culpeohq/backend/internal/modelcatalog"
+	"github.com/culpeohq/backend/modules/node"
 )
 
 type EngineModule struct {
@@ -27,6 +28,9 @@ type EngineModule struct {
 	stateFile    string
 	runtimeRoot  string
 	gatewayBind  string
+	// gatewayNeedsBootstrapKey is set in node mode, where the gateway binds to
+	// a network address and therefore refuses to start without a key.
+	gatewayNeedsBootstrapKey bool
 
 	mu                  sync.RWMutex
 	lifecycleGate       chan struct{}
@@ -50,6 +54,10 @@ type EngineModule struct {
 	prewarmWake         chan struct{}
 	prewarmHardware     func(context.Context) hardware.Snapshot
 
+	// nodes is nil until a node registry is wired in. Without one the engine
+	// is exactly what it was: the models and instances of this machine.
+	nodes node.Directory
+
 	installer   *engineruntime.Installer
 	supervisor  *engineruntime.Supervisor
 	keys        *engineKeyStore
@@ -60,6 +68,10 @@ type EngineModule struct {
 	gateway     *localGateway
 	gatewayURL  string
 	localClient *http.Client
+	// nodeChatClient carries the streamed answers back from a node. It is a
+	// separate client because a node is reached over a tunnel rather than over
+	// loopback, and a generation may run far longer than any local timeout.
+	nodeChatClient *http.Client
 
 	startQueue                *startAdmissionQueue
 	startQueueTimeout         time.Duration
@@ -107,8 +119,8 @@ func New(settingsFile ...string) *EngineModule {
 		instances: map[string]*EngineInstance{}, operations: map[string]*EngineOperation{},
 		prewarmRecipes: map[string]bool{}, prewarmPending: map[string]queuedRuntimePrewarm{}, prewarmWake: make(chan struct{}, 1),
 		events:      newEngineEventHub(),
-		localClient: newLoopbackHTTPClient(),
-		startQueue:  newStartAdmissionQueue(), startQueueTimeout: 10 * time.Minute, startExecutions: map[string]string{},
+		localClient: newLoopbackHTTPClient(), nodeChatClient: newNodeChatClient(),
+		startQueue: newStartAdmissionQueue(), startQueueTimeout: 10 * time.Minute, startExecutions: map[string]string{},
 		inferenceGates: map[string]*inferenceGate{}, inferenceQueueTimeout: 120 * time.Second,
 		runtimeInstallWaiters: map[string]int{}, runtimeInstallCanceling: map[string]bool{}, stopReapers: map[string]bool{},
 		idleTimeout: 15 * time.Minute, guardState: GuardNormal, maintenanceStop: make(chan struct{}),
@@ -212,6 +224,9 @@ func (m *EngineModule) Initialize() error {
 	if _, err := m.rescan(context.Background()); err != nil {
 		return err
 	}
+	if err := m.ensureBootstrapGatewayKey(); err != nil {
+		return err
+	}
 	if !strings.EqualFold(m.gatewayBind, "disabled") {
 		m.gateway = newLocalGateway(m.keys, gatewayDependencies{
 			lookup:      m.gatewayLookup,
@@ -220,6 +235,7 @@ func (m *EngineModule) Initialize() error {
 			ensureReady: m.gatewayEnsureReady,
 			recordUsage: m.gatewayRecordUsage,
 		})
+		m.gateway.allowNetwork = m.gatewayNeedsBootstrapKey
 		address, err := m.gateway.start(m.gatewayBind)
 		if err != nil {
 			return fmt.Errorf("lokales OpenAI-Gateway starten: %w", err)
@@ -238,6 +254,7 @@ func (m *EngineModule) Initialize() error {
 	})
 	m.scheduleRuntimePrewarm("App-Start")
 	go m.runResourceMaintenance()
+	go m.watchNodeInstances()
 	go m.restoreAutostart()
 	return nil
 }

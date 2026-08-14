@@ -40,6 +40,14 @@ func (h *engineEventHub) publish(eventType string, data interface{}) {
 	}
 }
 
+// subscriberCount is how many feeds are open. The node watcher uses it to
+// stay quiet when no screen is showing what it would report.
+func (h *engineEventHub) subscriberCount() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.subscribers)
+}
+
 func (h *engineEventHub) subscribe() (<-chan engineEvent, func()) {
 	h.mu.Lock()
 	id := h.nextID

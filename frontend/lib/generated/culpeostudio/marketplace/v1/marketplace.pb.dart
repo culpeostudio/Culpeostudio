@@ -1178,6 +1178,7 @@ class StartDownloadRequest extends $pb.GeneratedMessage {
     $core.String? revision,
     $core.String? targetDir,
     $fixnum.Int64? sizeBytes,
+    $core.String? nodeId,
   }) {
     final result = create();
     if (provider != null) result.provider = provider;
@@ -1187,6 +1188,7 @@ class StartDownloadRequest extends $pb.GeneratedMessage {
     if (revision != null) result.revision = revision;
     if (targetDir != null) result.targetDir = targetDir;
     if (sizeBytes != null) result.sizeBytes = sizeBytes;
+    if (nodeId != null) result.nodeId = nodeId;
     return result;
   }
 
@@ -1212,6 +1214,7 @@ class StartDownloadRequest extends $pb.GeneratedMessage {
     ..aOS(5, _omitFieldNames ? '' : 'revision')
     ..aOS(6, _omitFieldNames ? '' : 'targetDir')
     ..aInt64(7, _omitFieldNames ? '' : 'sizeBytes')
+    ..aOS(8, _omitFieldNames ? '' : 'nodeId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1295,6 +1298,19 @@ class StartDownloadRequest extends $pb.GeneratedMessage {
   $core.bool hasSizeBytes() => $_has(6);
   @$pb.TagNumber(7)
   void clearSizeBytes() => $_clearField(7);
+
+  /// Which machine fetches the model. Empty means this one. A node id sends the
+  /// job to that node, which downloads from the model host itself - the weights
+  /// never travel through the Studio, because a model of tens of gigabytes
+  /// would arrive twice as slowly for no reason.
+  @$pb.TagNumber(8)
+  $core.String get nodeId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set nodeId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasNodeId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearNodeId() => $_clearField(8);
 }
 
 class StartDownloadResponse extends $pb.GeneratedMessage {
@@ -1413,6 +1429,8 @@ class DownloadJob extends $pb.GeneratedMessage {
     $fixnum.Int64? downloadedBytes,
     $fixnum.Int64? speedBytesPerSec,
     $fixnum.Int64? totalBytes,
+    $core.String? nodeId,
+    $core.String? nodeName,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -1434,6 +1452,8 @@ class DownloadJob extends $pb.GeneratedMessage {
     if (downloadedBytes != null) result.downloadedBytes = downloadedBytes;
     if (speedBytesPerSec != null) result.speedBytesPerSec = speedBytesPerSec;
     if (totalBytes != null) result.totalBytes = totalBytes;
+    if (nodeId != null) result.nodeId = nodeId;
+    if (nodeName != null) result.nodeName = nodeName;
     return result;
   }
 
@@ -1476,6 +1496,8 @@ class DownloadJob extends $pb.GeneratedMessage {
     ..aInt64(17, _omitFieldNames ? '' : 'downloadedBytes')
     ..aInt64(18, _omitFieldNames ? '' : 'speedBytesPerSec')
     ..aInt64(19, _omitFieldNames ? '' : 'totalBytes')
+    ..aOS(20, _omitFieldNames ? '' : 'nodeId')
+    ..aOS(21, _omitFieldNames ? '' : 'nodeName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1670,6 +1692,26 @@ class DownloadJob extends $pb.GeneratedMessage {
   $core.bool hasTotalBytes() => $_has(18);
   @$pb.TagNumber(19)
   void clearTotalBytes() => $_clearField(19);
+
+  /// Empty for a job on this machine. On a node job the id is qualified with
+  /// the node it belongs to, so the calls that act on a job route themselves.
+  @$pb.TagNumber(20)
+  $core.String get nodeId => $_getSZ(19);
+  @$pb.TagNumber(20)
+  set nodeId($core.String value) => $_setString(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasNodeId() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearNodeId() => $_clearField(20);
+
+  @$pb.TagNumber(21)
+  $core.String get nodeName => $_getSZ(20);
+  @$pb.TagNumber(21)
+  set nodeName($core.String value) => $_setString(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasNodeName() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearNodeName() => $_clearField(21);
 }
 
 class ListDownloadJobsRequest extends $pb.GeneratedMessage {

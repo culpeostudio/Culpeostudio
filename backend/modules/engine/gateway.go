@@ -57,6 +57,11 @@ type localGateway struct {
 	keys   *engineKeyStore
 	deps   gatewayDependencies
 	client *http.Client
+	// allowNetwork lets the gateway bind beyond loopback without the
+	// environment variable. Node mode sets it: a node exists to serve its
+	// models to one paired Studio over a tunnel, so binding to its tunnel
+	// address is the configuration rather than an override of it.
+	allowNetwork bool
 
 	server   *http.Server
 	listener net.Listener
@@ -101,7 +106,7 @@ func (g *localGateway) start(address string) (string, error) {
 		// network, so it takes a deliberate opt-in rather than just an address.
 		// The keys are then the only thing between the network and the models,
 		// which is why an unkeyed gateway refuses outright.
-		if strings.TrimSpace(os.Getenv("ENGINE_GATEWAY_ALLOW_NETWORK")) != "1" {
+		if !g.allowNetwork && strings.TrimSpace(os.Getenv("ENGINE_GATEWAY_ALLOW_NETWORK")) != "1" {
 			return "", fmt.Errorf("das Engine-Gateway ist auf Loopback beschraenkt; fuer %s muss ENGINE_GATEWAY_ALLOW_NETWORK=1 gesetzt sein", address)
 		}
 		if g.keys == nil || len(g.keys.list()) == 0 {

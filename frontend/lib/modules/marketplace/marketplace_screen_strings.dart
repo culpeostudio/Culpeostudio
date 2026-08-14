@@ -72,6 +72,9 @@ const Map<String, String> marketplaceScreenStringsDe = {
       'Modell wird bereits heruntergeladen (Job {jobId})',
   'marketplaceScreen.notification.downloadStarted':
       '{modelId}: Download gestartet',
+  'marketplaceScreen.notification.downloadStartedOnNode':
+      '{modelId}: Download auf {node} gestartet',
+  'marketplaceScreen.downloads.onNode': 'Auf {node}',
   'marketplaceScreen.notification.chatStarted': '{name} im Chat gestartet',
   'marketplaceScreen.notification.actionTimedOut':
       'Aktion abgebrochen: Zeitüberschreitung',
@@ -201,6 +204,9 @@ const Map<String, String> marketplaceScreenStringsEn = {
       'The model is already downloading (job {jobId})',
   'marketplaceScreen.notification.downloadStarted':
       '{modelId}: download started',
+  'marketplaceScreen.notification.downloadStartedOnNode':
+      '{modelId}: download started on {node}',
+  'marketplaceScreen.downloads.onNode': 'On {node}',
   'marketplaceScreen.notification.chatStarted': '{name} started in chat',
   'marketplaceScreen.notification.actionTimedOut':
       'Action cancelled: request timed out',

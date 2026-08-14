@@ -6,6 +6,8 @@ import '../../core/design_tokens.dart';
 import 'package:flutter/widget_previews.dart';
 
 import './marketplace_screen_strings.dart';
+import '../nodes/node_api.dart';
+import '../nodes/node_target_picker.dart';
 import '../../core/app_state.dart';
 import '../../core/api_service.dart';
 import '../../core/startup_warmup.dart';
@@ -136,9 +138,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     _seedFromWarmup();
     _fetchHardwareProfile();
     _fetchDownloadJobs();
+    _fetchNodes();
     _fetchBackendSettings();
     _triggerSearch();
   }
+
+  /// The machines a download may be aimed at, besides this one. Empty on a
+  /// Studio with no nodes, which is when the target picker stays out of the
+  /// way entirely.
+  List<StudioNode> _nodes = [];
 
   /// Uebernimmt die beim Start vorgeladenen Daten: Hardwareprofil und
   /// Download-Jobs stehen damit beim ersten Aufbau sofort bereit, ohne dass
@@ -498,6 +506,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       sizeBytes = _asInt(chosen['size_bytes']);
     }
 
+    // Where the model should land. With no node connected there is nothing to
+    // ask, and the download behaves exactly as it always did.
+    var target = NodeDownloadTarget(nodeId: '', name: tr('nodes.target.local'));
+    if (_nodes.isNotEmpty) {
+      final picked = await showNodeTargetPicker(context, _nodes);
+      if (!mounted || picked == null) return;
+      target = picked;
+    }
+
     final key = 'dl:$provider:$modelId';
     if (!_beginPendingAction(key)) return;
 
@@ -508,6 +525,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       '',
       assetIds: assetIds,
       sizeBytes: sizeBytes,
+      nodeId: target.nodeId,
     );
     await _fetchDownloadJobs();
     if (!mounted) return;
@@ -524,11 +542,32 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       );
     } else {
       _showSnack(
-        tr('marketplaceScreen.notification.downloadStarted', {
-          'modelId': modelId,
-        }),
+        target.isLocal
+            ? tr('marketplaceScreen.notification.downloadStarted', {
+                'modelId': modelId,
+              })
+            : tr('marketplaceScreen.notification.downloadStartedOnNode', {
+                'modelId': modelId,
+                'node': target.name,
+              }),
         Colors.green,
       );
+    }
+  }
+
+  /// The nodes this Studio could download to. It is loaded once on open and
+  /// refreshed with the download list, because a node that went offline
+  /// mid-session should stop being offered.
+  Future<void> _fetchNodes() async {
+    try {
+      final nodes = await _api.nodes.listNodes();
+      if (!mounted) return;
+      setState(() => _nodes = nodes.where((node) => node.enabled).toList());
+    } catch (_) {
+      // Nodes are optional. A Studio that cannot list them still downloads
+      // here, which is what it did before nodes existed.
+      if (!mounted) return;
+      setState(() => _nodes = []);
     }
   }
 
@@ -3000,6 +3039,36 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     );
   }
 
+  /// Marks a download as belonging to a node. It is a chip rather than a line
+  /// of text because the downloads list is scanned rather than read, and
+  /// "which machine" is the one thing worth spotting at a glance.
+  Widget _buildNodeChip(String nodeName) {
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: CulpeoColors.actionMuted,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: CulpeoColors.actionBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.hub_outlined, size: 10, color: CulpeoColors.action),
+          const SizedBox(width: 4),
+          Text(
+            nodeName,
+            style: const TextStyle(
+              color: CulpeoColors.action,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActiveJobItem(dynamic job) {
     if (job is! Map) return const SizedBox.shrink();
     final j = Map<String, dynamic>.from(job);
@@ -3017,6 +3086,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final total = _asInt(j['total_bytes']).toDouble();
     final speed = _asInt(j['speed_bytes_per_sec']).toDouble();
     final targetDir = (j['target_dir'] ?? '').toString();
+    // Empty for a download on this machine, which is most of them; a name
+    // means the bytes are landing somewhere else entirely.
+    final nodeName = (j['node_name'] ?? '').toString();
 
     String statusLine;
     if (status == 'running') {
@@ -3057,6 +3129,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                   ),
                 ),
               ),
+              if (nodeName.isNotEmpty) _buildNodeChip(nodeName),
               IconButton(
                 tooltip: tr('marketplaceScreen.action.cancel'),
                 visualDensity: VisualDensity.compact,

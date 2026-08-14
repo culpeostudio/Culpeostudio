@@ -8,6 +8,7 @@ import '../generated/culpeostudio/login/v1/login.pbgrpc.dart' as loginpb;
 import '../generated/culpeostudio/marketplace/v1/marketplace.pbgrpc.dart'
     as marketpb;
 import '../generated/culpeostudio/news/v1/news.pbgrpc.dart' as newspb;
+import '../generated/culpeostudio/node/v1/node.pbgrpc.dart' as nodepb;
 import '../generated/culpeostudio/scout/v1/scout.pbgrpc.dart' as scoutpb;
 import '../generated/culpeostudio/settings/v1/settings.pbgrpc.dart'
     as settingspb;
@@ -51,6 +52,7 @@ class ApiClient {
   loginpb.LoginServiceClient? _loginClient;
   enginepb.EngineServiceClient? _engineClient;
   newspb.NewsServiceClient? _newsClient;
+  nodepb.NodeServiceClient? _nodeClient;
   sparkpb.SparkServiceClient? _sparkClient;
   marketpb.MarketplaceServiceClient? _marketplaceClient;
   benchpb.BenchmarkServiceClient? _benchmarkClient;
@@ -89,6 +91,7 @@ class ApiClient {
       _loginClient = null;
       _engineClient = null;
       _newsClient = null;
+      _nodeClient = null;
       _sparkClient = null;
       _marketplaceClient = null;
       _benchmarkClient = null;
@@ -159,6 +162,15 @@ class ApiClient {
   newspb.NewsServiceClient get newsClient {
     final activeChannel = channel;
     return _newsClient ??= newspb.NewsServiceClient(
+      activeChannel,
+      options: callOptions,
+      interceptors: [_SessionInterceptor(reportGrpcError)],
+    );
+  }
+
+  nodepb.NodeServiceClient get nodeClient {
+    final activeChannel = channel;
+    return _nodeClient ??= nodepb.NodeServiceClient(
       activeChannel,
       options: callOptions,
       interceptors: [_SessionInterceptor(reportGrpcError)],

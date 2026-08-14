@@ -1,6 +1,7 @@
 import './app_strings_de.dart';
 import './app_strings_en.dart';
 import '../modules/engine/engine_strings.dart';
+import '../modules/nodes/node_strings.dart';
 
 String appLanguage = 'de';
 
@@ -14,10 +15,12 @@ class AppStrings {
   static final Map<String, String> _de = Map.unmodifiable({
     ...appStringsDe,
     ...engineStringsDe,
+    ...nodeStringsDe,
   });
   static final Map<String, String> _en = Map.unmodifiable({
     ...appStringsEn,
     ...engineStringsEn,
+    ...nodeStringsEn,
   });
 
   static String tr(String key, [Map<String, String>? params]) {

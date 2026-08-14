@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+package culpeostudio.node.v1;
+
+import "culpeostudio/hardware/v1/hardware.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/node/v1;nodev1";
+
+// NodeService is the studio side of a node: the list of machines this Studio
+// may reach, the WireGuard tunnel to each of them, and their reachability.
+//
+// It is not how work is sent to a node. A node runs the same backend, so the
+// Studio speaks its EngineService and MarketplaceService directly over the
+// tunnel and authenticates with the node's pairing token. That is the whole
+// point of the node mode: a model is downloaded and started by the machine
+// that will run it, and only the tokens cross the wire.
+service NodeService {
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+  // Registers a node from the join code its node mode printed. The tunnel
+  // config comes with the code and is written to disk here; bringing the
+  // interface up needs root and is a separate, deliberate step.
+  rpc AddNode(AddNodeRequest) returns (AddNodeResponse);
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
+  rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
+  // Probes one node and stores what it reported. The client calls this to show
+  // a live state; every other call uses the cached one.
+  rpc RefreshNode(RefreshNodeRequest) returns (RefreshNodeResponse);
+
+  // The tunnel to one node: the config that was written, whether the interface
+  // is up, and the command that would change that.
+  rpc GetNodeTunnel(GetNodeTunnelRequest) returns (GetNodeTunnelResponse);
+  rpc SetNodeTunnel(SetNodeTunnelRequest) returns (SetNodeTunnelResponse);
+}
+
+// NodeAgentService is what a node adds to its own backend. Everything else a
+// node does is reached through the services it already had.
+service NodeAgentService {
+  rpc GetNodeStatus(GetNodeStatusRequest) returns (GetNodeStatusResponse);
+  // Hands out the engine gateway key the Studio streams inference with. Called
+  // once at pairing; calling it again rotates the key, which is how a Studio
+  // that lost it recovers.
+  rpc IssueGatewayKey(IssueGatewayKeyRequest) returns (IssueGatewayKeyResponse);
+}
+
+// NodeState is what the last probe found.
+enum NodeState {
+  NODE_STATE_UNSPECIFIED = 0;
+  NODE_STATE_ONLINE = 1;
+  // Reachable address, no answer. Usually the tunnel is down or the node's
+  // backend is not running.
+  NODE_STATE_OFFLINE = 2;
+  // The node answered and rejected the pairing token.
+  NODE_STATE_UNAUTHORIZED = 3;
+  // Switched off in the Studio. Its models and instances stay out of every
+  // list until it is switched back on.
+  NODE_STATE_DISABLED = 4;
+}
+
+// TunnelState is what the WireGuard interface for a node is doing.
+enum TunnelState {
+  TUNNEL_STATE_UNSPECIFIED = 0;
+  TUNNEL_STATE_DOWN = 1;
+  TUNNEL_STATE_UP = 2;
+  // WireGuard is not installed, so the Studio can write the config but cannot
+  // say anything about the interface.
+  TUNNEL_STATE_UNAVAILABLE = 3;
+}
+
+// NodeTunnel is the WireGuard side of one node.
+message NodeTunnel {
+  // The interface the config names, e.g. culpeo-workstation.
+  string interface_name = 1;
+  // Where the config was written. It holds a private key and is created 0600.
+  string config_path = 2;
+  // The address this Studio has inside the tunnel.
+  string local_address = 3;
+  // The node's WireGuard endpoint, as host:port.
+  string endpoint = 4;
+  string peer_public_key = 5;
+  TunnelState state = 6;
+  // The command that brings the interface up or down. It needs root, so it is
+  // reported rather than silently run - SetNodeTunnel runs it behind a
+  // privilege prompt when one is available.
+  string bring_up_command = 7;
+  string bring_down_command = 8;
+  // Set when the state could not be read, e.g. because wg is missing.
+  string status_message = 9;
+  google.protobuf.Timestamp last_handshake_at = 10;
+}
+
+// Node is one machine this Studio can run models on.
+message Node {
+  string id = 1;
+  string name = 2;
+  // The node's address inside the tunnel. Everything the Studio sends goes
+  // here, never to a public address.
+  string address = 3;
+  int32 grpc_port = 4;
+  // The port the node's OpenAI gateway listens on. Inference is streamed from
+  // there rather than through gRPC, because the gateway already speaks the
+  // streaming shape the chat needs.
+  int32 gateway_port = 5;
+  bool enabled = 6;
+  NodeState state = 7;
+  // Why the state is what it is, in the node's own words when it answered.
+  string status_message = 8;
+  // What the node reported about itself on the last successful probe.
+  culpeostudio.hardware.v1.HardwareProfile hardware = 9;
+  string version = 10;
+  string model_dir = 11;
+  int32 model_count = 12;
+  int32 instance_count = 13;
+  int64 disk_free_bytes = 14;
+  NodeTunnel tunnel = 15;
+  google.protobuf.Timestamp added_at = 16;
+  google.protobuf.Timestamp last_seen_at = 17;
+}
+
+message ListNodesRequest {}
+
+message ListNodesResponse {
+  repeated Node nodes = 1;
+}
+
+// ManualNodeDetails registers a node whose tunnel was set up by hand. The
+// Studio then only stores where the node is and how to authenticate; it writes
+// no config and manages no interface.
+message ManualNodeDetails {
+  string name = 1;
+  string address = 2;
+  int32 grpc_port = 3;
+  int32 gateway_port = 4;
+  string token = 5;
+}
+
+message AddNodeRequest {
+  oneof source {
+    // The base64 join code the node printed at first start. It carries the
+    // pairing token and the complete client tunnel config, including its
+    // private key: the node generates both key pairs, because the Studio has
+    // no way to reach the node before the tunnel it is trying to describe
+    // exists. Treat the code like a WireGuard config file.
+    string join_code = 1;
+    ManualNodeDetails manual = 2;
+  }
+  // Overrides the name the join code carried.
+  string name = 3;
+}
+
+message AddNodeResponse {
+  Node node = 1;
+  // What still has to happen before the node is usable, e.g. bringing the
+  // tunnel up.
+  repeated string next_steps = 2;
+}
+
+message UpdateNodeRequest {
+  string node_id = 1;
+  optional string name = 2;
+  optional bool enabled = 3;
+}
+
+message UpdateNodeResponse {
+  Node node = 1;
+}
+
+message RemoveNodeRequest {
+  string node_id = 1;
+  // Also deletes the tunnel config this Studio wrote. The interface is brought
+  // down first when it is up.
+  bool delete_tunnel_config = 2;
+}
+
+message RemoveNodeResponse {}
+
+message RefreshNodeRequest {
+  // Empty probes every enabled node.
+  string node_id = 1;
+}
+
+message RefreshNodeResponse {
+  repeated Node nodes = 1;
+}
+
+message GetNodeTunnelRequest {
+  string node_id = 1;
+}
+
+message GetNodeTunnelResponse {
+  NodeTunnel tunnel = 1;
+  // The config as it was written, so the user can copy it somewhere the
+  // Studio cannot reach - another machine, or a WireGuard app on a phone.
+  string config_text = 2;
+}
+
+message SetNodeTunnelRequest {
+  string node_id = 1;
+  // True brings the interface up, false brings it down.
+  bool up = 2;
+}
+
+message SetNodeTunnelResponse {
+  NodeTunnel tunnel = 1;
+  // What the privilege helper printed, successful or not. It is shown as is:
+  // wg-quick's own errors say more than anything this could put in their place.
+  string output = 2;
+}
+
+message GetNodeStatusRequest {}
+
+message GetNodeStatusResponse {
+  string node_id = 1;
+  string name = 2;
+  string version = 3;
+  culpeostudio.hardware.v1.HardwareProfile hardware = 4;
+  string model_dir = 5;
+  int32 model_count = 6;
+  int32 instance_count = 7;
+  int64 disk_free_bytes = 8;
+  // Where the node's OpenAI gateway listens, as the Studio should address it.
+  // Empty when the node could not bind it, which makes the node usable for
+  // downloads but not for inference.
+  string gateway_base_url = 9;
+  bool gateway_key_issued = 10;
+}
+
+message IssueGatewayKeyRequest {
+  // Names the key on the node, so a node paired with two Studios shows which
+  // is which.
+  string label = 1;
+}
+
+message IssueGatewayKeyResponse {
+  string key_id = 1;
+  // Returned once, as by every other key this engine hands out.
+  string secret = 2;
+  string gateway_base_url = 3;
+}

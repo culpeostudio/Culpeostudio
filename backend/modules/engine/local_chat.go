@@ -15,6 +15,7 @@ import (
 
 	"github.com/culpeohq/backend/internal/engineruntime"
 	"github.com/culpeohq/backend/internal/localinference"
+	"github.com/culpeohq/backend/modules/node"
 )
 
 var _ localinference.Provider = (*EngineModule)(nil)
@@ -28,11 +29,18 @@ func (m *EngineModule) ReadyLocalModels() []localinference.Model {
 		}
 		models = append(models, localModelView(instance))
 	}
-	return models
+	// A model loaded on a node is as usable from the chat as one loaded here,
+	// so it belongs in the same picker.
+	return append(models, m.nodeReadyModels()...)
 }
 
 func (m *EngineModule) ResolveLocalModel(instanceID string) (localinference.Model, error) {
-	instance, ok := m.getInstance(strings.TrimSpace(instanceID))
+	instanceID = strings.TrimSpace(instanceID)
+	if nodeID, localID, remote := node.Split(instanceID); remote {
+		_, model, err := m.resolveNodeModel(context.Background(), nodeID, localID)
+		return model, err
+	}
+	instance, ok := m.getInstance(instanceID)
 	if !ok {
 		return localinference.Model{}, localinference.ErrNotFound
 	}
@@ -61,6 +69,12 @@ func localModelView(instance *EngineInstance) localinference.Model {
 }
 
 func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, request localinference.ChatRequest, emit func(string) error) (string, error) {
+	// An instance on a node is answered by that node's gateway. Everything
+	// below this line - the worker URL, the admission gate, the local
+	// statistics - describes a process on this machine.
+	if nodeID, localID, remote := node.Split(strings.TrimSpace(instanceID)); remote {
+		return m.streamNodeChat(ctx, nodeID, localID, request, emit)
+	}
 	instance, model, err := m.localChatTarget(instanceID)
 	if err != nil {
 		return "", err
@@ -153,6 +167,9 @@ func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, r
 }
 
 func (m *EngineModule) EnsureLocalModelReady(ctx context.Context, instanceID string, emit func(localinference.WarmupProgress) error) (localinference.Model, error) {
+	if nodeID, localID, remote := node.Split(strings.TrimSpace(instanceID)); remote {
+		return m.ensureNodeModelReady(ctx, nodeID, localID, emit)
+	}
 	instance, operation, err := m.ensureReady(strings.TrimSpace(instanceID))
 	if err != nil {
 		return localinference.Model{}, normalizeWarmupError(err)

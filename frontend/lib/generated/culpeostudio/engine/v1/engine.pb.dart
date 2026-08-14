@@ -578,6 +578,8 @@ class ModelRecord extends $pb.GeneratedMessage {
     $core.Iterable<RuntimeKind>? runtimeCandidates,
     $core.Iterable<ValidationIssue>? issues,
     ModelStatus? status,
+    $core.String? nodeId,
+    $core.String? nodeName,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -594,6 +596,8 @@ class ModelRecord extends $pb.GeneratedMessage {
       result.runtimeCandidates.addAll(runtimeCandidates);
     if (issues != null) result.issues.addAll(issues);
     if (status != null) result.status = status;
+    if (nodeId != null) result.nodeId = nodeId;
+    if (nodeName != null) result.nodeName = nodeName;
     return result;
   }
 
@@ -632,6 +636,8 @@ class ModelRecord extends $pb.GeneratedMessage {
         subBuilder: ValidationIssue.create)
     ..aE<ModelStatus>(13, _omitFieldNames ? '' : 'status',
         enumValues: ModelStatus.values)
+    ..aOS(14, _omitFieldNames ? '' : 'nodeId')
+    ..aOS(15, _omitFieldNames ? '' : 'nodeName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -753,6 +759,27 @@ class ModelRecord extends $pb.GeneratedMessage {
   $core.bool hasStatus() => $_has(12);
   @$pb.TagNumber(13)
   void clearStatus() => $_clearField(13);
+
+  /// Empty for a model on this machine. A model that lives on a node carries
+  /// the node it was found on, and its id is qualified with that node so the
+  /// calls acting on it route themselves.
+  @$pb.TagNumber(14)
+  $core.String get nodeId => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set nodeId($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasNodeId() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearNodeId() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.String get nodeName => $_getSZ(14);
+  @$pb.TagNumber(15)
+  set nodeName($core.String value) => $_setString(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasNodeName() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearNodeName() => $_clearField(15);
 }
 
 /// HardwareSnapshot is the live reading the engine plans against. It reuses the
@@ -2251,6 +2278,8 @@ class EngineInstance extends $pb.GeneratedMessage {
     $core.bool? gatewayAutostart,
     $core.bool? restartOnCrash,
     $core.int? idleTimeoutSeconds,
+    $core.String? nodeId,
+    $core.String? nodeName,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2288,6 +2317,8 @@ class EngineInstance extends $pb.GeneratedMessage {
     if (restartOnCrash != null) result.restartOnCrash = restartOnCrash;
     if (idleTimeoutSeconds != null)
       result.idleTimeoutSeconds = idleTimeoutSeconds;
+    if (nodeId != null) result.nodeId = nodeId;
+    if (nodeName != null) result.nodeName = nodeName;
     return result;
   }
 
@@ -2352,6 +2383,8 @@ class EngineInstance extends $pb.GeneratedMessage {
     ..aOB(31, _omitFieldNames ? '' : 'gatewayAutostart')
     ..aOB(32, _omitFieldNames ? '' : 'restartOnCrash')
     ..aI(33, _omitFieldNames ? '' : 'idleTimeoutSeconds')
+    ..aOS(34, _omitFieldNames ? '' : 'nodeId')
+    ..aOS(35, _omitFieldNames ? '' : 'nodeName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2675,6 +2708,27 @@ class EngineInstance extends $pb.GeneratedMessage {
   $core.bool hasIdleTimeoutSeconds() => $_has(32);
   @$pb.TagNumber(33)
   void clearIdleTimeoutSeconds() => $_clearField(33);
+
+  /// Empty for an instance on this machine. An instance running on a node is
+  /// listed beside the local ones and behaves the same way; only the process is
+  /// elsewhere and its output is streamed back through the tunnel.
+  @$pb.TagNumber(34)
+  $core.String get nodeId => $_getSZ(33);
+  @$pb.TagNumber(34)
+  set nodeId($core.String value) => $_setString(33, value);
+  @$pb.TagNumber(34)
+  $core.bool hasNodeId() => $_has(33);
+  @$pb.TagNumber(34)
+  void clearNodeId() => $_clearField(34);
+
+  @$pb.TagNumber(35)
+  $core.String get nodeName => $_getSZ(34);
+  @$pb.TagNumber(35)
+  set nodeName($core.String value) => $_setString(34, value);
+  @$pb.TagNumber(35)
+  $core.bool hasNodeName() => $_has(34);
+  @$pb.TagNumber(35)
+  void clearNodeName() => $_clearField(35);
 }
 
 /// ResourceConflict says which resource was short and by how much. It is
@@ -4452,11 +4506,13 @@ class CreateInstanceRequest extends $pb.GeneratedMessage {
     $core.String? modelId,
     $core.String? servedModelName,
     EngineConfig? config,
+    $core.String? nodeId,
   }) {
     final result = create();
     if (modelId != null) result.modelId = modelId;
     if (servedModelName != null) result.servedModelName = servedModelName;
     if (config != null) result.config = config;
+    if (nodeId != null) result.nodeId = nodeId;
     return result;
   }
 
@@ -4478,6 +4534,7 @@ class CreateInstanceRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'servedModelName')
     ..aOM<EngineConfig>(3, _omitFieldNames ? '' : 'config',
         subBuilder: EngineConfig.create)
+    ..aOS(4, _omitFieldNames ? '' : 'nodeId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4529,6 +4586,18 @@ class CreateInstanceRequest extends $pb.GeneratedMessage {
   void clearConfig() => $_clearField(3);
   @$pb.TagNumber(3)
   EngineConfig ensureConfig() => $_ensure(2);
+
+  /// Which machine runs it. Empty means this one. It may be left out when
+  /// model_id is already qualified with a node, which is how the catalog lists
+  /// a node's models.
+  @$pb.TagNumber(4)
+  $core.String get nodeId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set nodeId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNodeId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNodeId() => $_clearField(4);
 }
 
 /// The response to every call that schedules work on an instance: the instance

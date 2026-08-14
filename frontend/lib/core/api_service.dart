@@ -7,6 +7,7 @@ import '../modules/engine/engine_grpc_api.dart';
 import '../modules/engine/models.dart';
 import '../modules/marketplace/marketplace_api.dart';
 import '../modules/news/news_api.dart';
+import '../modules/nodes/node_api.dart';
 import '../modules/scout/scout_api.dart';
 import '../modules/settings/settings_api.dart';
 import '../modules/spark/spark_api.dart';
@@ -49,6 +50,7 @@ class ApiService implements EngineApi {
   void debugSetMarketplaceApi(MarketplaceApi api) => _marketplaceOverride = api;
   late final SettingsApi settings = SettingsApi(client);
   late final NewsApi news = NewsApi(client);
+  late final NodeApi nodes = NodeApi(client);
   late final BenchmarkApi benchmark = BenchmarkApi(client);
 
   String get baseUrl => client.baseUrl;

@@ -1203,8 +1203,13 @@ type ModelRecord struct {
 	RuntimeCandidates []RuntimeKind          `protobuf:"varint,11,rep,packed,name=runtime_candidates,json=runtimeCandidates,proto3,enum=culpeostudio.engine.v1.RuntimeKind" json:"runtime_candidates,omitempty"`
 	Issues            []*ValidationIssue     `protobuf:"bytes,12,rep,name=issues,proto3" json:"issues,omitempty"`
 	Status            ModelStatus            `protobuf:"varint,13,opt,name=status,proto3,enum=culpeostudio.engine.v1.ModelStatus" json:"status,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Empty for a model on this machine. A model that lives on a node carries
+	// the node it was found on, and its id is qualified with that node so the
+	// calls acting on it route themselves.
+	NodeId        string `protobuf:"bytes,14,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeName      string `protobuf:"bytes,15,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ModelRecord) Reset() {
@@ -1326,6 +1331,20 @@ func (x *ModelRecord) GetStatus() ModelStatus {
 		return x.Status
 	}
 	return ModelStatus_MODEL_STATUS_UNSPECIFIED
+}
+
+func (x *ModelRecord) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *ModelRecord) GetNodeName() string {
+	if x != nil {
+		return x.NodeName
+	}
+	return ""
 }
 
 // HardwareSnapshot is the live reading the engine plans against. It reuses the
@@ -2415,8 +2434,13 @@ type EngineInstance struct {
 	GatewayAutostart   bool   `protobuf:"varint,31,opt,name=gateway_autostart,json=gatewayAutostart,proto3" json:"gateway_autostart,omitempty"`
 	RestartOnCrash     bool   `protobuf:"varint,32,opt,name=restart_on_crash,json=restartOnCrash,proto3" json:"restart_on_crash,omitempty"`
 	IdleTimeoutSeconds *int32 `protobuf:"varint,33,opt,name=idle_timeout_seconds,json=idleTimeoutSeconds,proto3,oneof" json:"idle_timeout_seconds,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Empty for an instance on this machine. An instance running on a node is
+	// listed beside the local ones and behaves the same way; only the process is
+	// elsewhere and its output is streamed back through the tunnel.
+	NodeId        string `protobuf:"bytes,34,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeName      string `protobuf:"bytes,35,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EngineInstance) Reset() {
@@ -2678,6 +2702,20 @@ func (x *EngineInstance) GetIdleTimeoutSeconds() int32 {
 		return *x.IdleTimeoutSeconds
 	}
 	return 0
+}
+
+func (x *EngineInstance) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *EngineInstance) GetNodeName() string {
+	if x != nil {
+		return x.NodeName
+	}
+	return ""
 }
 
 // ResourceConflict says which resource was short and by how much. It is
@@ -4043,8 +4081,12 @@ type CreateInstanceRequest struct {
 	// Defaults to the model's name.
 	ServedModelName string        `protobuf:"bytes,2,opt,name=served_model_name,json=servedModelName,proto3" json:"served_model_name,omitempty"`
 	Config          *EngineConfig `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Which machine runs it. Empty means this one. It may be left out when
+	// model_id is already qualified with a node, which is how the catalog lists
+	// a node's models.
+	NodeId        string `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateInstanceRequest) Reset() {
@@ -4096,6 +4138,13 @@ func (x *CreateInstanceRequest) GetConfig() *EngineConfig {
 		return x.Config
 	}
 	return nil
+}
+
+func (x *CreateInstanceRequest) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
 }
 
 // The response to every call that schedules work on an instance: the instance
@@ -7988,7 +8037,7 @@ const file_culpeostudio_engine_v1_engine_proto_rawDesc = "" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12A\n" +
 	"\bseverity\x18\x02 \x01(\x0e2%.culpeostudio.engine.v1.IssueSeverityR\bseverity\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12 \n" +
-	"\vremediation\x18\x04 \x01(\tR\vremediation\"\xb9\x04\n" +
+	"\vremediation\x18\x04 \x01(\tR\vremediation\"\xef\x04\n" +
 	"\vModelRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vfingerprint\x18\x02 \x01(\tR\vfingerprint\x12\x12\n" +
@@ -8004,7 +8053,9 @@ const file_culpeostudio_engine_v1_engine_proto_rawDesc = "" +
 	" \x01(\v2%.culpeostudio.engine.v1.ModelMetadataR\bmetadata\x12R\n" +
 	"\x12runtime_candidates\x18\v \x03(\x0e2#.culpeostudio.engine.v1.RuntimeKindR\x11runtimeCandidates\x12?\n" +
 	"\x06issues\x18\f \x03(\v2'.culpeostudio.engine.v1.ValidationIssueR\x06issues\x12;\n" +
-	"\x06status\x18\r \x01(\x0e2#.culpeostudio.engine.v1.ModelStatusR\x06status\"\xb6\x03\n" +
+	"\x06status\x18\r \x01(\x0e2#.culpeostudio.engine.v1.ModelStatusR\x06status\x12\x17\n" +
+	"\anode_id\x18\x0e \x01(\tR\x06nodeId\x12\x1b\n" +
+	"\tnode_name\x18\x0f \x01(\tR\bnodeName\"\xb6\x03\n" +
 	"\x10HardwareSnapshot\x12\x0e\n" +
 	"\x02os\x18\x01 \x01(\tR\x02os\x12\x12\n" +
 	"\x04arch\x18\x02 \x01(\tR\x04arch\x12\x19\n" +
@@ -8119,7 +8170,7 @@ const file_culpeostudio_engine_v1_engine_proto_rawDesc = "" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\"<\n" +
 	"\fSuggestedFix\x12\x16\n" +
 	"\x06action\x18\x01 \x01(\tR\x06action\x12\x14\n" +
-	"\x05label\x18\x02 \x01(\tR\x05label\"\xef\f\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\"\xa5\r\n" +
 	"\x0eEngineInstance\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12;\n" +
 	"\x05state\x18\x02 \x01(\x0e2%.culpeostudio.engine.v1.InstanceStateR\x05state\x12\x19\n" +
@@ -8159,7 +8210,9 @@ const file_culpeostudio_engine_v1_engine_proto_rawDesc = "" +
 	"updated_at\x18\x1e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12+\n" +
 	"\x11gateway_autostart\x18\x1f \x01(\bR\x10gatewayAutostart\x12(\n" +
 	"\x10restart_on_crash\x18  \x01(\bR\x0erestartOnCrash\x125\n" +
-	"\x14idle_timeout_seconds\x18! \x01(\x05H\x00R\x12idleTimeoutSeconds\x88\x01\x01B\x17\n" +
+	"\x14idle_timeout_seconds\x18! \x01(\x05H\x00R\x12idleTimeoutSeconds\x88\x01\x01\x12\x17\n" +
+	"\anode_id\x18\" \x01(\tR\x06nodeId\x12\x1b\n" +
+	"\tnode_name\x18# \x01(\tR\bnodeNameB\x17\n" +
 	"\x15_idle_timeout_seconds\"\xfd\x01\n" +
 	"\x10ResourceConflict\x12\x1a\n" +
 	"\bresource\x18\x01 \x01(\tR\bresource\x12%\n" +
@@ -8262,11 +8315,12 @@ const file_culpeostudio_engine_v1_engine_proto_rawDesc = "" +
 	"\x06reason\x18\a \x01(\tR\x06reason\"\x16\n" +
 	"\x14ListInstancesRequest\"]\n" +
 	"\x15ListInstancesResponse\x12D\n" +
-	"\tinstances\x18\x01 \x03(\v2&.culpeostudio.engine.v1.EngineInstanceR\tinstances\"\x9c\x01\n" +
+	"\tinstances\x18\x01 \x03(\v2&.culpeostudio.engine.v1.EngineInstanceR\tinstances\"\xb5\x01\n" +
 	"\x15CreateInstanceRequest\x12\x19\n" +
 	"\bmodel_id\x18\x01 \x01(\tR\amodelId\x12*\n" +
 	"\x11served_model_name\x18\x02 \x01(\tR\x0fservedModelName\x12<\n" +
-	"\x06config\x18\x03 \x01(\v2$.culpeostudio.engine.v1.EngineConfigR\x06config\"\xe4\x01\n" +
+	"\x06config\x18\x03 \x01(\v2$.culpeostudio.engine.v1.EngineConfigR\x06config\x12\x17\n" +
+	"\anode_id\x18\x04 \x01(\tR\x06nodeId\"\xe4\x01\n" +
 	"\x16CreateInstanceResponse\x12B\n" +
 	"\binstance\x18\x01 \x01(\v2&.culpeostudio.engine.v1.EngineInstanceR\binstance\x12!\n" +
 	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12<\n" +
