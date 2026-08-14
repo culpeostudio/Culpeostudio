@@ -301,6 +301,11 @@ message ModelRecord {
   repeated RuntimeKind runtime_candidates = 11;
   repeated ValidationIssue issues = 12;
   ModelStatus status = 13;
+  // Empty for a model on this machine. A model that lives on a node carries
+  // the node it was found on, and its id is qualified with that node so the
+  // calls acting on it route themselves.
+  string node_id = 14;
+  string node_name = 15;
 }
 
 // HardwareSnapshot is the live reading the engine plans against. It reuses the
@@ -485,6 +490,11 @@ message EngineInstance {
   bool gateway_autostart = 31;
   bool restart_on_crash = 32;
   optional int32 idle_timeout_seconds = 33;
+  // Empty for an instance on this machine. An instance running on a node is
+  // listed beside the local ones and behaves the same way; only the process is
+  // elsewhere and its output is streamed back through the tunnel.
+  string node_id = 34;
+  string node_name = 35;
 }
 
 // ResourceConflict says which resource was short and by how much. It is
@@ -652,6 +662,10 @@ message CreateInstanceRequest {
   // Defaults to the model's name.
   string served_model_name = 2;
   EngineConfig config = 3;
+  // Which machine runs it. Empty means this one. It may be left out when
+  // model_id is already qualified with a node, which is how the catalog lists
+  // a node's models.
+  string node_id = 4;
 }
 
 // The response to every call that schedules work on an instance: the instance

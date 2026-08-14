@@ -1138,7 +1138,12 @@ type StartDownloadRequest struct {
 	TargetDir string `protobuf:"bytes,6,opt,name=target_dir,json=targetDir,proto3" json:"target_dir,omitempty"`
 	// What the client expects to download. When set, the backend refuses the job
 	// up front if the disk cannot hold it plus a ten percent margin.
-	SizeBytes     int64 `protobuf:"varint,7,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	SizeBytes int64 `protobuf:"varint,7,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	// Which machine fetches the model. Empty means this one. A node id sends the
+	// job to that node, which downloads from the model host itself - the weights
+	// never travel through the Studio, because a model of tens of gigabytes
+	// would arrive twice as slowly for no reason.
+	NodeId        string `protobuf:"bytes,8,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1220,6 +1225,13 @@ func (x *StartDownloadRequest) GetSizeBytes() int64 {
 		return x.SizeBytes
 	}
 	return 0
+}
+
+func (x *StartDownloadRequest) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
 }
 
 type StartDownloadResponse struct {
@@ -1314,8 +1326,12 @@ type DownloadJob struct {
 	DownloadedBytes  int64                  `protobuf:"varint,17,opt,name=downloaded_bytes,json=downloadedBytes,proto3" json:"downloaded_bytes,omitempty"`
 	SpeedBytesPerSec int64                  `protobuf:"varint,18,opt,name=speed_bytes_per_sec,json=speedBytesPerSec,proto3" json:"speed_bytes_per_sec,omitempty"`
 	TotalBytes       int64                  `protobuf:"varint,19,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Empty for a job on this machine. On a node job the id is qualified with
+	// the node it belongs to, so the calls that act on a job route themselves.
+	NodeId        string `protobuf:"bytes,20,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeName      string `protobuf:"bytes,21,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DownloadJob) Reset() {
@@ -1479,6 +1495,20 @@ func (x *DownloadJob) GetTotalBytes() int64 {
 		return x.TotalBytes
 	}
 	return 0
+}
+
+func (x *DownloadJob) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *DownloadJob) GetNodeName() string {
+	if x != nil {
+		return x.NodeName
+	}
+	return ""
 }
 
 type ListDownloadJobsRequest struct {
@@ -2169,7 +2199,7 @@ const file_culpeostudio_marketplace_v1_marketplace_proto_rawDesc = "" +
 	"\x06detail\x18\x01 \x01(\v2(.culpeostudio.marketplace.v1.ModelDetailR\x06detail\"\x1b\n" +
 	"\x19GetHardwareProfileRequest\"a\n" +
 	"\x1aGetHardwareProfileResponse\x12C\n" +
-	"\aprofile\x18\x01 \x01(\v2).culpeostudio.hardware.v1.HardwareProfileR\aprofile\"\x86\x02\n" +
+	"\aprofile\x18\x01 \x01(\v2).culpeostudio.hardware.v1.HardwareProfileR\aprofile\"\x9f\x02\n" +
 	"\x14StartDownloadRequest\x12A\n" +
 	"\bprovider\x18\x01 \x01(\x0e2%.culpeostudio.marketplace.v1.ProviderR\bprovider\x12\x19\n" +
 	"\bmodel_id\x18\x02 \x01(\tR\amodelId\x12\x19\n" +
@@ -2179,13 +2209,14 @@ const file_culpeostudio_marketplace_v1_marketplace_proto_rawDesc = "" +
 	"\n" +
 	"target_dir\x18\x06 \x01(\tR\ttargetDir\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\a \x01(\x03R\tsizeBytes\"\xae\x01\n" +
+	"size_bytes\x18\a \x01(\x03R\tsizeBytes\x12\x17\n" +
+	"\anode_id\x18\b \x01(\tR\x06nodeId\"\xae\x01\n" +
 	"\x15StartDownloadResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12C\n" +
 	"\x06status\x18\x02 \x01(\x0e2+.culpeostudio.marketplace.v1.DownloadStatusR\x06status\x12\x1a\n" +
 	"\bexisting\x18\x03 \x01(\bR\bexisting\x12\x1d\n" +
 	"\n" +
-	"target_dir\x18\x04 \x01(\tR\ttargetDir\"\x8e\x06\n" +
+	"target_dir\x18\x04 \x01(\tR\ttargetDir\"\xc4\x06\n" +
 	"\vDownloadJob\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12A\n" +
 	"\bprovider\x18\x02 \x01(\x0e2%.culpeostudio.marketplace.v1.ProviderR\bprovider\x12\x19\n" +
@@ -2214,7 +2245,9 @@ const file_culpeostudio_marketplace_v1_marketplace_proto_rawDesc = "" +
 	"\x10downloaded_bytes\x18\x11 \x01(\x03R\x0fdownloadedBytes\x12-\n" +
 	"\x13speed_bytes_per_sec\x18\x12 \x01(\x03R\x10speedBytesPerSec\x12\x1f\n" +
 	"\vtotal_bytes\x18\x13 \x01(\x03R\n" +
-	"totalBytes\"\x19\n" +
+	"totalBytes\x12\x17\n" +
+	"\anode_id\x18\x14 \x01(\tR\x06nodeId\x12\x1b\n" +
+	"\tnode_name\x18\x15 \x01(\tR\bnodeName\"\x19\n" +
 	"\x17ListDownloadJobsRequest\"X\n" +
 	"\x18ListDownloadJobsResponse\x12<\n" +
 	"\x04jobs\x18\x01 \x03(\v2(.culpeostudio.marketplace.v1.DownloadJobR\x04jobs\"'\n" +

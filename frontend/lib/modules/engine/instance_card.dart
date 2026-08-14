@@ -94,12 +94,27 @@ class InstanceCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      _instanceStageTitle(instance),
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _instanceStageTitle(instance),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        // Which machine is running this. It sits beside the
+                        // stage rather than in the badge row below, because it
+                        // answers "where" and the badges answer "how".
+                        if (instance.isOnNode) ...[
+                          const SizedBox(width: 8),
+                          EngineNodeBadge(nodeName: instance.nodeName),
+                        ],
+                      ],
                     ),
                   ],
                 ),

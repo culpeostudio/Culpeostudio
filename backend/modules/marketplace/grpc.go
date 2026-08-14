@@ -17,6 +17,7 @@ import (
 	"github.com/culpeohq/backend/modules/marketplace/huggingface"
 	"github.com/culpeohq/backend/modules/marketplace/openrouter"
 	"github.com/culpeohq/backend/modules/marketplace/types"
+	"github.com/culpeohq/backend/modules/node"
 )
 
 type grpcService struct {
@@ -167,6 +168,13 @@ func (s *grpcService) StartDownload(
 		return nil, status.Error(codes.InvalidArgument, "model_id ist erforderlich")
 	}
 
+	// A download aimed at a node is carried out there, by the same code, and
+	// nothing below this line applies: the model directory, the free disk and
+	// the job store that matter all belong to that machine.
+	if targetNode := strings.TrimSpace(req.GetNodeId()); targetNode != "" {
+		return s.startDownloadOnNode(ctx, targetNode, req)
+	}
+
 	if existing, ok := s.module.jobs.ActiveJobForModel(provider, modelID); ok {
 		return &marketplacev1.StartDownloadResponse{
 			JobId:     existing.ID,
@@ -257,6 +265,12 @@ func (s *grpcService) ListDownloadJobs(
 	for _, job := range stored {
 		jobs = append(jobs, downloadJobToProto(job))
 	}
+	if remote := s.module.nodeDownloadJobs(ctx); len(remote) > 0 {
+		jobs = append(jobs, remote...)
+		// Merged lists lose the store's own ordering, so it is restored here
+		// rather than left to the client.
+		sortJobsNewestFirst(jobs)
+	}
 	return &marketplacev1.ListDownloadJobsResponse{Jobs: jobs}, nil
 }
 
@@ -264,7 +278,15 @@ func (s *grpcService) GetDownloadJob(
 	ctx context.Context,
 	req *marketplacev1.GetDownloadJobRequest,
 ) (*marketplacev1.GetDownloadJobResponse, error) {
-	job, ok := s.module.jobs.Get(strings.TrimSpace(req.GetId()))
+	id := strings.TrimSpace(req.GetId())
+	if nodeID, localID, remote := node.Split(id); remote {
+		job, err := s.module.getDownloadJobFromNode(ctx, nodeID, localID)
+		if err != nil {
+			return nil, err
+		}
+		return &marketplacev1.GetDownloadJobResponse{Job: job}, nil
+	}
+	job, ok := s.module.jobs.Get(id)
 	if !ok {
 		return nil, status.Error(codes.NotFound, "job nicht gefunden")
 	}
@@ -275,7 +297,14 @@ func (s *grpcService) DeleteDownloadJob(
 	ctx context.Context,
 	req *marketplacev1.DeleteDownloadJobRequest,
 ) (*marketplacev1.DeleteDownloadJobResponse, error) {
-	if !s.module.jobs.Delete(strings.TrimSpace(req.GetId())) {
+	id := strings.TrimSpace(req.GetId())
+	if nodeID, localID, remote := node.Split(id); remote {
+		if err := s.module.deleteDownloadJobOnNode(ctx, nodeID, localID); err != nil {
+			return nil, err
+		}
+		return &marketplacev1.DeleteDownloadJobResponse{}, nil
+	}
+	if !s.module.jobs.Delete(id) {
 		return nil, status.Error(codes.NotFound, "job nicht gefunden")
 	}
 	return &marketplacev1.DeleteDownloadJobResponse{}, nil

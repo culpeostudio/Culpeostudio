@@ -6,6 +6,13 @@ import (
 	hardwarev1 "github.com/culpeohq/backend/gen/go/culpeostudio/hardware/v1"
 )
 
+// HardwareProfileProto is this machine's profile, ready for the wire. A node
+// reports it to the Studio it is paired with, which is how the Studio can show
+// what a download would land on before anything is downloaded.
+func (m *MarketplaceModule) HardwareProfileProto() *hardwarev1.HardwareProfile {
+	return HardwareProfileToProto(detectHardwareProfile())
+}
+
 // HardwareProfileToProto converts a detected profile for the wire. It lives
 // here because HardwareProfile does, and both the settings service (as system
 // information) and the marketplace itself hand it to the client.

@@ -206,6 +206,51 @@ class EngineSectionTitle extends StatelessWidget {
   }
 }
 
+/// Marks a model or an instance as belonging to another machine.
+///
+/// It is rust rather than gold: which machine runs a model is something the
+/// user chose, not something the engine measured.
+class EngineNodeBadge extends StatelessWidget {
+  const EngineNodeBadge({super.key, required this.nodeName});
+
+  final String nodeName;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = nodeName.trim().isEmpty ? 'Node' : nodeName.trim();
+    return Semantics(
+      label: tr('engineWidget.node.badge', {'name': label}),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: CulpeoColors.actionMuted,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: CulpeoColors.actionBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.hub_outlined,
+              size: 11,
+              color: CulpeoColors.action,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                color: CulpeoColors.action,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class EngineStatusBadge extends StatelessWidget {
   const EngineStatusBadge({super.key, required this.status});
 

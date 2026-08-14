@@ -40,3 +40,26 @@ cd Culpeostudio
 ```
 
 `start.sh` builds and starts the Go backend, creates the required local data files, and launches the Flutter frontend.
+
+---
+
+## 3. Install on a Server as a Node (Headless)
+
+A node is another machine this Studio downloads models to and runs them on. It
+needs no Flutter and no desktop session — only Go and WireGuard.
+
+The server side lives in its own project, **culpeo-node**. It holds no backend
+code: it fetches this repository at a pinned revision, builds only the backend,
+and installs it as a systemd service behind a WireGuard tunnel.
+
+```bash
+git clone <culpeo-node> culpeo-node
+cd culpeo-node
+sudo ./install.sh --endpoint node.example.org:51820 --name "Workshop"
+```
+
+The installer prints a join code. Paste that in the Studio under
+**Settings → Nodes**.
+
+See [NODE.md](NODE.md) for what a node is, how the Studio talks to it, and what
+it can and cannot do.

@@ -96,6 +96,7 @@ class MarketplaceApi {
     String targetDir, {
     List<String> assetIds = const [],
     int sizeBytes = 0,
+    String nodeId = '',
   }) async {
     try {
       final response = await _c.marketplaceClient.startDownload(
@@ -106,6 +107,9 @@ class MarketplaceApi {
           assetIds: assetIds,
           targetDir: targetDir,
           sizeBytes: sizeBytes > 0 ? Int64(sizeBytes) : null,
+          // Empty means this machine. A node id sends the job there, and the
+          // node downloads from the model host itself.
+          nodeId: nodeId,
         ),
       );
       return {
@@ -327,6 +331,8 @@ class MarketplaceApi {
       if (job.speedBytesPerSec != 0)
         'speed_bytes_per_sec': job.speedBytesPerSec.toInt(),
       if (job.totalBytes != 0) 'total_bytes': job.totalBytes.toInt(),
+      if (job.nodeId.isNotEmpty) 'node_id': job.nodeId,
+      if (job.nodeName.isNotEmpty) 'node_name': job.nodeName,
     };
   }
 

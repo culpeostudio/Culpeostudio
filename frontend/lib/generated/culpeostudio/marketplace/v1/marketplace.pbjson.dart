@@ -460,6 +460,7 @@ const StartDownloadRequest$json = {
     {'1': 'revision', '3': 5, '4': 1, '5': 9, '10': 'revision'},
     {'1': 'target_dir', '3': 6, '4': 1, '5': 9, '10': 'targetDir'},
     {'1': 'size_bytes', '3': 7, '4': 1, '5': 3, '10': 'sizeBytes'},
+    {'1': 'node_id', '3': 8, '4': 1, '5': 9, '10': 'nodeId'},
   ],
 };
 
@@ -469,7 +470,8 @@ final $typed_data.Uint8List startDownloadRequestDescriptor = $convert.base64Deco
     '5tYXJrZXRwbGFjZS52MS5Qcm92aWRlclIIcHJvdmlkZXISGQoIbW9kZWxfaWQYAiABKAlSB21v'
     'ZGVsSWQSGQoIYXNzZXRfaWQYAyABKAlSB2Fzc2V0SWQSGwoJYXNzZXRfaWRzGAQgAygJUghhc3'
     'NldElkcxIaCghyZXZpc2lvbhgFIAEoCVIIcmV2aXNpb24SHQoKdGFyZ2V0X2RpchgGIAEoCVIJ'
-    'dGFyZ2V0RGlyEh0KCnNpemVfYnl0ZXMYByABKANSCXNpemVCeXRlcw==');
+    'dGFyZ2V0RGlyEh0KCnNpemVfYnl0ZXMYByABKANSCXNpemVCeXRlcxIXCgdub2RlX2lkGAggAS'
+    'gJUgZub2RlSWQ=');
 
 @$core.Deprecated('Use startDownloadResponseDescriptor instead')
 const StartDownloadResponse$json = {
@@ -567,6 +569,8 @@ const DownloadJob$json = {
       '10': 'speedBytesPerSec'
     },
     {'1': 'total_bytes', '3': 19, '4': 1, '5': 3, '10': 'totalBytes'},
+    {'1': 'node_id', '3': 20, '4': 1, '5': 9, '10': 'nodeId'},
+    {'1': 'node_name', '3': 21, '4': 1, '5': 9, '10': 'nodeName'},
   ],
 };
 
@@ -586,7 +590,8 @@ final $typed_data.Uint8List downloadJobDescriptor = $convert.base64Decode(
     '9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCmZpbmlzaGVkQXQSKQoQZG93'
     'bmxvYWRlZF9ieXRlcxgRIAEoA1IPZG93bmxvYWRlZEJ5dGVzEi0KE3NwZWVkX2J5dGVzX3Blcl'
     '9zZWMYEiABKANSEHNwZWVkQnl0ZXNQZXJTZWMSHwoLdG90YWxfYnl0ZXMYEyABKANSCnRvdGFs'
-    'Qnl0ZXM=');
+    'Qnl0ZXMSFwoHbm9kZV9pZBgUIAEoCVIGbm9kZUlkEhsKCW5vZGVfbmFtZRgVIAEoCVIIbm9kZU'
+    '5hbWU=');
 
 @$core.Deprecated('Use listDownloadJobsRequestDescriptor instead')
 const ListDownloadJobsRequest$json = {

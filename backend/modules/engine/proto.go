@@ -790,9 +790,20 @@ func engineEventToProto(m *EngineModule, event engineEvent) *enginev1.StreamEven
 	response := &enginev1.StreamEventsResponse{Timestamp: nowTimestamp()}
 	switch event.Type {
 	case "instance_created":
-		if instance, ok := event.Data.(*EngineInstance); ok && instance != nil {
-			response.Event = &enginev1.StreamEventsResponse_InstanceCreated{InstanceCreated: instanceToProto(instance)}
-			return response
+		switch value := event.Data.(type) {
+		case *EngineInstance:
+			if value != nil {
+				response.Event = &enginev1.StreamEventsResponse_InstanceCreated{InstanceCreated: instanceToProto(value)}
+				return response
+			}
+		case *enginev1.EngineInstance:
+			// A node's instance arrives already in wire form, qualified with
+			// the node it came from. It is passed through rather than
+			// converted back into a local shape it never had.
+			if value != nil {
+				response.Event = &enginev1.StreamEventsResponse_InstanceCreated{InstanceCreated: value}
+				return response
+			}
 		}
 	case "instance_changed":
 		switch value := event.Data.(type) {
@@ -804,6 +815,11 @@ func engineEventToProto(m *EngineModule, event engineEvent) *enginev1.StreamEven
 		case EngineInstance:
 			response.Event = &enginev1.StreamEventsResponse_InstanceChanged{InstanceChanged: instanceToProto(&value)}
 			return response
+		case *enginev1.EngineInstance:
+			if value != nil {
+				response.Event = &enginev1.StreamEventsResponse_InstanceChanged{InstanceChanged: value}
+				return response
+			}
 		}
 	case "instance_deleted":
 		if id := instanceIDString(event.Data, "id"); id != "" {

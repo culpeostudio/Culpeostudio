@@ -522,6 +522,8 @@ const ModelRecord$json = {
       '6': '.culpeostudio.engine.v1.ModelStatus',
       '10': 'status'
     },
+    {'1': 'node_id', '3': 14, '4': 1, '5': 9, '10': 'nodeId'},
+    {'1': 'node_name', '3': 15, '4': 1, '5': 9, '10': 'nodeName'},
   ],
 };
 
@@ -537,7 +539,8 @@ final $typed_data.Uint8List modelRecordDescriptor = $convert.base64Decode(
     'MuY3VscGVvc3R1ZGlvLmVuZ2luZS52MS5SdW50aW1lS2luZFIRcnVudGltZUNhbmRpZGF0ZXMS'
     'PwoGaXNzdWVzGAwgAygLMicuY3VscGVvc3R1ZGlvLmVuZ2luZS52MS5WYWxpZGF0aW9uSXNzdW'
     'VSBmlzc3VlcxI7CgZzdGF0dXMYDSABKA4yIy5jdWxwZW9zdHVkaW8uZW5naW5lLnYxLk1vZGVs'
-    'U3RhdHVzUgZzdGF0dXM=');
+    'U3RhdHVzUgZzdGF0dXMSFwoHbm9kZV9pZBgOIAEoCVIGbm9kZUlkEhsKCW5vZGVfbmFtZRgPIA'
+    'EoCVIIbm9kZU5hbWU=');
 
 @$core.Deprecated('Use hardwareSnapshotDescriptor instead')
 const HardwareSnapshot$json = {
@@ -1266,6 +1269,8 @@ const EngineInstance$json = {
       '10': 'idleTimeoutSeconds',
       '17': true
     },
+    {'1': 'node_id', '3': 34, '4': 1, '5': 9, '10': 'nodeId'},
+    {'1': 'node_name', '3': 35, '4': 1, '5': 9, '10': 'nodeName'},
   ],
   '8': [
     {'1': '_idle_timeout_seconds'},
@@ -1303,7 +1308,8 @@ final $typed_data.Uint8List engineInstanceDescriptor = $convert.base64Decode(
     'Lmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXVwZGF0ZWRBdBIrChFnYXRld2F5X2F1dG9zdG'
     'FydBgfIAEoCFIQZ2F0ZXdheUF1dG9zdGFydBIoChByZXN0YXJ0X29uX2NyYXNoGCAgASgIUg5y'
     'ZXN0YXJ0T25DcmFzaBI1ChRpZGxlX3RpbWVvdXRfc2Vjb25kcxghIAEoBUgAUhJpZGxlVGltZW'
-    '91dFNlY29uZHOIAQFCFwoVX2lkbGVfdGltZW91dF9zZWNvbmRz');
+    '91dFNlY29uZHOIAQESFwoHbm9kZV9pZBgiIAEoCVIGbm9kZUlkEhsKCW5vZGVfbmFtZRgjIAEo'
+    'CVIIbm9kZU5hbWVCFwoVX2lkbGVfdGltZW91dF9zZWNvbmRz');
 
 @$core.Deprecated('Use resourceConflictDescriptor instead')
 const ResourceConflict$json = {
@@ -1885,6 +1891,7 @@ const CreateInstanceRequest$json = {
       '6': '.culpeostudio.engine.v1.EngineConfig',
       '10': 'config'
     },
+    {'1': 'node_id', '3': 4, '4': 1, '5': 9, '10': 'nodeId'},
   ],
 };
 
@@ -1892,7 +1899,8 @@ const CreateInstanceRequest$json = {
 final $typed_data.Uint8List createInstanceRequestDescriptor = $convert.base64Decode(
     'ChVDcmVhdGVJbnN0YW5jZVJlcXVlc3QSGQoIbW9kZWxfaWQYASABKAlSB21vZGVsSWQSKgoRc2'
     'VydmVkX21vZGVsX25hbWUYAiABKAlSD3NlcnZlZE1vZGVsTmFtZRI8CgZjb25maWcYAyABKAsy'
-    'JC5jdWxwZW9zdHVkaW8uZW5naW5lLnYxLkVuZ2luZUNvbmZpZ1IGY29uZmln');
+    'JC5jdWxwZW9zdHVkaW8uZW5naW5lLnYxLkVuZ2luZUNvbmZpZ1IGY29uZmlnEhcKB25vZGVfaW'
+    'QYBCABKAlSBm5vZGVJZA==');
 
 @$core.Deprecated('Use createInstanceResponseDescriptor instead')
 const CreateInstanceResponse$json = {

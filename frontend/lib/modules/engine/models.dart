@@ -84,6 +84,12 @@ class ModelRecord {
   final List<String> runtimeCandidates;
   final List<String> validationIssues;
 
+  /// Empty for a model on this machine. A model that lives on a node carries
+  /// the node it was found on; its id is already qualified, so every call
+  /// acting on it routes itself.
+  final String nodeId;
+  final String nodeName;
+
   const ModelRecord({
     required this.id,
     required this.name,
@@ -96,7 +102,12 @@ class ModelRecord {
     required this.modelContextLimitTokens,
     required this.runtimeCandidates,
     required this.validationIssues,
+    this.nodeId = '',
+    this.nodeName = '',
   });
+
+  /// True when the model lies on another machine.
+  bool get isOnNode => nodeId.isNotEmpty;
 
   bool get isStartable =>
       status == 'ready' || status == 'complete' || status == 'available';
@@ -146,6 +157,8 @@ class ModelRecord {
       validationIssues: _stringList(
         _first(json, const ['validation_issues', 'validationIssues', 'issues']),
       ),
+      nodeId: _string(_first(json, const ['node_id', 'nodeId'])),
+      nodeName: _string(_first(json, const ['node_name', 'nodeName'])),
     );
   }
 }
@@ -896,6 +909,12 @@ class EngineInstance {
   final DateTime? idleExpiresAt;
   final String guardState;
 
+  /// Empty for an instance on this machine. An instance running on a node is
+  /// listed and controlled exactly like a local one; only the process is
+  /// elsewhere, and its output is streamed back through the tunnel.
+  final String nodeId;
+  final String nodeName;
+
   const EngineInstance({
     required this.id,
     required this.state,
@@ -928,7 +947,12 @@ class EngineInstance {
     this.lastUsedAt,
     this.idleExpiresAt,
     this.guardState = 'normal',
+    this.nodeId = '',
+    this.nodeName = '',
   });
+
+  /// True when the model runs on another machine.
+  bool get isOnNode => nodeId.isNotEmpty;
 
   bool get isReady => state == 'ready';
   bool get isStopped =>
@@ -1030,6 +1054,8 @@ class EngineInstance {
       guardState: _normalizeGuardState(
         _string(_first(json, const ['guard_state', 'guardState'])),
       ),
+      nodeId: _string(_first(json, const ['node_id', 'nodeId'])),
+      nodeName: _string(_first(json, const ['node_name', 'nodeName'])),
     );
   }
 }

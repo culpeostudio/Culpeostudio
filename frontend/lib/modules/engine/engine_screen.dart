@@ -1773,6 +1773,23 @@ class _EngineScreenState extends State<EngineScreen> {
             height: 26,
             child: Row(
               children: [
+                // Which machine holds the file comes first: it changes what
+                // starting this model means more than any of the readings do.
+                if (model.isOnNode) ...[
+                  Flexible(
+                    child: CulpeoStatPill(
+                      icon: Icons.hub_outlined,
+                      label: model.nodeName.isEmpty
+                          ? tr('nodes.title')
+                          : model.nodeName,
+                      color: CulpeoColors.action,
+                      tooltip: tr('engineWidget.node.badge', {
+                        'name': model.nodeName,
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 if (model.modelContextLimitTokens > 0)
                   Flexible(
                     child: CulpeoStatPill(
@@ -1841,7 +1858,9 @@ class _EngineScreenState extends State<EngineScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else ...[
-                if (model.isStartable)
+                // Quantising rewrites a file in place, on the machine that
+                // holds it. There is nothing to offer for a model on a node.
+                if (model.isStartable && !model.isOnNode)
                   IconButton(
                     key: Key('engine-quantize-model-${model.id}'),
                     onPressed: () => _quantizeModel(model),

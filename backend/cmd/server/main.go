@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ import (
 	modMarketplace "github.com/culpeohq/backend/modules/marketplace"
 	modMemory "github.com/culpeohq/backend/modules/memory"
 	modNews "github.com/culpeohq/backend/modules/news"
+	modNode "github.com/culpeohq/backend/modules/node"
 	modScout "github.com/culpeohq/backend/modules/scout"
 	modSettings "github.com/culpeohq/backend/modules/settings"
 	modSkills "github.com/culpeohq/backend/modules/skills"
@@ -111,21 +113,62 @@ func main() {
 	sparkModule.SetProjectDetachedHook(scoutModule.DetachProject)
 	scoutModule.SetExistingUsers(loginModule.ListUserIDs)
 	loginModule.SetUserCreatedHook(scoutModule.EnsureUser)
+
+	// The node module comes first and is initialised out of turn, because node
+	// mode decides where the engine's gateway binds: a node serves its models
+	// on its address inside the tunnel, and the engine reads that when it is
+	// built rather than later.
+	nodeModule := modNode.New(cfg.SettingsFile)
+	if err := nodeModule.Initialize(); err != nil {
+		log.Fatalf("[node] Initialisierung fehlgeschlagen: %v", err)
+	}
+	// The setup run of a node stops here. It has written the identity and the
+	// tunnel config and printed the join code; it cannot serve, because the
+	// interface it would bind to is the one that config describes and nobody
+	// has brought it up yet. The installer does that, then starts the service.
+	if nodeModule.InNodeMode() && modNode.InitOnly() {
+		if pairing, ok := nodeModule.Pairing(); ok && pairing.JoinCode == "" {
+			log.Printf("[node] Kein Join-Code: ohne CULPEO_NODE_WG_ENDPOINT wird kein Tunnel gebaut.")
+		}
+		return
+	}
+
 	engineModule := modEngine.New(cfg.SettingsFile)
+	if bind := nodeModule.GatewayBind(); bind != "" {
+		engineModule.EnableNodeGateway(bind)
+	}
+	marketplaceModule := modMarketplace.New(cfg.SettingsFile)
+
 	scoutModule.SetLocalModels(engineModule)
 	skillsModule := modSkills.New("data/skills")
 
 	searchModule := modCulpeosearch.New()
 
+	// What a node reports about itself. The engine owns the models and the
+	// gateway, the marketplace owns hardware detection; the node module is
+	// handed both as functions so it depends on neither.
+	nodeModule.SetAgentBridge(modNode.AgentBridge{
+		Hardware:        marketplaceModule.HardwareProfileProto,
+		ModelDir:        engineModule.ModelDir,
+		ModelCount:      engineModule.CatalogSize,
+		InstanceCount:   engineModule.InstanceCount,
+		GatewayBaseURL:  engineModule.GatewayBaseURL,
+		IssueGatewayKey: engineModule.IssueGatewayKey,
+	})
+	// And what a Studio does with its nodes: run downloads and models on them.
+	engineModule.SetNodes(nodeModule)
+	marketplaceModule.SetNodes(nodeModule)
+
 	modules := []modModule.Module{
 		memoryModule,
 		loginModule,
-		modMarketplace.New(cfg.SettingsFile),
+		marketplaceModule,
 		scoutModule,
 		sparkModule,
 		modSettings.New(cfg.SettingsFile),
 		skillsModule,
 		engineModule,
+		nodeModule,
 		modNews.New(cfg.NewsSavedFile),
 		modBenchmark.New(cfg.BenchmarkCacheDir, cfg.SettingsFile),
 		searchModule,
@@ -168,17 +211,32 @@ func main() {
 		})
 	})
 
+	// A node's control plane belongs on the tunnel: loopback would put it out
+	// of the Studio's reach, and every interface would offer it to whatever
+	// network the machine happens to sit on.
+	grpcHost := cfg.HTTPHost
+	if nodeHost := nodeModule.ControlPlaneHost(); nodeHost != "" {
+		grpcHost = nodeHost
+		log.Printf("[node] gRPC hoert auf %s:%s, erreichbar nur ueber den Tunnel", grpcHost, cfg.GRPCPort)
+	}
+
 	grpcSrv, err := grpcserver.New(grpcserver.Config{
-		Host: cfg.HTTPHost,
+		Host: grpcHost,
 		Port: cfg.GRPCPort,
 		Auth: grpcmw.AuthConfig{
 			Secret:        cfg.JWTSecret,
 			IsActiveUser:  loginModule.UserExists,
 			PublicMethods: publicGRPCMethods(),
-			// Memory hands its own API token to tools outside the app, which
-			// have no account to log in with. It accepts that token on its own
-			// methods only.
-			AlternateAuth: memoryModule.AuthenticateGRPCToken,
+			// Two credentials that are not this app's login reach the modules
+			// that issued them, and nothing else. Memory hands its API token to
+			// tools outside the app, which have no account to log in with; a
+			// node hands its pairing token to the one Studio it is paired with.
+			AlternateAuth: func(ctx context.Context, fullMethod, token string) (string, bool) {
+				if userID, ok := memoryModule.AuthenticateGRPCToken(ctx, fullMethod, token); ok {
+					return userID, true
+				}
+				return nodeModule.AuthenticateGRPCToken(ctx, fullMethod, token)
+			},
 		},
 		TLSCert: cfg.TLSCert,
 		TLSKey:  cfg.TLSKey,
@@ -209,9 +267,18 @@ func main() {
 	log.Printf("[gRPC] %d Module registriert", len(grpcModules))
 
 	go func() {
-		if err := grpcSrv.Start(); err != nil {
-			log.Printf("[gRPC] Fehler: %v", err)
+		err := grpcSrv.Start()
+		if err == nil {
+			return
 		}
+		// On a node the control plane is the only way in, and it listens on
+		// the tunnel. A listener that never came up leaves a process that is
+		// running and unreachable, which is worse than one that stopped: this
+		// way the service manager restarts it once the tunnel is back.
+		if nodeModule.InNodeMode() {
+			log.Fatalf("[gRPC] Der Node ist ohne Steuerungsebene nutzlos: %v", err)
+		}
+		log.Printf("[gRPC] Fehler: %v", err)
 	}()
 
 	go func() {

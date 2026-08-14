@@ -1,4 +1,5 @@
 const Map<String, String> engineStringsDe = {
+  'engineWidget.node.badge': 'Laeuft auf Node {name}',
   'engineWidget.status': 'Status: {label}',
   'engineWidget.status.ready': 'Bereit',
   'engineWidget.status.installing': 'Wird installiert',
@@ -190,6 +191,7 @@ const Map<String, String> engineStringsDe = {
 };
 
 const Map<String, String> engineStringsEn = {
+  'engineWidget.node.badge': 'Runs on node {name}',
   'engineWidget.status': 'Status: {label}',
   'engineWidget.status.ready': 'Ready',
   'engineWidget.status.installing': 'Installing',
