@@ -27,6 +27,8 @@ const (
 	LoginService_ResetPassword_FullMethodName             = "/culpeostudio.login.v1.LoginService/ResetPassword"
 	LoginService_GetUserPreferences_FullMethodName        = "/culpeostudio.login.v1.LoginService/GetUserPreferences"
 	LoginService_UpdateUserPreferences_FullMethodName     = "/culpeostudio.login.v1.LoginService/UpdateUserPreferences"
+	LoginService_EnableGuestMode_FullMethodName           = "/culpeostudio.login.v1.LoginService/EnableGuestMode"
+	LoginService_DisableGuestMode_FullMethodName          = "/culpeostudio.login.v1.LoginService/DisableGuestMode"
 )
 
 // LoginServiceClient is the client API for LoginService service.
@@ -48,6 +50,8 @@ type LoginServiceClient interface {
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
 	GetUserPreferences(ctx context.Context, in *GetUserPreferencesRequest, opts ...grpc.CallOption) (*GetUserPreferencesResponse, error)
 	UpdateUserPreferences(ctx context.Context, in *UpdateUserPreferencesRequest, opts ...grpc.CallOption) (*UpdateUserPreferencesResponse, error)
+	EnableGuestMode(ctx context.Context, in *EnableGuestModeRequest, opts ...grpc.CallOption) (*EnableGuestModeResponse, error)
+	DisableGuestMode(ctx context.Context, in *DisableGuestModeRequest, opts ...grpc.CallOption) (*DisableGuestModeResponse, error)
 }
 
 type loginServiceClient struct {
@@ -138,6 +142,26 @@ func (c *loginServiceClient) UpdateUserPreferences(ctx context.Context, in *Upda
 	return out, nil
 }
 
+func (c *loginServiceClient) EnableGuestMode(ctx context.Context, in *EnableGuestModeRequest, opts ...grpc.CallOption) (*EnableGuestModeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnableGuestModeResponse)
+	err := c.cc.Invoke(ctx, LoginService_EnableGuestMode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loginServiceClient) DisableGuestMode(ctx context.Context, in *DisableGuestModeRequest, opts ...grpc.CallOption) (*DisableGuestModeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisableGuestModeResponse)
+	err := c.cc.Invoke(ctx, LoginService_DisableGuestMode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoginServiceServer is the server API for LoginService service.
 // All implementations must embed UnimplementedLoginServiceServer
 // for forward compatibility.
@@ -157,6 +181,8 @@ type LoginServiceServer interface {
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
 	GetUserPreferences(context.Context, *GetUserPreferencesRequest) (*GetUserPreferencesResponse, error)
 	UpdateUserPreferences(context.Context, *UpdateUserPreferencesRequest) (*UpdateUserPreferencesResponse, error)
+	EnableGuestMode(context.Context, *EnableGuestModeRequest) (*EnableGuestModeResponse, error)
+	DisableGuestMode(context.Context, *DisableGuestModeRequest) (*DisableGuestModeResponse, error)
 	mustEmbedUnimplementedLoginServiceServer()
 }
 
@@ -190,6 +216,12 @@ func (UnimplementedLoginServiceServer) GetUserPreferences(context.Context, *GetU
 }
 func (UnimplementedLoginServiceServer) UpdateUserPreferences(context.Context, *UpdateUserPreferencesRequest) (*UpdateUserPreferencesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateUserPreferences not implemented")
+}
+func (UnimplementedLoginServiceServer) EnableGuestMode(context.Context, *EnableGuestModeRequest) (*EnableGuestModeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnableGuestMode not implemented")
+}
+func (UnimplementedLoginServiceServer) DisableGuestMode(context.Context, *DisableGuestModeRequest) (*DisableGuestModeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisableGuestMode not implemented")
 }
 func (UnimplementedLoginServiceServer) mustEmbedUnimplementedLoginServiceServer() {}
 func (UnimplementedLoginServiceServer) testEmbeddedByValue()                      {}
@@ -356,6 +388,42 @@ func _LoginService_UpdateUserPreferences_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoginService_EnableGuestMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableGuestModeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoginServiceServer).EnableGuestMode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoginService_EnableGuestMode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoginServiceServer).EnableGuestMode(ctx, req.(*EnableGuestModeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoginService_DisableGuestMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableGuestModeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoginServiceServer).DisableGuestMode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoginService_DisableGuestMode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoginServiceServer).DisableGuestMode(ctx, req.(*DisableGuestModeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoginService_ServiceDesc is the grpc.ServiceDesc for LoginService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -394,6 +462,14 @@ var LoginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUserPreferences",
 			Handler:    _LoginService_UpdateUserPreferences_Handler,
+		},
+		{
+			MethodName: "EnableGuestMode",
+			Handler:    _LoginService_EnableGuestMode_Handler,
+		},
+		{
+			MethodName: "DisableGuestMode",
+			Handler:    _LoginService_DisableGuestMode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

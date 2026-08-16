@@ -19,6 +19,8 @@ service LoginService {
   rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
   rpc GetUserPreferences(GetUserPreferencesRequest) returns (GetUserPreferencesResponse);
   rpc UpdateUserPreferences(UpdateUserPreferencesRequest) returns (UpdateUserPreferencesResponse);
+  rpc EnableGuestMode(EnableGuestModeRequest) returns (EnableGuestModeResponse);
+  rpc DisableGuestMode(DisableGuestModeRequest) returns (DisableGuestModeResponse);
 }
 
 // SessionDuration is how long an issued token stays valid. The HTTP API took
@@ -51,6 +53,7 @@ message GetAuthStatusRequest {}
 message GetAuthStatusResponse {
   bool totp_configured = 1;
   string authenticator_app = 2;
+  bool guest_mode_active = 3;
 }
 
 message StartAuthenticatorSetupRequest {}
@@ -93,7 +96,6 @@ message ResetPasswordResponse {
 message UserPreferences {
   bool configured = 1;
   string language = 2;
-  string frontend_version = 3;
 }
 
 message GetUserPreferencesRequest {}
@@ -104,9 +106,14 @@ message GetUserPreferencesResponse {
 
 message UpdateUserPreferencesRequest {
   string language = 1;
-  string frontend_version = 2;
 }
 
 message UpdateUserPreferencesResponse {
   UserPreferences preferences = 1;
 }
+
+message EnableGuestModeRequest {}
+message EnableGuestModeResponse {}
+
+message DisableGuestModeRequest {}
+message DisableGuestModeResponse {}

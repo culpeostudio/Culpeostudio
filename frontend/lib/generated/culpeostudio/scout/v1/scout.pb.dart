@@ -121,6 +121,7 @@ class ModelBinding extends $pb.GeneratedMessage {
     $core.String? modelId,
     $core.String? instanceId,
     $core.String? displayName,
+    $core.String? connectionId,
   }) {
     final result = create();
     if (kind != null) result.kind = kind;
@@ -129,6 +130,7 @@ class ModelBinding extends $pb.GeneratedMessage {
     if (modelId != null) result.modelId = modelId;
     if (instanceId != null) result.instanceId = instanceId;
     if (displayName != null) result.displayName = displayName;
+    if (connectionId != null) result.connectionId = connectionId;
     return result;
   }
 
@@ -152,6 +154,7 @@ class ModelBinding extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'modelId')
     ..aOS(5, _omitFieldNames ? '' : 'instanceId')
     ..aOS(6, _omitFieldNames ? '' : 'displayName')
+    ..aOS(7, _omitFieldNames ? '' : 'connectionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -226,6 +229,17 @@ class ModelBinding extends $pb.GeneratedMessage {
   $core.bool hasDisplayName() => $_has(5);
   @$pb.TagNumber(6)
   void clearDisplayName() => $_clearField(6);
+
+  /// User-owned provider connection used for a dynamically discovered API
+  /// model. Empty keeps the legacy Marketplace provider binding.
+  @$pb.TagNumber(7)
+  $core.String get connectionId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set connectionId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasConnectionId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearConnectionId() => $_clearField(7);
 }
 
 /// Bot is one configured assistant: its prompt, when it is picked, and what it
@@ -384,6 +398,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     $core.String? projectId,
     $core.int? messageCount,
     $1.Timestamp? updatedAt,
+    $core.String? connectionId,
   }) {
     final result = create();
     if (sessionId != null) result.sessionId = sessionId;
@@ -396,6 +411,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     if (projectId != null) result.projectId = projectId;
     if (messageCount != null) result.messageCount = messageCount;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (connectionId != null) result.connectionId = connectionId;
     return result;
   }
 
@@ -424,6 +440,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     ..aI(9, _omitFieldNames ? '' : 'messageCount')
     ..aOM<$1.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $1.Timestamp.create)
+    ..aOS(11, _omitFieldNames ? '' : 'connectionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -536,6 +553,15 @@ class SessionSummary extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(10);
   @$pb.TagNumber(10)
   $1.Timestamp ensureUpdatedAt() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  $core.String get connectionId => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set connectionId($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasConnectionId() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearConnectionId() => $_clearField(11);
 }
 
 /// FileNode is one entry of the project folder listing. The HTTP API handed this
@@ -637,6 +663,8 @@ class ChatOptions extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? allowedRoots,
     $core.bool? approvePlan,
     $core.bool? planning,
+    $core.String? reasoningEffort,
+    $core.String? outputLevel,
   }) {
     final result = create();
     if (thinkingLevel != null) result.thinkingLevel = thinkingLevel;
@@ -646,6 +674,8 @@ class ChatOptions extends $pb.GeneratedMessage {
     if (allowedRoots != null) result.allowedRoots.addAll(allowedRoots);
     if (approvePlan != null) result.approvePlan = approvePlan;
     if (planning != null) result.planning = planning;
+    if (reasoningEffort != null) result.reasoningEffort = reasoningEffort;
+    if (outputLevel != null) result.outputLevel = outputLevel;
     return result;
   }
 
@@ -670,6 +700,8 @@ class ChatOptions extends $pb.GeneratedMessage {
     ..pPS(5, _omitFieldNames ? '' : 'allowedRoots')
     ..aOB(6, _omitFieldNames ? '' : 'approvePlan')
     ..aOB(7, _omitFieldNames ? '' : 'planning')
+    ..aOS(8, _omitFieldNames ? '' : 'reasoningEffort')
+    ..aOS(9, _omitFieldNames ? '' : 'outputLevel')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -748,6 +780,27 @@ class ChatOptions extends $pb.GeneratedMessage {
   $core.bool hasPlanning() => $_has(6);
   @$pb.TagNumber(7)
   void clearPlanning() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get reasoningEffort => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set reasoningEffort($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasReasoningEffort() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearReasoningEffort() => $_clearField(8);
+
+  /// How long the answer may get: "short", "normal" or "max". Empty means
+  /// normal. "max" resolves to whatever the model itself will write, capped by
+  /// what is left of its context window.
+  @$pb.TagNumber(9)
+  $core.String get outputLevel => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set outputLevel($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasOutputLevel() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearOutputLevel() => $_clearField(9);
 }
 
 class CreateSessionRequest extends $pb.GeneratedMessage {
@@ -760,6 +813,7 @@ class CreateSessionRequest extends $pb.GeneratedMessage {
     $core.String? thinkingLevel,
     $core.String? responseStyle,
     $core.String? projectId,
+    $core.String? connectionId,
   }) {
     final result = create();
     if (modelRef != null) result.modelRef = modelRef;
@@ -770,6 +824,7 @@ class CreateSessionRequest extends $pb.GeneratedMessage {
     if (thinkingLevel != null) result.thinkingLevel = thinkingLevel;
     if (responseStyle != null) result.responseStyle = responseStyle;
     if (projectId != null) result.projectId = projectId;
+    if (connectionId != null) result.connectionId = connectionId;
     return result;
   }
 
@@ -795,6 +850,7 @@ class CreateSessionRequest extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'thinkingLevel')
     ..aOS(7, _omitFieldNames ? '' : 'responseStyle')
     ..aOS(8, _omitFieldNames ? '' : 'projectId')
+    ..aOS(9, _omitFieldNames ? '' : 'connectionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -887,6 +943,15 @@ class CreateSessionRequest extends $pb.GeneratedMessage {
   $core.bool hasProjectId() => $_has(7);
   @$pb.TagNumber(8)
   void clearProjectId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get connectionId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set connectionId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasConnectionId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearConnectionId() => $_clearField(9);
 }
 
 class CreateSessionResponse extends $pb.GeneratedMessage {
@@ -903,6 +968,7 @@ class CreateSessionResponse extends $pb.GeneratedMessage {
     $core.String? lockedBotId,
     $core.String? instanceId,
     $core.int? contextLimit,
+    $core.String? connectionId,
   }) {
     final result = create();
     if (sessionId != null) result.sessionId = sessionId;
@@ -917,6 +983,7 @@ class CreateSessionResponse extends $pb.GeneratedMessage {
     if (lockedBotId != null) result.lockedBotId = lockedBotId;
     if (instanceId != null) result.instanceId = instanceId;
     if (contextLimit != null) result.contextLimit = contextLimit;
+    if (connectionId != null) result.connectionId = connectionId;
     return result;
   }
 
@@ -946,6 +1013,7 @@ class CreateSessionResponse extends $pb.GeneratedMessage {
     ..aOS(10, _omitFieldNames ? '' : 'lockedBotId')
     ..aOS(11, _omitFieldNames ? '' : 'instanceId')
     ..aI(12, _omitFieldNames ? '' : 'contextLimit')
+    ..aOS(13, _omitFieldNames ? '' : 'connectionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1077,6 +1145,15 @@ class CreateSessionResponse extends $pb.GeneratedMessage {
   $core.bool hasContextLimit() => $_has(11);
   @$pb.TagNumber(12)
   void clearContextLimit() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get connectionId => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set connectionId($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasConnectionId() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearConnectionId() => $_clearField(13);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {
@@ -1234,6 +1311,8 @@ class GetHistoryResponse extends $pb.GeneratedMessage {
     $core.String? lockedBotId,
     $core.String? activeBotId,
     $core.Iterable<ChatMessage>? messages,
+    $core.String? connectionId,
+    ContextUsage? contextUsage,
   }) {
     final result = create();
     if (sessionId != null) result.sessionId = sessionId;
@@ -1245,6 +1324,8 @@ class GetHistoryResponse extends $pb.GeneratedMessage {
     if (lockedBotId != null) result.lockedBotId = lockedBotId;
     if (activeBotId != null) result.activeBotId = activeBotId;
     if (messages != null) result.messages.addAll(messages);
+    if (connectionId != null) result.connectionId = connectionId;
+    if (contextUsage != null) result.contextUsage = contextUsage;
     return result;
   }
 
@@ -1272,6 +1353,9 @@ class GetHistoryResponse extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'activeBotId')
     ..pPM<ChatMessage>(9, _omitFieldNames ? '' : 'messages',
         subBuilder: ChatMessage.create)
+    ..aOS(10, _omitFieldNames ? '' : 'connectionId')
+    ..aOM<ContextUsage>(11, _omitFieldNames ? '' : 'contextUsage',
+        subBuilder: ContextUsage.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1367,6 +1451,28 @@ class GetHistoryResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(9)
   $pb.PbList<ChatMessage> get messages => $_getList(8);
+
+  @$pb.TagNumber(10)
+  $core.String get connectionId => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set connectionId($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasConnectionId() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearConnectionId() => $_clearField(10);
+
+  /// How full the model's context window is right now, so a reopened chat shows
+  /// its meter without having to send a message first.
+  @$pb.TagNumber(11)
+  ContextUsage get contextUsage => $_getN(10);
+  @$pb.TagNumber(11)
+  set contextUsage(ContextUsage value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasContextUsage() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearContextUsage() => $_clearField(11);
+  @$pb.TagNumber(11)
+  ContextUsage ensureContextUsage() => $_ensure(10);
 }
 
 class RenameSessionRequest extends $pb.GeneratedMessage {
@@ -1727,6 +1833,7 @@ class SetSessionModelRequest extends $pb.GeneratedMessage {
     $core.String? modelRef,
     $core.String? displayName,
     $core.int? contextLimit,
+    $core.String? connectionId,
   }) {
     final result = create();
     if (sessionId != null) result.sessionId = sessionId;
@@ -1735,6 +1842,7 @@ class SetSessionModelRequest extends $pb.GeneratedMessage {
     if (modelRef != null) result.modelRef = modelRef;
     if (displayName != null) result.displayName = displayName;
     if (contextLimit != null) result.contextLimit = contextLimit;
+    if (connectionId != null) result.connectionId = connectionId;
     return result;
   }
 
@@ -1758,6 +1866,7 @@ class SetSessionModelRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'modelRef')
     ..aOS(5, _omitFieldNames ? '' : 'displayName')
     ..aI(6, _omitFieldNames ? '' : 'contextLimit')
+    ..aOS(7, _omitFieldNames ? '' : 'connectionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1833,6 +1942,15 @@ class SetSessionModelRequest extends $pb.GeneratedMessage {
   $core.bool hasContextLimit() => $_has(5);
   @$pb.TagNumber(6)
   void clearContextLimit() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get connectionId => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set connectionId($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasConnectionId() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearConnectionId() => $_clearField(7);
 }
 
 class SetSessionModelResponse extends $pb.GeneratedMessage {
@@ -2839,6 +2957,136 @@ class StreamDone extends $pb.GeneratedMessage {
   void clearResponseStyle() => $_clearField(3);
 }
 
+/// ContextUsage is how much of the model's context window the conversation
+/// occupies. Both numbers are estimates: limit_tokens may be a catalogue
+/// average when nothing reported a real one, and used_tokens is counted by a
+/// characters-per-token rule rather than the model's own tokenizer.
+class ContextUsage extends $pb.GeneratedMessage {
+  factory ContextUsage({
+    $core.int? limitTokens,
+    $core.int? usedTokens,
+    $core.String? source,
+    $core.int? compactions,
+    $core.bool? compacted,
+    $core.int? modelLimitTokens,
+  }) {
+    final result = create();
+    if (limitTokens != null) result.limitTokens = limitTokens;
+    if (usedTokens != null) result.usedTokens = usedTokens;
+    if (source != null) result.source = source;
+    if (compactions != null) result.compactions = compactions;
+    if (compacted != null) result.compacted = compacted;
+    if (modelLimitTokens != null) result.modelLimitTokens = modelLimitTokens;
+    return result;
+  }
+
+  ContextUsage._();
+
+  factory ContextUsage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ContextUsage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ContextUsage',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.scout.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'limitTokens')
+    ..aI(2, _omitFieldNames ? '' : 'usedTokens')
+    ..aOS(3, _omitFieldNames ? '' : 'source')
+    ..aI(4, _omitFieldNames ? '' : 'compactions')
+    ..aOB(5, _omitFieldNames ? '' : 'compacted')
+    ..aI(6, _omitFieldNames ? '' : 'modelLimitTokens')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContextUsage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ContextUsage copyWith(void Function(ContextUsage) updates) =>
+      super.copyWith((message) => updates(message as ContextUsage))
+          as ContextUsage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ContextUsage create() => ContextUsage._();
+  @$core.override
+  ContextUsage createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ContextUsage getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ContextUsage>(create);
+  static ContextUsage? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get limitTokens => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set limitTokens($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLimitTokens() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLimitTokens() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get usedTokens => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set usedTokens($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUsedTokens() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUsedTokens() => $_clearField(2);
+
+  /// Where limit_tokens came from: "local" (the engine started the instance
+  /// with it), "provider" (a configured connection reported it), "catalog"
+  /// (the OpenRouter model list, the same source as the thinking levels), or
+  /// "average" (the mean over every model the catalogue knows).
+  @$pb.TagNumber(3)
+  $core.String get source => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set source($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSource() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSource() => $_clearField(3);
+
+  /// How often this session's older turns have been folded into a summary.
+  @$pb.TagNumber(4)
+  $core.int get compactions => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set compactions($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCompactions() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCompactions() => $_clearField(4);
+
+  /// True on the reading that follows a folding, so the UI can explain a meter
+  /// that just dropped.
+  @$pb.TagNumber(5)
+  $core.bool get compacted => $_getBF(4);
+  @$pb.TagNumber(5)
+  set compacted($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCompacted() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCompacted() => $_clearField(5);
+
+  /// What the model itself would allow, where limit_tokens is only what this
+  /// instance was actually started with - the engine's memory plan routinely
+  /// starts a local model well below its maximum. Zero when the two are the
+  /// same, so the UI only explains the gap when there is one.
+  @$pb.TagNumber(6)
+  $core.int get modelLimitTokens => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set modelLimitTokens($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasModelLimitTokens() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearModelLimitTokens() => $_clearField(6);
+}
+
 /// StreamError ends the stream with a reason. It stays an event rather than a
 /// gRPC status because the reply may already be half-written, and the client
 /// needs the code to tell a warm-up problem from a real failure.
@@ -3007,6 +3255,7 @@ enum StreamMessageResponse_Event {
   done,
   error,
   agent,
+  contextUsage,
   notSet
 }
 
@@ -3023,6 +3272,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
     StreamDone? done,
     StreamError? error,
     AgentEvent? agent,
+    ContextUsage? contextUsage,
   }) {
     final result = create();
     if (textDelta != null) result.textDelta = textDelta;
@@ -3034,6 +3284,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
     if (done != null) result.done = done;
     if (error != null) result.error = error;
     if (agent != null) result.agent = agent;
+    if (contextUsage != null) result.contextUsage = contextUsage;
     return result;
   }
 
@@ -3057,6 +3308,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
     7: StreamMessageResponse_Event.done,
     8: StreamMessageResponse_Event.error,
     9: StreamMessageResponse_Event.agent,
+    10: StreamMessageResponse_Event.contextUsage,
     0: StreamMessageResponse_Event.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
@@ -3064,7 +3316,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
       package: const $pb.PackageName(
           _omitMessageNames ? '' : 'culpeostudio.scout.v1'),
       createEmptyInstance: create)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     ..aOM<TextDelta>(1, _omitFieldNames ? '' : 'textDelta',
         subBuilder: TextDelta.create)
     ..aOM<ReasoningDelta>(2, _omitFieldNames ? '' : 'reasoningDelta',
@@ -3083,6 +3335,8 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
         subBuilder: StreamError.create)
     ..aOM<AgentEvent>(9, _omitFieldNames ? '' : 'agent',
         subBuilder: AgentEvent.create)
+    ..aOM<ContextUsage>(10, _omitFieldNames ? '' : 'contextUsage',
+        subBuilder: ContextUsage.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3114,6 +3368,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(7)
   @$pb.TagNumber(8)
   @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   StreamMessageResponse_Event whichEvent() =>
       _StreamMessageResponse_EventByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
@@ -3125,6 +3380,7 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
   @$pb.TagNumber(7)
   @$pb.TagNumber(8)
   @$pb.TagNumber(9)
+  @$pb.TagNumber(10)
   void clearEvent() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -3225,6 +3481,17 @@ class StreamMessageResponse extends $pb.GeneratedMessage {
   void clearAgent() => $_clearField(9);
   @$pb.TagNumber(9)
   AgentEvent ensureAgent() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  ContextUsage get contextUsage => $_getN(9);
+  @$pb.TagNumber(10)
+  set contextUsage(ContextUsage value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasContextUsage() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearContextUsage() => $_clearField(10);
+  @$pb.TagNumber(10)
+  ContextUsage ensureContextUsage() => $_ensure(9);
 }
 
 class ListBotsRequest extends $pb.GeneratedMessage {
@@ -3522,6 +3789,225 @@ class DeleteBotResponse extends $pb.GeneratedMessage {
   static DeleteBotResponse getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<DeleteBotResponse>(create);
   static DeleteBotResponse? _defaultInstance;
+}
+
+class ReasoningProfile extends $pb.GeneratedMessage {
+  factory ReasoningProfile({
+    $core.String? id,
+    $core.String? name,
+    $core.bool? mandatory,
+    $core.bool? defaultEnabled,
+    $core.Iterable<$core.String>? supportedEfforts,
+    $core.String? defaultEffort,
+    $core.int? contextLength,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (mandatory != null) result.mandatory = mandatory;
+    if (defaultEnabled != null) result.defaultEnabled = defaultEnabled;
+    if (supportedEfforts != null)
+      result.supportedEfforts.addAll(supportedEfforts);
+    if (defaultEffort != null) result.defaultEffort = defaultEffort;
+    if (contextLength != null) result.contextLength = contextLength;
+    return result;
+  }
+
+  ReasoningProfile._();
+
+  factory ReasoningProfile.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ReasoningProfile.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReasoningProfile',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.scout.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOB(3, _omitFieldNames ? '' : 'mandatory')
+    ..aOB(4, _omitFieldNames ? '' : 'defaultEnabled')
+    ..pPS(5, _omitFieldNames ? '' : 'supportedEfforts')
+    ..aOS(6, _omitFieldNames ? '' : 'defaultEffort')
+    ..aI(7, _omitFieldNames ? '' : 'contextLength')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReasoningProfile clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReasoningProfile copyWith(void Function(ReasoningProfile) updates) =>
+      super.copyWith((message) => updates(message as ReasoningProfile))
+          as ReasoningProfile;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ReasoningProfile create() => ReasoningProfile._();
+  @$core.override
+  ReasoningProfile createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ReasoningProfile getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReasoningProfile>(create);
+  static ReasoningProfile? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get mandatory => $_getBF(2);
+  @$pb.TagNumber(3)
+  set mandatory($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMandatory() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMandatory() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get defaultEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set defaultEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDefaultEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDefaultEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get supportedEfforts => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $core.String get defaultEffort => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set defaultEffort($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDefaultEffort() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDefaultEffort() => $_clearField(6);
+
+  /// The model's context window in tokens, read from the same catalogue entry
+  /// as the thinking levels above. Zero when the catalogue does not report one.
+  @$pb.TagNumber(7)
+  $core.int get contextLength => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set contextLength($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasContextLength() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearContextLength() => $_clearField(7);
+}
+
+class ListReasoningProfilesRequest extends $pb.GeneratedMessage {
+  factory ListReasoningProfilesRequest() => create();
+
+  ListReasoningProfilesRequest._();
+
+  factory ListReasoningProfilesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListReasoningProfilesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListReasoningProfilesRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.scout.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReasoningProfilesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReasoningProfilesRequest copyWith(
+          void Function(ListReasoningProfilesRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ListReasoningProfilesRequest))
+          as ListReasoningProfilesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReasoningProfilesRequest create() =>
+      ListReasoningProfilesRequest._();
+  @$core.override
+  ListReasoningProfilesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListReasoningProfilesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListReasoningProfilesRequest>(create);
+  static ListReasoningProfilesRequest? _defaultInstance;
+}
+
+class ListReasoningProfilesResponse extends $pb.GeneratedMessage {
+  factory ListReasoningProfilesResponse({
+    $core.Iterable<ReasoningProfile>? profiles,
+  }) {
+    final result = create();
+    if (profiles != null) result.profiles.addAll(profiles);
+    return result;
+  }
+
+  ListReasoningProfilesResponse._();
+
+  factory ListReasoningProfilesResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListReasoningProfilesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListReasoningProfilesResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.scout.v1'),
+      createEmptyInstance: create)
+    ..pPM<ReasoningProfile>(1, _omitFieldNames ? '' : 'profiles',
+        subBuilder: ReasoningProfile.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReasoningProfilesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReasoningProfilesResponse copyWith(
+          void Function(ListReasoningProfilesResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ListReasoningProfilesResponse))
+          as ListReasoningProfilesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReasoningProfilesResponse create() =>
+      ListReasoningProfilesResponse._();
+  @$core.override
+  ListReasoningProfilesResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListReasoningProfilesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListReasoningProfilesResponse>(create);
+  static ListReasoningProfilesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ReasoningProfile> get profiles => $_getList(0);
 }
 
 const $core.bool _omitFieldNames =

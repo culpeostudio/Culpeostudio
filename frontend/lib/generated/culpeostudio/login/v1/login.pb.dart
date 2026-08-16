@@ -225,10 +225,12 @@ class GetAuthStatusResponse extends $pb.GeneratedMessage {
   factory GetAuthStatusResponse({
     $core.bool? totpConfigured,
     $core.String? authenticatorApp,
+    $core.bool? guestModeActive,
   }) {
     final result = create();
     if (totpConfigured != null) result.totpConfigured = totpConfigured;
     if (authenticatorApp != null) result.authenticatorApp = authenticatorApp;
+    if (guestModeActive != null) result.guestModeActive = guestModeActive;
     return result;
   }
 
@@ -248,6 +250,7 @@ class GetAuthStatusResponse extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOB(1, _omitFieldNames ? '' : 'totpConfigured')
     ..aOS(2, _omitFieldNames ? '' : 'authenticatorApp')
+    ..aOB(3, _omitFieldNames ? '' : 'guestModeActive')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -287,6 +290,15 @@ class GetAuthStatusResponse extends $pb.GeneratedMessage {
   $core.bool hasAuthenticatorApp() => $_has(1);
   @$pb.TagNumber(2)
   void clearAuthenticatorApp() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get guestModeActive => $_getBF(2);
+  @$pb.TagNumber(3)
+  set guestModeActive($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGuestModeActive() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGuestModeActive() => $_clearField(3);
 }
 
 class StartAuthenticatorSetupRequest extends $pb.GeneratedMessage {
@@ -820,12 +832,10 @@ class UserPreferences extends $pb.GeneratedMessage {
   factory UserPreferences({
     $core.bool? configured,
     $core.String? language,
-    $core.String? frontendVersion,
   }) {
     final result = create();
     if (configured != null) result.configured = configured;
     if (language != null) result.language = language;
-    if (frontendVersion != null) result.frontendVersion = frontendVersion;
     return result;
   }
 
@@ -845,7 +855,6 @@ class UserPreferences extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOB(1, _omitFieldNames ? '' : 'configured')
     ..aOS(2, _omitFieldNames ? '' : 'language')
-    ..aOS(3, _omitFieldNames ? '' : 'frontendVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -884,15 +893,6 @@ class UserPreferences extends $pb.GeneratedMessage {
   $core.bool hasLanguage() => $_has(1);
   @$pb.TagNumber(2)
   void clearLanguage() => $_clearField(2);
-
-  @$pb.TagNumber(3)
-  $core.String get frontendVersion => $_getSZ(2);
-  @$pb.TagNumber(3)
-  set frontendVersion($core.String value) => $_setString(2, value);
-  @$pb.TagNumber(3)
-  $core.bool hasFrontendVersion() => $_has(2);
-  @$pb.TagNumber(3)
-  void clearFrontendVersion() => $_clearField(3);
 }
 
 class GetUserPreferencesRequest extends $pb.GeneratedMessage {
@@ -998,11 +998,9 @@ class GetUserPreferencesResponse extends $pb.GeneratedMessage {
 class UpdateUserPreferencesRequest extends $pb.GeneratedMessage {
   factory UpdateUserPreferencesRequest({
     $core.String? language,
-    $core.String? frontendVersion,
   }) {
     final result = create();
     if (language != null) result.language = language;
-    if (frontendVersion != null) result.frontendVersion = frontendVersion;
     return result;
   }
 
@@ -1021,7 +1019,6 @@ class UpdateUserPreferencesRequest extends $pb.GeneratedMessage {
           _omitMessageNames ? '' : 'culpeostudio.login.v1'),
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'language')
-    ..aOS(2, _omitFieldNames ? '' : 'frontendVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1054,15 +1051,6 @@ class UpdateUserPreferencesRequest extends $pb.GeneratedMessage {
   $core.bool hasLanguage() => $_has(0);
   @$pb.TagNumber(1)
   void clearLanguage() => $_clearField(1);
-
-  @$pb.TagNumber(2)
-  $core.String get frontendVersion => $_getSZ(1);
-  @$pb.TagNumber(2)
-  set frontendVersion($core.String value) => $_setString(1, value);
-  @$pb.TagNumber(2)
-  $core.bool hasFrontendVersion() => $_has(1);
-  @$pb.TagNumber(2)
-  void clearFrontendVersion() => $_clearField(2);
 }
 
 class UpdateUserPreferencesResponse extends $pb.GeneratedMessage {
@@ -1124,6 +1112,166 @@ class UpdateUserPreferencesResponse extends $pb.GeneratedMessage {
   void clearPreferences() => $_clearField(1);
   @$pb.TagNumber(1)
   UserPreferences ensurePreferences() => $_ensure(0);
+}
+
+class EnableGuestModeRequest extends $pb.GeneratedMessage {
+  factory EnableGuestModeRequest() => create();
+
+  EnableGuestModeRequest._();
+
+  factory EnableGuestModeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory EnableGuestModeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EnableGuestModeRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.login.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnableGuestModeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnableGuestModeRequest copyWith(
+          void Function(EnableGuestModeRequest) updates) =>
+      super.copyWith((message) => updates(message as EnableGuestModeRequest))
+          as EnableGuestModeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static EnableGuestModeRequest create() => EnableGuestModeRequest._();
+  @$core.override
+  EnableGuestModeRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static EnableGuestModeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EnableGuestModeRequest>(create);
+  static EnableGuestModeRequest? _defaultInstance;
+}
+
+class EnableGuestModeResponse extends $pb.GeneratedMessage {
+  factory EnableGuestModeResponse() => create();
+
+  EnableGuestModeResponse._();
+
+  factory EnableGuestModeResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory EnableGuestModeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EnableGuestModeResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.login.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnableGuestModeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnableGuestModeResponse copyWith(
+          void Function(EnableGuestModeResponse) updates) =>
+      super.copyWith((message) => updates(message as EnableGuestModeResponse))
+          as EnableGuestModeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static EnableGuestModeResponse create() => EnableGuestModeResponse._();
+  @$core.override
+  EnableGuestModeResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static EnableGuestModeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EnableGuestModeResponse>(create);
+  static EnableGuestModeResponse? _defaultInstance;
+}
+
+class DisableGuestModeRequest extends $pb.GeneratedMessage {
+  factory DisableGuestModeRequest() => create();
+
+  DisableGuestModeRequest._();
+
+  factory DisableGuestModeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DisableGuestModeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DisableGuestModeRequest',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.login.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableGuestModeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableGuestModeRequest copyWith(
+          void Function(DisableGuestModeRequest) updates) =>
+      super.copyWith((message) => updates(message as DisableGuestModeRequest))
+          as DisableGuestModeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DisableGuestModeRequest create() => DisableGuestModeRequest._();
+  @$core.override
+  DisableGuestModeRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DisableGuestModeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DisableGuestModeRequest>(create);
+  static DisableGuestModeRequest? _defaultInstance;
+}
+
+class DisableGuestModeResponse extends $pb.GeneratedMessage {
+  factory DisableGuestModeResponse() => create();
+
+  DisableGuestModeResponse._();
+
+  factory DisableGuestModeResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DisableGuestModeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DisableGuestModeResponse',
+      package: const $pb.PackageName(
+          _omitMessageNames ? '' : 'culpeostudio.login.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableGuestModeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DisableGuestModeResponse copyWith(
+          void Function(DisableGuestModeResponse) updates) =>
+      super.copyWith((message) => updates(message as DisableGuestModeResponse))
+          as DisableGuestModeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DisableGuestModeResponse create() => DisableGuestModeResponse._();
+  @$core.override
+  DisableGuestModeResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DisableGuestModeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DisableGuestModeResponse>(create);
+  static DisableGuestModeResponse? _defaultInstance;
 }
 
 const $core.bool _omitFieldNames =

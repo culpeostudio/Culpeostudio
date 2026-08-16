@@ -98,6 +98,20 @@ class LoginServiceClient extends $grpc.Client {
     return $createUnaryCall(_$updateUserPreferences, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.EnableGuestModeResponse> enableGuestMode(
+    $0.EnableGuestModeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$enableGuestMode, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DisableGuestModeResponse> disableGuestMode(
+    $0.DisableGuestModeRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$disableGuestMode, request, options: options);
+  }
+
   // method descriptors
 
   static final _$login = $grpc.ClientMethod<$0.LoginRequest, $0.LoginResponse>(
@@ -141,6 +155,16 @@ class LoginServiceClient extends $grpc.Client {
       '/culpeostudio.login.v1.LoginService/UpdateUserPreferences',
       ($0.UpdateUserPreferencesRequest value) => value.writeToBuffer(),
       $0.UpdateUserPreferencesResponse.fromBuffer);
+  static final _$enableGuestMode =
+      $grpc.ClientMethod<$0.EnableGuestModeRequest, $0.EnableGuestModeResponse>(
+          '/culpeostudio.login.v1.LoginService/EnableGuestMode',
+          ($0.EnableGuestModeRequest value) => value.writeToBuffer(),
+          $0.EnableGuestModeResponse.fromBuffer);
+  static final _$disableGuestMode = $grpc.ClientMethod<
+          $0.DisableGuestModeRequest, $0.DisableGuestModeResponse>(
+      '/culpeostudio.login.v1.LoginService/DisableGuestMode',
+      ($0.DisableGuestModeRequest value) => value.writeToBuffer(),
+      $0.DisableGuestModeResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('culpeostudio.login.v1.LoginService')
@@ -218,6 +242,24 @@ abstract class LoginServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.UpdateUserPreferencesRequest.fromBuffer(value),
         ($0.UpdateUserPreferencesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.EnableGuestModeRequest,
+            $0.EnableGuestModeResponse>(
+        'EnableGuestMode',
+        enableGuestMode_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.EnableGuestModeRequest.fromBuffer(value),
+        ($0.EnableGuestModeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DisableGuestModeRequest,
+            $0.DisableGuestModeResponse>(
+        'DisableGuestMode',
+        disableGuestMode_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DisableGuestModeRequest.fromBuffer(value),
+        ($0.DisableGuestModeResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.LoginResponse> login_Pre(
@@ -290,4 +332,22 @@ abstract class LoginServiceBase extends $grpc.Service {
 
   $async.Future<$0.UpdateUserPreferencesResponse> updateUserPreferences(
       $grpc.ServiceCall call, $0.UpdateUserPreferencesRequest request);
+
+  $async.Future<$0.EnableGuestModeResponse> enableGuestMode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.EnableGuestModeRequest> $request) async {
+    return enableGuestMode($call, await $request);
+  }
+
+  $async.Future<$0.EnableGuestModeResponse> enableGuestMode(
+      $grpc.ServiceCall call, $0.EnableGuestModeRequest request);
+
+  $async.Future<$0.DisableGuestModeResponse> disableGuestMode_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DisableGuestModeRequest> $request) async {
+    return disableGuestMode($call, await $request);
+  }
+
+  $async.Future<$0.DisableGuestModeResponse> disableGuestMode(
+      $grpc.ServiceCall call, $0.DisableGuestModeRequest request);
 }

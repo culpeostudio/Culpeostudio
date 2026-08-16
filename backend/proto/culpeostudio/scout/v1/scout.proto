@@ -30,6 +30,8 @@ service ScoutService {
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
   rpc SaveBot(SaveBotRequest) returns (SaveBotResponse);
   rpc DeleteBot(DeleteBotRequest) returns (DeleteBotResponse);
+  
+  rpc ListReasoningProfiles(ListReasoningProfilesRequest) returns (ListReasoningProfilesResponse);
 }
 
 // ChatMessage is one turn of a conversation.
@@ -49,6 +51,9 @@ message ModelBinding {
   string model_id = 4;
   string instance_id = 5;
   string display_name = 6;
+  // User-owned provider connection used for a dynamically discovered API
+  // model. Empty keeps the legacy Marketplace provider binding.
+  string connection_id = 7;
 }
 
 // Bot is one configured assistant: its prompt, when it is picked, and what it
@@ -77,6 +82,7 @@ message SessionSummary {
   string project_id = 8;
   int32 message_count = 9;
   google.protobuf.Timestamp updated_at = 10;
+  string connection_id = 11;
 }
 
 // FileNode is one entry of the project folder listing. The HTTP API handed this
@@ -100,6 +106,11 @@ message ChatOptions {
   repeated string allowed_roots = 5;
   bool approve_plan = 6;
   bool planning = 7;
+  string reasoning_effort = 8;
+  // How long the answer may get: "short", "normal" or "max". Empty means
+  // normal. "max" resolves to whatever the model itself will write, capped by
+  // what is left of its context window.
+  string output_level = 9;
 }
 
 message CreateSessionRequest {
@@ -111,6 +122,7 @@ message CreateSessionRequest {
   string thinking_level = 6;
   string response_style = 7;
   string project_id = 8;
+  string connection_id = 9;
 }
 
 message CreateSessionResponse {
@@ -128,6 +140,7 @@ message CreateSessionResponse {
   // context it was started with.
   string instance_id = 11;
   int32 context_limit = 12;
+  string connection_id = 13;
 }
 
 message ListSessionsRequest {}
@@ -150,6 +163,10 @@ message GetHistoryResponse {
   string locked_bot_id = 7;
   string active_bot_id = 8;
   repeated ChatMessage messages = 9;
+  string connection_id = 10;
+  // How full the model's context window is right now, so a reopened chat shows
+  // its meter without having to send a message first.
+  ContextUsage context_usage = 11;
 }
 
 message RenameSessionRequest {
@@ -185,6 +202,7 @@ message SetSessionModelRequest {
   string model_ref = 4;
   string display_name = 5;
   int32 context_limit = 6;
+  string connection_id = 7;
 }
 
 message SetSessionModelResponse {
@@ -270,6 +288,30 @@ message StreamDone {
   string response_style = 3;
 }
 
+// ContextUsage is how much of the model's context window the conversation
+// occupies. Both numbers are estimates: limit_tokens may be a catalogue
+// average when nothing reported a real one, and used_tokens is counted by a
+// characters-per-token rule rather than the model's own tokenizer.
+message ContextUsage {
+  int32 limit_tokens = 1;
+  int32 used_tokens = 2;
+  // Where limit_tokens came from: "local" (the engine started the instance
+  // with it), "provider" (a configured connection reported it), "catalog"
+  // (the OpenRouter model list, the same source as the thinking levels), or
+  // "average" (the mean over every model the catalogue knows).
+  string source = 3;
+  // How often this session's older turns have been folded into a summary.
+  int32 compactions = 4;
+  // True on the reading that follows a folding, so the UI can explain a meter
+  // that just dropped.
+  bool compacted = 5;
+  // What the model itself would allow, where limit_tokens is only what this
+  // instance was actually started with - the engine's memory plan routinely
+  // starts a local model well below its maximum. Zero when the two are the
+  // same, so the UI only explains the gap when there is one.
+  int32 model_limit_tokens = 6;
+}
+
 // StreamError ends the stream with a reason. It stays an event rather than a
 // gRPC status because the reply may already be half-written, and the client
 // needs the code to tell a warm-up problem from a real failure.
@@ -304,6 +346,7 @@ message StreamMessageResponse {
     StreamDone done = 7;
     StreamError error = 8;
     AgentEvent agent = 9;
+    ContextUsage context_usage = 10;
   }
 }
 
@@ -327,3 +370,21 @@ message DeleteBotRequest {
 }
 
 message DeleteBotResponse {}
+
+message ReasoningProfile {
+  string id = 1;
+  string name = 2;
+  bool mandatory = 3;
+  bool default_enabled = 4;
+  repeated string supported_efforts = 5;
+  string default_effort = 6;
+  // The model's context window in tokens, read from the same catalogue entry
+  // as the thinking levels above. Zero when the catalogue does not report one.
+  int32 context_length = 7;
+}
+
+message ListReasoningProfilesRequest {}
+
+message ListReasoningProfilesResponse {
+  repeated ReasoningProfile profiles = 1;
+}

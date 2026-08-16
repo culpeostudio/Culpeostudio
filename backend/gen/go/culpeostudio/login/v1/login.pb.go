@@ -241,6 +241,7 @@ type GetAuthStatusResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	TotpConfigured   bool                   `protobuf:"varint,1,opt,name=totp_configured,json=totpConfigured,proto3" json:"totp_configured,omitempty"`
 	AuthenticatorApp string                 `protobuf:"bytes,2,opt,name=authenticator_app,json=authenticatorApp,proto3" json:"authenticator_app,omitempty"`
+	GuestModeActive  bool                   `protobuf:"varint,3,opt,name=guest_mode_active,json=guestModeActive,proto3" json:"guest_mode_active,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -287,6 +288,13 @@ func (x *GetAuthStatusResponse) GetAuthenticatorApp() string {
 		return x.AuthenticatorApp
 	}
 	return ""
+}
+
+func (x *GetAuthStatusResponse) GetGuestModeActive() bool {
+	if x != nil {
+		return x.GuestModeActive
+	}
+	return false
 }
 
 type StartAuthenticatorSetupRequest struct {
@@ -690,12 +698,11 @@ func (x *ResetPasswordResponse) GetPasswordReset() bool {
 }
 
 type UserPreferences struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Configured      bool                   `protobuf:"varint,1,opt,name=configured,proto3" json:"configured,omitempty"`
-	Language        string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
-	FrontendVersion string                 `protobuf:"bytes,3,opt,name=frontend_version,json=frontendVersion,proto3" json:"frontend_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configured    bool                   `protobuf:"varint,1,opt,name=configured,proto3" json:"configured,omitempty"`
+	Language      string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UserPreferences) Reset() {
@@ -738,13 +745,6 @@ func (x *UserPreferences) GetConfigured() bool {
 func (x *UserPreferences) GetLanguage() string {
 	if x != nil {
 		return x.Language
-	}
-	return ""
-}
-
-func (x *UserPreferences) GetFrontendVersion() string {
-	if x != nil {
-		return x.FrontendVersion
 	}
 	return ""
 }
@@ -830,11 +830,10 @@ func (x *GetUserPreferencesResponse) GetPreferences() *UserPreferences {
 }
 
 type UpdateUserPreferencesRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Language        string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
-	FrontendVersion string                 `protobuf:"bytes,2,opt,name=frontend_version,json=frontendVersion,proto3" json:"frontend_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Language      string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateUserPreferencesRequest) Reset() {
@@ -870,13 +869,6 @@ func (*UpdateUserPreferencesRequest) Descriptor() ([]byte, []int) {
 func (x *UpdateUserPreferencesRequest) GetLanguage() string {
 	if x != nil {
 		return x.Language
-	}
-	return ""
-}
-
-func (x *UpdateUserPreferencesRequest) GetFrontendVersion() string {
-	if x != nil {
-		return x.FrontendVersion
 	}
 	return ""
 }
@@ -925,6 +917,150 @@ func (x *UpdateUserPreferencesResponse) GetPreferences() *UserPreferences {
 	return nil
 }
 
+type EnableGuestModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableGuestModeRequest) Reset() {
+	*x = EnableGuestModeRequest{}
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableGuestModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableGuestModeRequest) ProtoMessage() {}
+
+func (x *EnableGuestModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableGuestModeRequest.ProtoReflect.Descriptor instead.
+func (*EnableGuestModeRequest) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_login_v1_login_proto_rawDescGZIP(), []int{17}
+}
+
+type EnableGuestModeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableGuestModeResponse) Reset() {
+	*x = EnableGuestModeResponse{}
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableGuestModeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableGuestModeResponse) ProtoMessage() {}
+
+func (x *EnableGuestModeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableGuestModeResponse.ProtoReflect.Descriptor instead.
+func (*EnableGuestModeResponse) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_login_v1_login_proto_rawDescGZIP(), []int{18}
+}
+
+type DisableGuestModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisableGuestModeRequest) Reset() {
+	*x = DisableGuestModeRequest{}
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisableGuestModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisableGuestModeRequest) ProtoMessage() {}
+
+func (x *DisableGuestModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisableGuestModeRequest.ProtoReflect.Descriptor instead.
+func (*DisableGuestModeRequest) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_login_v1_login_proto_rawDescGZIP(), []int{19}
+}
+
+type DisableGuestModeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisableGuestModeResponse) Reset() {
+	*x = DisableGuestModeResponse{}
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisableGuestModeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisableGuestModeResponse) ProtoMessage() {}
+
+func (x *DisableGuestModeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_login_v1_login_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisableGuestModeResponse.ProtoReflect.Descriptor instead.
+func (*DisableGuestModeResponse) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_login_v1_login_proto_rawDescGZIP(), []int{20}
+}
+
 var File_culpeostudio_login_v1_login_proto protoreflect.FileDescriptor
 
 const file_culpeostudio_login_v1_login_proto_rawDesc = "" +
@@ -938,10 +1074,11 @@ const file_culpeostudio_login_v1_login_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12Q\n" +
 	"\x10session_duration\x18\x03 \x01(\x0e2&.culpeostudio.login.v1.SessionDurationR\x0fsessionDuration\"\x16\n" +
-	"\x14GetAuthStatusRequest\"m\n" +
+	"\x14GetAuthStatusRequest\"\x99\x01\n" +
 	"\x15GetAuthStatusResponse\x12'\n" +
 	"\x0ftotp_configured\x18\x01 \x01(\bR\x0etotpConfigured\x12+\n" +
-	"\x11authenticator_app\x18\x02 \x01(\tR\x10authenticatorApp\" \n" +
+	"\x11authenticator_app\x18\x02 \x01(\tR\x10authenticatorApp\x12*\n" +
+	"\x11guest_mode_active\x18\x03 \x01(\bR\x0fguestModeActive\" \n" +
 	"\x1eStartAuthenticatorSetupRequest\"Z\n" +
 	"\x1fStartAuthenticatorSetupResponse\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x1f\n" +
@@ -964,27 +1101,29 @@ const file_culpeostudio_login_v1_login_proto_rawDesc = "" +
 	"\ttotp_code\x18\x03 \x01(\tR\btotpCode\"Z\n" +
 	"\x15ResetPasswordResponse\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12%\n" +
-	"\x0epassword_reset\x18\x02 \x01(\bR\rpasswordReset\"x\n" +
+	"\x0epassword_reset\x18\x02 \x01(\bR\rpasswordReset\"M\n" +
 	"\x0fUserPreferences\x12\x1e\n" +
 	"\n" +
 	"configured\x18\x01 \x01(\bR\n" +
 	"configured\x12\x1a\n" +
-	"\blanguage\x18\x02 \x01(\tR\blanguage\x12)\n" +
-	"\x10frontend_version\x18\x03 \x01(\tR\x0ffrontendVersion\"\x1b\n" +
+	"\blanguage\x18\x02 \x01(\tR\blanguage\"\x1b\n" +
 	"\x19GetUserPreferencesRequest\"f\n" +
 	"\x1aGetUserPreferencesResponse\x12H\n" +
-	"\vpreferences\x18\x01 \x01(\v2&.culpeostudio.login.v1.UserPreferencesR\vpreferences\"e\n" +
+	"\vpreferences\x18\x01 \x01(\v2&.culpeostudio.login.v1.UserPreferencesR\vpreferences\":\n" +
 	"\x1cUpdateUserPreferencesRequest\x12\x1a\n" +
-	"\blanguage\x18\x01 \x01(\tR\blanguage\x12)\n" +
-	"\x10frontend_version\x18\x02 \x01(\tR\x0ffrontendVersion\"i\n" +
+	"\blanguage\x18\x01 \x01(\tR\blanguage\"i\n" +
 	"\x1dUpdateUserPreferencesResponse\x12H\n" +
-	"\vpreferences\x18\x01 \x01(\v2&.culpeostudio.login.v1.UserPreferencesR\vpreferences*\xa0\x01\n" +
+	"\vpreferences\x18\x01 \x01(\v2&.culpeostudio.login.v1.UserPreferencesR\vpreferences\"\x18\n" +
+	"\x16EnableGuestModeRequest\"\x19\n" +
+	"\x17EnableGuestModeResponse\"\x19\n" +
+	"\x17DisableGuestModeRequest\"\x1a\n" +
+	"\x18DisableGuestModeResponse*\xa0\x01\n" +
 	"\x0fSessionDuration\x12 \n" +
 	"\x1cSESSION_DURATION_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13SESSION_DURATION_8H\x10\x01\x12\x18\n" +
 	"\x14SESSION_DURATION_24H\x10\x02\x12\x18\n" +
 	"\x14SESSION_DURATION_48H\x10\x03\x12\x1e\n" +
-	"\x1aSESSION_DURATION_PERMANENT\x10\x042\xc2\a\n" +
+	"\x1aSESSION_DURATION_PERMANENT\x10\x042\xa9\t\n" +
 	"\fLoginService\x12R\n" +
 	"\x05Login\x12#.culpeostudio.login.v1.LoginRequest\x1a$.culpeostudio.login.v1.LoginResponse\x12j\n" +
 	"\rGetAuthStatus\x12+.culpeostudio.login.v1.GetAuthStatusRequest\x1a,.culpeostudio.login.v1.GetAuthStatusResponse\x12\x88\x01\n" +
@@ -993,7 +1132,9 @@ const file_culpeostudio_login_v1_login_proto_rawDesc = "" +
 	"\rCreateAccount\x12+.culpeostudio.login.v1.CreateAccountRequest\x1a,.culpeostudio.login.v1.CreateAccountResponse\x12j\n" +
 	"\rResetPassword\x12+.culpeostudio.login.v1.ResetPasswordRequest\x1a,.culpeostudio.login.v1.ResetPasswordResponse\x12y\n" +
 	"\x12GetUserPreferences\x120.culpeostudio.login.v1.GetUserPreferencesRequest\x1a1.culpeostudio.login.v1.GetUserPreferencesResponse\x12\x82\x01\n" +
-	"\x15UpdateUserPreferences\x123.culpeostudio.login.v1.UpdateUserPreferencesRequest\x1a4.culpeostudio.login.v1.UpdateUserPreferencesResponseBBZ@github.com/culpeohq/backend/gen/go/culpeostudio/login/v1;loginv1b\x06proto3"
+	"\x15UpdateUserPreferences\x123.culpeostudio.login.v1.UpdateUserPreferencesRequest\x1a4.culpeostudio.login.v1.UpdateUserPreferencesResponse\x12p\n" +
+	"\x0fEnableGuestMode\x12-.culpeostudio.login.v1.EnableGuestModeRequest\x1a..culpeostudio.login.v1.EnableGuestModeResponse\x12s\n" +
+	"\x10DisableGuestMode\x12..culpeostudio.login.v1.DisableGuestModeRequest\x1a/.culpeostudio.login.v1.DisableGuestModeResponseBBZ@github.com/culpeohq/backend/gen/go/culpeostudio/login/v1;loginv1b\x06proto3"
 
 var (
 	file_culpeostudio_login_v1_login_proto_rawDescOnce sync.Once
@@ -1008,7 +1149,7 @@ func file_culpeostudio_login_v1_login_proto_rawDescGZIP() []byte {
 }
 
 var file_culpeostudio_login_v1_login_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_culpeostudio_login_v1_login_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_culpeostudio_login_v1_login_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_culpeostudio_login_v1_login_proto_goTypes = []any{
 	(SessionDuration)(0),                      // 0: culpeostudio.login.v1.SessionDuration
 	(*LoginRequest)(nil),                      // 1: culpeostudio.login.v1.LoginRequest
@@ -1028,6 +1169,10 @@ var file_culpeostudio_login_v1_login_proto_goTypes = []any{
 	(*GetUserPreferencesResponse)(nil),        // 15: culpeostudio.login.v1.GetUserPreferencesResponse
 	(*UpdateUserPreferencesRequest)(nil),      // 16: culpeostudio.login.v1.UpdateUserPreferencesRequest
 	(*UpdateUserPreferencesResponse)(nil),     // 17: culpeostudio.login.v1.UpdateUserPreferencesResponse
+	(*EnableGuestModeRequest)(nil),            // 18: culpeostudio.login.v1.EnableGuestModeRequest
+	(*EnableGuestModeResponse)(nil),           // 19: culpeostudio.login.v1.EnableGuestModeResponse
+	(*DisableGuestModeRequest)(nil),           // 20: culpeostudio.login.v1.DisableGuestModeRequest
+	(*DisableGuestModeResponse)(nil),          // 21: culpeostudio.login.v1.DisableGuestModeResponse
 }
 var file_culpeostudio_login_v1_login_proto_depIdxs = []int32{
 	0,  // 0: culpeostudio.login.v1.LoginRequest.session_duration:type_name -> culpeostudio.login.v1.SessionDuration
@@ -1042,16 +1187,20 @@ var file_culpeostudio_login_v1_login_proto_depIdxs = []int32{
 	11, // 9: culpeostudio.login.v1.LoginService.ResetPassword:input_type -> culpeostudio.login.v1.ResetPasswordRequest
 	14, // 10: culpeostudio.login.v1.LoginService.GetUserPreferences:input_type -> culpeostudio.login.v1.GetUserPreferencesRequest
 	16, // 11: culpeostudio.login.v1.LoginService.UpdateUserPreferences:input_type -> culpeostudio.login.v1.UpdateUserPreferencesRequest
-	2,  // 12: culpeostudio.login.v1.LoginService.Login:output_type -> culpeostudio.login.v1.LoginResponse
-	4,  // 13: culpeostudio.login.v1.LoginService.GetAuthStatus:output_type -> culpeostudio.login.v1.GetAuthStatusResponse
-	6,  // 14: culpeostudio.login.v1.LoginService.StartAuthenticatorSetup:output_type -> culpeostudio.login.v1.StartAuthenticatorSetupResponse
-	8,  // 15: culpeostudio.login.v1.LoginService.ConfirmAuthenticatorSetup:output_type -> culpeostudio.login.v1.ConfirmAuthenticatorSetupResponse
-	10, // 16: culpeostudio.login.v1.LoginService.CreateAccount:output_type -> culpeostudio.login.v1.CreateAccountResponse
-	12, // 17: culpeostudio.login.v1.LoginService.ResetPassword:output_type -> culpeostudio.login.v1.ResetPasswordResponse
-	15, // 18: culpeostudio.login.v1.LoginService.GetUserPreferences:output_type -> culpeostudio.login.v1.GetUserPreferencesResponse
-	17, // 19: culpeostudio.login.v1.LoginService.UpdateUserPreferences:output_type -> culpeostudio.login.v1.UpdateUserPreferencesResponse
-	12, // [12:20] is the sub-list for method output_type
-	4,  // [4:12] is the sub-list for method input_type
+	18, // 12: culpeostudio.login.v1.LoginService.EnableGuestMode:input_type -> culpeostudio.login.v1.EnableGuestModeRequest
+	20, // 13: culpeostudio.login.v1.LoginService.DisableGuestMode:input_type -> culpeostudio.login.v1.DisableGuestModeRequest
+	2,  // 14: culpeostudio.login.v1.LoginService.Login:output_type -> culpeostudio.login.v1.LoginResponse
+	4,  // 15: culpeostudio.login.v1.LoginService.GetAuthStatus:output_type -> culpeostudio.login.v1.GetAuthStatusResponse
+	6,  // 16: culpeostudio.login.v1.LoginService.StartAuthenticatorSetup:output_type -> culpeostudio.login.v1.StartAuthenticatorSetupResponse
+	8,  // 17: culpeostudio.login.v1.LoginService.ConfirmAuthenticatorSetup:output_type -> culpeostudio.login.v1.ConfirmAuthenticatorSetupResponse
+	10, // 18: culpeostudio.login.v1.LoginService.CreateAccount:output_type -> culpeostudio.login.v1.CreateAccountResponse
+	12, // 19: culpeostudio.login.v1.LoginService.ResetPassword:output_type -> culpeostudio.login.v1.ResetPasswordResponse
+	15, // 20: culpeostudio.login.v1.LoginService.GetUserPreferences:output_type -> culpeostudio.login.v1.GetUserPreferencesResponse
+	17, // 21: culpeostudio.login.v1.LoginService.UpdateUserPreferences:output_type -> culpeostudio.login.v1.UpdateUserPreferencesResponse
+	19, // 22: culpeostudio.login.v1.LoginService.EnableGuestMode:output_type -> culpeostudio.login.v1.EnableGuestModeResponse
+	21, // 23: culpeostudio.login.v1.LoginService.DisableGuestMode:output_type -> culpeostudio.login.v1.DisableGuestModeResponse
+	14, // [14:24] is the sub-list for method output_type
+	4,  // [4:14] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -1068,7 +1217,7 @@ func file_culpeostudio_login_v1_login_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_culpeostudio_login_v1_login_proto_rawDesc), len(file_culpeostudio_login_v1_login_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

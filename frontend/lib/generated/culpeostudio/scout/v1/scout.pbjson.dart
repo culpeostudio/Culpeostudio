@@ -41,6 +41,7 @@ const ModelBinding$json = {
     {'1': 'model_id', '3': 4, '4': 1, '5': 9, '10': 'modelId'},
     {'1': 'instance_id', '3': 5, '4': 1, '5': 9, '10': 'instanceId'},
     {'1': 'display_name', '3': 6, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'connection_id', '3': 7, '4': 1, '5': 9, '10': 'connectionId'},
   ],
 };
 
@@ -49,7 +50,8 @@ final $typed_data.Uint8List modelBindingDescriptor = $convert.base64Decode(
     'CgxNb2RlbEJpbmRpbmcSEgoEa2luZBgBIAEoCVIEa2luZBIbCgltb2RlbF9yZWYYAiABKAlSCG'
     '1vZGVsUmVmEhoKCHByb3ZpZGVyGAMgASgJUghwcm92aWRlchIZCghtb2RlbF9pZBgEIAEoCVIH'
     'bW9kZWxJZBIfCgtpbnN0YW5jZV9pZBgFIAEoCVIKaW5zdGFuY2VJZBIhCgxkaXNwbGF5X25hbW'
-    'UYBiABKAlSC2Rpc3BsYXlOYW1l');
+    'UYBiABKAlSC2Rpc3BsYXlOYW1lEiMKDWNvbm5lY3Rpb25faWQYByABKAlSDGNvbm5lY3Rpb25J'
+    'ZA==');
 
 @$core.Deprecated('Use botDescriptor instead')
 const Bot$json = {
@@ -104,6 +106,7 @@ const SessionSummary$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {'1': 'connection_id', '3': 11, '4': 1, '5': 9, '10': 'connectionId'},
   ],
 };
 
@@ -115,7 +118,7 @@ final $typed_data.Uint8List sessionSummaryDescriptor = $convert.base64Decode(
     'gGIAEoCVILZGlzcGxheU5hbWUSIgoNbG9ja2VkX2JvdF9pZBgHIAEoCVILbG9ja2VkQm90SWQS'
     'HQoKcHJvamVjdF9pZBgIIAEoCVIJcHJvamVjdElkEiMKDW1lc3NhZ2VfY291bnQYCSABKAVSDG'
     '1lc3NhZ2VDb3VudBI5Cgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVz'
-    'dGFtcFIJdXBkYXRlZEF0');
+    'dGFtcFIJdXBkYXRlZEF0EiMKDWNvbm5lY3Rpb25faWQYCyABKAlSDGNvbm5lY3Rpb25JZA==');
 
 @$core.Deprecated('Use fileNodeDescriptor instead')
 const FileNode$json = {
@@ -160,6 +163,8 @@ const ChatOptions$json = {
     {'1': 'allowed_roots', '3': 5, '4': 3, '5': 9, '10': 'allowedRoots'},
     {'1': 'approve_plan', '3': 6, '4': 1, '5': 8, '10': 'approvePlan'},
     {'1': 'planning', '3': 7, '4': 1, '5': 8, '10': 'planning'},
+    {'1': 'reasoning_effort', '3': 8, '4': 1, '5': 9, '10': 'reasoningEffort'},
+    {'1': 'output_level', '3': 9, '4': 1, '5': 9, '10': 'outputLevel'},
   ],
   '8': [
     {'1': '_edit_message_index'},
@@ -172,8 +177,9 @@ final $typed_data.Uint8List chatOptionsDescriptor = $convert.base64Decode(
     '5yZXNwb25zZV9zdHlsZRgCIAEoCVINcmVzcG9uc2VTdHlsZRIxChJlZGl0X21lc3NhZ2VfaW5k'
     'ZXgYAyABKAVIAFIQZWRpdE1lc3NhZ2VJbmRleIgBARISCgRtb2RlGAQgASgJUgRtb2RlEiMKDW'
     'FsbG93ZWRfcm9vdHMYBSADKAlSDGFsbG93ZWRSb290cxIhCgxhcHByb3ZlX3BsYW4YBiABKAhS'
-    'C2FwcHJvdmVQbGFuEhoKCHBsYW5uaW5nGAcgASgIUghwbGFubmluZ0IVChNfZWRpdF9tZXNzYW'
-    'dlX2luZGV4');
+    'C2FwcHJvdmVQbGFuEhoKCHBsYW5uaW5nGAcgASgIUghwbGFubmluZxIpChByZWFzb25pbmdfZW'
+    'Zmb3J0GAggASgJUg9yZWFzb25pbmdFZmZvcnQSIQoMb3V0cHV0X2xldmVsGAkgASgJUgtvdXRw'
+    'dXRMZXZlbEIVChNfZWRpdF9tZXNzYWdlX2luZGV4');
 
 @$core.Deprecated('Use createSessionRequestDescriptor instead')
 const CreateSessionRequest$json = {
@@ -187,6 +193,7 @@ const CreateSessionRequest$json = {
     {'1': 'thinking_level', '3': 6, '4': 1, '5': 9, '10': 'thinkingLevel'},
     {'1': 'response_style', '3': 7, '4': 1, '5': 9, '10': 'responseStyle'},
     {'1': 'project_id', '3': 8, '4': 1, '5': 9, '10': 'projectId'},
+    {'1': 'connection_id', '3': 9, '4': 1, '5': 9, '10': 'connectionId'},
   ],
 };
 
@@ -196,7 +203,8 @@ final $typed_data.Uint8List createSessionRequestDescriptor = $convert.base64Deco
     'Byb3ZpZGVyGAIgASgJUghwcm92aWRlchIZCghtb2RlbF9pZBgDIAEoCVIHbW9kZWxJZBIfCgtp'
     'bnN0YW5jZV9pZBgEIAEoCVIKaW5zdGFuY2VJZBIVCgZib3RfaWQYBSABKAlSBWJvdElkEiUKDn'
     'RoaW5raW5nX2xldmVsGAYgASgJUg10aGlua2luZ0xldmVsEiUKDnJlc3BvbnNlX3N0eWxlGAcg'
-    'ASgJUg1yZXNwb25zZVN0eWxlEh0KCnByb2plY3RfaWQYCCABKAlSCXByb2plY3RJZA==');
+    'ASgJUg1yZXNwb25zZVN0eWxlEh0KCnByb2plY3RfaWQYCCABKAlSCXByb2plY3RJZBIjCg1jb2'
+    '5uZWN0aW9uX2lkGAkgASgJUgxjb25uZWN0aW9uSWQ=');
 
 @$core.Deprecated('Use createSessionResponseDescriptor instead')
 const CreateSessionResponse$json = {
@@ -214,6 +222,7 @@ const CreateSessionResponse$json = {
     {'1': 'locked_bot_id', '3': 10, '4': 1, '5': 9, '10': 'lockedBotId'},
     {'1': 'instance_id', '3': 11, '4': 1, '5': 9, '10': 'instanceId'},
     {'1': 'context_limit', '3': 12, '4': 1, '5': 5, '10': 'contextLimit'},
+    {'1': 'connection_id', '3': 13, '4': 1, '5': 9, '10': 'connectionId'},
   ],
 };
 
@@ -225,7 +234,8 @@ final $typed_data.Uint8List createSessionResponseDescriptor = $convert.base64Dec
     'xheU5hbWUSGgoIdGhpbmtpbmcYBiABKAlSCHRoaW5raW5nEhQKBXN0eWxlGAcgASgJUgVzdHls'
     'ZRIVCgZib3RfaWQYCCABKAlSBWJvdElkEhkKCGJvdF9uYW1lGAkgASgJUgdib3ROYW1lEiIKDW'
     'xvY2tlZF9ib3RfaWQYCiABKAlSC2xvY2tlZEJvdElkEh8KC2luc3RhbmNlX2lkGAsgASgJUgpp'
-    'bnN0YW5jZUlkEiMKDWNvbnRleHRfbGltaXQYDCABKAVSDGNvbnRleHRMaW1pdA==');
+    'bnN0YW5jZUlkEiMKDWNvbnRleHRfbGltaXQYDCABKAVSDGNvbnRleHRMaW1pdBIjCg1jb25uZW'
+    'N0aW9uX2lkGA0gASgJUgxjb25uZWN0aW9uSWQ=');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {
@@ -288,6 +298,15 @@ const GetHistoryResponse$json = {
       '6': '.culpeostudio.scout.v1.ChatMessage',
       '10': 'messages'
     },
+    {'1': 'connection_id', '3': 10, '4': 1, '5': 9, '10': 'connectionId'},
+    {
+      '1': 'context_usage',
+      '3': 11,
+      '4': 1,
+      '5': 11,
+      '6': '.culpeostudio.scout.v1.ContextUsage',
+      '10': 'contextUsage'
+    },
   ],
 };
 
@@ -299,7 +318,9 @@ final $typed_data.Uint8List getHistoryResponseDescriptor = $convert.base64Decode
     '5hbWUSIwoNY29udGV4dF9saW1pdBgGIAEoBVIMY29udGV4dExpbWl0EiIKDWxvY2tlZF9ib3Rf'
     'aWQYByABKAlSC2xvY2tlZEJvdElkEiIKDWFjdGl2ZV9ib3RfaWQYCCABKAlSC2FjdGl2ZUJvdE'
     'lkEj4KCG1lc3NhZ2VzGAkgAygLMiIuY3VscGVvc3R1ZGlvLnNjb3V0LnYxLkNoYXRNZXNzYWdl'
-    'UghtZXNzYWdlcw==');
+    'UghtZXNzYWdlcxIjCg1jb25uZWN0aW9uX2lkGAogASgJUgxjb25uZWN0aW9uSWQSSAoNY29udG'
+    'V4dF91c2FnZRgLIAEoCzIjLmN1bHBlb3N0dWRpby5zY291dC52MS5Db250ZXh0VXNhZ2VSDGNv'
+    'bnRleHRVc2FnZQ==');
 
 @$core.Deprecated('Use renameSessionRequestDescriptor instead')
 const RenameSessionRequest$json = {
@@ -402,6 +423,7 @@ const SetSessionModelRequest$json = {
     {'1': 'model_ref', '3': 4, '4': 1, '5': 9, '10': 'modelRef'},
     {'1': 'display_name', '3': 5, '4': 1, '5': 9, '10': 'displayName'},
     {'1': 'context_limit', '3': 6, '4': 1, '5': 5, '10': 'contextLimit'},
+    {'1': 'connection_id', '3': 7, '4': 1, '5': 9, '10': 'connectionId'},
   ],
 };
 
@@ -410,7 +432,8 @@ final $typed_data.Uint8List setSessionModelRequestDescriptor = $convert.base64De
     'ChZTZXRTZXNzaW9uTW9kZWxSZXF1ZXN0Eh0KCnNlc3Npb25faWQYASABKAlSCXNlc3Npb25JZB'
     'IaCghwcm92aWRlchgCIAEoCVIIcHJvdmlkZXISGQoIbW9kZWxfaWQYAyABKAlSB21vZGVsSWQS'
     'GwoJbW9kZWxfcmVmGAQgASgJUghtb2RlbFJlZhIhCgxkaXNwbGF5X25hbWUYBSABKAlSC2Rpc3'
-    'BsYXlOYW1lEiMKDWNvbnRleHRfbGltaXQYBiABKAVSDGNvbnRleHRMaW1pdA==');
+    'BsYXlOYW1lEiMKDWNvbnRleHRfbGltaXQYBiABKAVSDGNvbnRleHRMaW1pdBIjCg1jb25uZWN0'
+    'aW9uX2lkGAcgASgJUgxjb25uZWN0aW9uSWQ=');
 
 @$core.Deprecated('Use setSessionModelResponseDescriptor instead')
 const SetSessionModelResponse$json = {
@@ -651,6 +674,32 @@ final $typed_data.Uint8List streamDoneDescriptor = $convert.base64Decode(
     '9sZXZlbBgCIAEoCVINdGhpbmtpbmdMZXZlbBIlCg5yZXNwb25zZV9zdHlsZRgDIAEoCVINcmVz'
     'cG9uc2VTdHlsZQ==');
 
+@$core.Deprecated('Use contextUsageDescriptor instead')
+const ContextUsage$json = {
+  '1': 'ContextUsage',
+  '2': [
+    {'1': 'limit_tokens', '3': 1, '4': 1, '5': 5, '10': 'limitTokens'},
+    {'1': 'used_tokens', '3': 2, '4': 1, '5': 5, '10': 'usedTokens'},
+    {'1': 'source', '3': 3, '4': 1, '5': 9, '10': 'source'},
+    {'1': 'compactions', '3': 4, '4': 1, '5': 5, '10': 'compactions'},
+    {'1': 'compacted', '3': 5, '4': 1, '5': 8, '10': 'compacted'},
+    {
+      '1': 'model_limit_tokens',
+      '3': 6,
+      '4': 1,
+      '5': 5,
+      '10': 'modelLimitTokens'
+    },
+  ],
+};
+
+/// Descriptor for `ContextUsage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List contextUsageDescriptor = $convert.base64Decode(
+    'CgxDb250ZXh0VXNhZ2USIQoMbGltaXRfdG9rZW5zGAEgASgFUgtsaW1pdFRva2VucxIfCgt1c2'
+    'VkX3Rva2VucxgCIAEoBVIKdXNlZFRva2VucxIWCgZzb3VyY2UYAyABKAlSBnNvdXJjZRIgCgtj'
+    'b21wYWN0aW9ucxgEIAEoBVILY29tcGFjdGlvbnMSHAoJY29tcGFjdGVkGAUgASgIUgljb21wYW'
+    'N0ZWQSLAoSbW9kZWxfbGltaXRfdG9rZW5zGAYgASgFUhBtb2RlbExpbWl0VG9rZW5z');
+
 @$core.Deprecated('Use streamErrorDescriptor instead')
 const StreamError$json = {
   '1': 'StreamError',
@@ -772,6 +821,15 @@ const StreamMessageResponse$json = {
       '9': 0,
       '10': 'agent'
     },
+    {
+      '1': 'context_usage',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.culpeostudio.scout.v1.ContextUsage',
+      '9': 0,
+      '10': 'contextUsage'
+    },
   ],
   '8': [
     {'1': 'event'},
@@ -791,7 +849,8 @@ final $typed_data.Uint8List streamMessageResponseDescriptor = $convert.base64Dec
     'bFdhcm11cBI3CgRkb25lGAcgASgLMiEuY3VscGVvc3R1ZGlvLnNjb3V0LnYxLlN0cmVhbURvbm'
     'VIAFIEZG9uZRI6CgVlcnJvchgIIAEoCzIiLmN1bHBlb3N0dWRpby5zY291dC52MS5TdHJlYW1F'
     'cnJvckgAUgVlcnJvchI5CgVhZ2VudBgJIAEoCzIhLmN1bHBlb3N0dWRpby5zY291dC52MS5BZ2'
-    'VudEV2ZW50SABSBWFnZW50QgcKBWV2ZW50');
+    'VudEV2ZW50SABSBWFnZW50EkoKDWNvbnRleHRfdXNhZ2UYCiABKAsyIy5jdWxwZW9zdHVkaW8u'
+    'c2NvdXQudjEuQ29udGV4dFVzYWdlSABSDGNvbnRleHRVc2FnZUIHCgVldmVudA==');
 
 @$core.Deprecated('Use listBotsRequestDescriptor instead')
 const ListBotsRequest$json = {
@@ -882,3 +941,61 @@ const DeleteBotResponse$json = {
 /// Descriptor for `DeleteBotResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deleteBotResponseDescriptor =
     $convert.base64Decode('ChFEZWxldGVCb3RSZXNwb25zZQ==');
+
+@$core.Deprecated('Use reasoningProfileDescriptor instead')
+const ReasoningProfile$json = {
+  '1': 'ReasoningProfile',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'mandatory', '3': 3, '4': 1, '5': 8, '10': 'mandatory'},
+    {'1': 'default_enabled', '3': 4, '4': 1, '5': 8, '10': 'defaultEnabled'},
+    {
+      '1': 'supported_efforts',
+      '3': 5,
+      '4': 3,
+      '5': 9,
+      '10': 'supportedEfforts'
+    },
+    {'1': 'default_effort', '3': 6, '4': 1, '5': 9, '10': 'defaultEffort'},
+    {'1': 'context_length', '3': 7, '4': 1, '5': 5, '10': 'contextLength'},
+  ],
+};
+
+/// Descriptor for `ReasoningProfile`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reasoningProfileDescriptor = $convert.base64Decode(
+    'ChBSZWFzb25pbmdQcm9maWxlEg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEh'
+    'wKCW1hbmRhdG9yeRgDIAEoCFIJbWFuZGF0b3J5EicKD2RlZmF1bHRfZW5hYmxlZBgEIAEoCFIO'
+    'ZGVmYXVsdEVuYWJsZWQSKwoRc3VwcG9ydGVkX2VmZm9ydHMYBSADKAlSEHN1cHBvcnRlZEVmZm'
+    '9ydHMSJQoOZGVmYXVsdF9lZmZvcnQYBiABKAlSDWRlZmF1bHRFZmZvcnQSJQoOY29udGV4dF9s'
+    'ZW5ndGgYByABKAVSDWNvbnRleHRMZW5ndGg=');
+
+@$core.Deprecated('Use listReasoningProfilesRequestDescriptor instead')
+const ListReasoningProfilesRequest$json = {
+  '1': 'ListReasoningProfilesRequest',
+};
+
+/// Descriptor for `ListReasoningProfilesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listReasoningProfilesRequestDescriptor =
+    $convert.base64Decode('ChxMaXN0UmVhc29uaW5nUHJvZmlsZXNSZXF1ZXN0');
+
+@$core.Deprecated('Use listReasoningProfilesResponseDescriptor instead')
+const ListReasoningProfilesResponse$json = {
+  '1': 'ListReasoningProfilesResponse',
+  '2': [
+    {
+      '1': 'profiles',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.culpeostudio.scout.v1.ReasoningProfile',
+      '10': 'profiles'
+    },
+  ],
+};
+
+/// Descriptor for `ListReasoningProfilesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listReasoningProfilesResponseDescriptor =
+    $convert.base64Decode(
+        'Ch1MaXN0UmVhc29uaW5nUHJvZmlsZXNSZXNwb25zZRJDCghwcm9maWxlcxgBIAMoCzInLmN1bH'
+        'Blb3N0dWRpby5zY291dC52MS5SZWFzb25pbmdQcm9maWxlUghwcm9maWxlcw==');

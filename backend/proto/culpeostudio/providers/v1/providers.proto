@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package culpeostudio.providers.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/culpeohq/backend/gen/go/culpeostudio/providers/v1;providersv1";
+
+// ProviderService owns externally hosted AI connections.  It deliberately
+// keeps API keys on the backend: clients can see only whether a key exists.
+// A connection is user-scoped, so one signed-in account can never list or use
+// another account's credentials or models.
+service ProviderService {
+  rpc ListPresets(ListPresetsRequest) returns (ListPresetsResponse);
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc SaveConnection(SaveConnectionRequest) returns (SaveConnectionResponse);
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
+  rpc TestConnection(TestConnectionRequest) returns (TestConnectionResponse);
+  rpc SyncConnectionModels(SyncConnectionModelsRequest) returns (SyncConnectionModelsResponse);
+  rpc ListConnectionModels(ListConnectionModelsRequest) returns (ListConnectionModelsResponse);
+  rpc ActivateModel(ActivateModelRequest) returns (ActivateModelResponse);
+  rpc ListActiveModels(ListActiveModelsRequest) returns (ListActiveModelsResponse);
+  rpc DeleteActiveModel(DeleteActiveModelRequest) returns (DeleteActiveModelResponse);
+}
+
+// ConnectionProtocol tells the backend which discovery and streaming-chat
+// adapter to use.  New vendors can reuse OPENAI_COMPATIBLE instead of forcing
+// a client schema change for every provider.
+enum ConnectionProtocol {
+  CONNECTION_PROTOCOL_UNSPECIFIED = 0;
+  CONNECTION_PROTOCOL_OPENAI_COMPATIBLE = 1;
+  CONNECTION_PROTOCOL_ANTHROPIC_MESSAGES = 2;
+  CONNECTION_PROTOCOL_GOOGLE_GENAI = 3;
+  CONNECTION_PROTOCOL_OLLAMA_NATIVE = 4;
+}
+
+message ProviderPreset {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  ConnectionProtocol protocol = 4;
+  string default_base_url = 5;
+  string documentation_url = 6;
+  bool api_key_required = 7;
+  bool available = 8;
+  string unavailable_reason = 9;
+  bool local_only = 10;
+}
+
+// ProviderConnection is always safe to return to the Flutter client.  The
+// API key is intentionally absent; api_key_set merely drives the UI state.
+message ProviderConnection {
+  string id = 1;
+  string preset_id = 2;
+  string name = 3;
+  ConnectionProtocol protocol = 4;
+  string base_url = 5;
+  bool api_key_set = 6;
+  bool enabled = 7;
+  int32 model_count = 8;
+  google.protobuf.Timestamp last_synced_at = 9;
+  string last_sync_error = 10;
+  bool chat_supported = 11;
+  bool stale = 12;
+  string provider_label = 13;
+}
+
+message ProviderModel {
+  string id = 1;
+  string display_name = 2;
+  string description = 3;
+  int32 context_window = 4;
+  int32 max_output_tokens = 5;
+  repeated string input_modalities = 6;
+  repeated string output_modalities = 7;
+  repeated string capabilities = 8;
+  bool chat_supported = 9;
+  bool deprecated = 10;
+  google.protobuf.Timestamp discovered_at = 11;
+}
+
+// ActiveProviderModel is a model deliberately enabled for the chat picker.
+// Model discovery never activates a billable model by itself.
+message ActiveProviderModel {
+  string model_ref = 1;
+  string connection_id = 2;
+  string provider_label = 3;
+  string provider_id = 4;
+  string model_id = 5;
+  string display_name = 6;
+  ConnectionProtocol protocol = 7;
+  google.protobuf.Timestamp activated_at = 8;
+  google.protobuf.Timestamp last_used_at = 9;
+}
+
+message ListPresetsRequest {}
+
+message ListPresetsResponse {
+  repeated ProviderPreset presets = 1;
+}
+
+message ListConnectionsRequest {}
+
+message ListConnectionsResponse {
+  repeated ProviderConnection connections = 1;
+}
+
+// An empty id creates a connection; a supplied id updates one of the caller's
+// own connections.  api_key is write-only and is never echoed in a response.
+message SaveConnectionRequest {
+  string id = 1;
+  string preset_id = 2;
+  string name = 3;
+  ConnectionProtocol protocol = 4;
+  string base_url = 5;
+  optional string api_key = 6;
+  bool clear_api_key = 7;
+  bool enabled = 8;
+  // Saving a valid connection normally fetches the current provider catalogue
+  // straight away.  It remains explicit for callers that only want to edit a
+  // display name while offline.
+  bool sync_models = 9;
+}
+
+message SaveConnectionResponse {
+  ProviderConnection connection = 1;
+  repeated ProviderModel models = 2;
+  // A save is durable even if the provider is temporarily unreachable.  The
+  // UI receives this value and lets the user retry synchronization.
+  string sync_error = 3;
+}
+
+message DeleteConnectionRequest {
+  string id = 1;
+}
+
+message DeleteConnectionResponse {}
+
+message TestConnectionRequest {
+  string id = 1;
+}
+
+message TestConnectionResponse {
+  bool reachable = 1;
+  string message = 2;
+  int32 discovered_model_count = 3;
+}
+
+message SyncConnectionModelsRequest {
+  string id = 1;
+}
+
+message SyncConnectionModelsResponse {
+  ProviderConnection connection = 1;
+  repeated ProviderModel models = 2;
+}
+
+message ListConnectionModelsRequest {
+  string connection_id = 1;
+}
+
+message ListConnectionModelsResponse {
+  ProviderConnection connection = 1;
+  repeated ProviderModel models = 2;
+}
+
+message ActivateModelRequest {
+  string connection_id = 1;
+  string model_id = 2;
+  string display_name = 3;
+}
+
+message ActivateModelResponse {
+  ActiveProviderModel model = 1;
+}
+
+message ListActiveModelsRequest {}
+
+message ListActiveModelsResponse {
+  repeated ActiveProviderModel models = 1;
+}
+
+message DeleteActiveModelRequest {
+  string model_ref = 1;
+}
+
+message DeleteActiveModelResponse {}

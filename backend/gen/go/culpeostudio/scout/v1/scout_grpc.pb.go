@@ -19,19 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ScoutService_CreateSession_FullMethodName     = "/culpeostudio.scout.v1.ScoutService/CreateSession"
-	ScoutService_ListSessions_FullMethodName      = "/culpeostudio.scout.v1.ScoutService/ListSessions"
-	ScoutService_GetHistory_FullMethodName        = "/culpeostudio.scout.v1.ScoutService/GetHistory"
-	ScoutService_RenameSession_FullMethodName     = "/culpeostudio.scout.v1.ScoutService/RenameSession"
-	ScoutService_DeleteSession_FullMethodName     = "/culpeostudio.scout.v1.ScoutService/DeleteSession"
-	ScoutService_SetSessionProject_FullMethodName = "/culpeostudio.scout.v1.ScoutService/SetSessionProject"
-	ScoutService_SetSessionModel_FullMethodName   = "/culpeostudio.scout.v1.ScoutService/SetSessionModel"
-	ScoutService_GetSessionTree_FullMethodName    = "/culpeostudio.scout.v1.ScoutService/GetSessionTree"
-	ScoutService_SendMessage_FullMethodName       = "/culpeostudio.scout.v1.ScoutService/SendMessage"
-	ScoutService_StreamMessage_FullMethodName     = "/culpeostudio.scout.v1.ScoutService/StreamMessage"
-	ScoutService_ListBots_FullMethodName          = "/culpeostudio.scout.v1.ScoutService/ListBots"
-	ScoutService_SaveBot_FullMethodName           = "/culpeostudio.scout.v1.ScoutService/SaveBot"
-	ScoutService_DeleteBot_FullMethodName         = "/culpeostudio.scout.v1.ScoutService/DeleteBot"
+	ScoutService_CreateSession_FullMethodName         = "/culpeostudio.scout.v1.ScoutService/CreateSession"
+	ScoutService_ListSessions_FullMethodName          = "/culpeostudio.scout.v1.ScoutService/ListSessions"
+	ScoutService_GetHistory_FullMethodName            = "/culpeostudio.scout.v1.ScoutService/GetHistory"
+	ScoutService_RenameSession_FullMethodName         = "/culpeostudio.scout.v1.ScoutService/RenameSession"
+	ScoutService_DeleteSession_FullMethodName         = "/culpeostudio.scout.v1.ScoutService/DeleteSession"
+	ScoutService_SetSessionProject_FullMethodName     = "/culpeostudio.scout.v1.ScoutService/SetSessionProject"
+	ScoutService_SetSessionModel_FullMethodName       = "/culpeostudio.scout.v1.ScoutService/SetSessionModel"
+	ScoutService_GetSessionTree_FullMethodName        = "/culpeostudio.scout.v1.ScoutService/GetSessionTree"
+	ScoutService_SendMessage_FullMethodName           = "/culpeostudio.scout.v1.ScoutService/SendMessage"
+	ScoutService_StreamMessage_FullMethodName         = "/culpeostudio.scout.v1.ScoutService/StreamMessage"
+	ScoutService_ListBots_FullMethodName              = "/culpeostudio.scout.v1.ScoutService/ListBots"
+	ScoutService_SaveBot_FullMethodName               = "/culpeostudio.scout.v1.ScoutService/SaveBot"
+	ScoutService_DeleteBot_FullMethodName             = "/culpeostudio.scout.v1.ScoutService/DeleteBot"
+	ScoutService_ListReasoningProfiles_FullMethodName = "/culpeostudio.scout.v1.ScoutService/ListReasoningProfiles"
 )
 
 // ScoutServiceClient is the client API for ScoutService service.
@@ -58,6 +59,7 @@ type ScoutServiceClient interface {
 	ListBots(ctx context.Context, in *ListBotsRequest, opts ...grpc.CallOption) (*ListBotsResponse, error)
 	SaveBot(ctx context.Context, in *SaveBotRequest, opts ...grpc.CallOption) (*SaveBotResponse, error)
 	DeleteBot(ctx context.Context, in *DeleteBotRequest, opts ...grpc.CallOption) (*DeleteBotResponse, error)
+	ListReasoningProfiles(ctx context.Context, in *ListReasoningProfilesRequest, opts ...grpc.CallOption) (*ListReasoningProfilesResponse, error)
 }
 
 type scoutServiceClient struct {
@@ -207,6 +209,16 @@ func (c *scoutServiceClient) DeleteBot(ctx context.Context, in *DeleteBotRequest
 	return out, nil
 }
 
+func (c *scoutServiceClient) ListReasoningProfiles(ctx context.Context, in *ListReasoningProfilesRequest, opts ...grpc.CallOption) (*ListReasoningProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListReasoningProfilesResponse)
+	err := c.cc.Invoke(ctx, ScoutService_ListReasoningProfiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScoutServiceServer is the server API for ScoutService service.
 // All implementations must embed UnimplementedScoutServiceServer
 // for forward compatibility.
@@ -231,6 +243,7 @@ type ScoutServiceServer interface {
 	ListBots(context.Context, *ListBotsRequest) (*ListBotsResponse, error)
 	SaveBot(context.Context, *SaveBotRequest) (*SaveBotResponse, error)
 	DeleteBot(context.Context, *DeleteBotRequest) (*DeleteBotResponse, error)
+	ListReasoningProfiles(context.Context, *ListReasoningProfilesRequest) (*ListReasoningProfilesResponse, error)
 	mustEmbedUnimplementedScoutServiceServer()
 }
 
@@ -279,6 +292,9 @@ func (UnimplementedScoutServiceServer) SaveBot(context.Context, *SaveBotRequest)
 }
 func (UnimplementedScoutServiceServer) DeleteBot(context.Context, *DeleteBotRequest) (*DeleteBotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteBot not implemented")
+}
+func (UnimplementedScoutServiceServer) ListReasoningProfiles(context.Context, *ListReasoningProfilesRequest) (*ListReasoningProfilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListReasoningProfiles not implemented")
 }
 func (UnimplementedScoutServiceServer) mustEmbedUnimplementedScoutServiceServer() {}
 func (UnimplementedScoutServiceServer) testEmbeddedByValue()                      {}
@@ -528,6 +544,24 @@ func _ScoutService_DeleteBot_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScoutService_ListReasoningProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReasoningProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScoutServiceServer).ListReasoningProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScoutService_ListReasoningProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScoutServiceServer).ListReasoningProfiles(ctx, req.(*ListReasoningProfilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScoutService_ServiceDesc is the grpc.ServiceDesc for ScoutService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -582,6 +616,10 @@ var ScoutService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteBot",
 			Handler:    _ScoutService_DeleteBot_Handler,
+		},
+		{
+			MethodName: "ListReasoningProfiles",
+			Handler:    _ScoutService_ListReasoningProfiles_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

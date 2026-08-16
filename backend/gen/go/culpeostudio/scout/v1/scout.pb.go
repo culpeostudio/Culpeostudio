@@ -95,13 +95,16 @@ func (x *ChatMessage) GetBotName() string {
 // ModelBinding pins a bot to one model, either a hosted one or a local
 // instance the engine runs.
 type ModelBinding struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	ModelRef      string                 `protobuf:"bytes,2,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
-	Provider      string                 `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
-	ModelId       string                 `protobuf:"bytes,4,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	InstanceId    string                 `protobuf:"bytes,5,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,6,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Kind        string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	ModelRef    string                 `protobuf:"bytes,2,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
+	Provider    string                 `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
+	ModelId     string                 `protobuf:"bytes,4,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
+	InstanceId  string                 `protobuf:"bytes,5,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	DisplayName string                 `protobuf:"bytes,6,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// User-owned provider connection used for a dynamically discovered API
+	// model. Empty keeps the legacy Marketplace provider binding.
+	ConnectionId  string `protobuf:"bytes,7,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -174,6 +177,13 @@ func (x *ModelBinding) GetInstanceId() string {
 func (x *ModelBinding) GetDisplayName() string {
 	if x != nil {
 		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *ModelBinding) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
 	}
 	return ""
 }
@@ -301,6 +311,7 @@ type SessionSummary struct {
 	ProjectId     string                 `protobuf:"bytes,8,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	MessageCount  int32                  `protobuf:"varint,9,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ConnectionId  string                 `protobuf:"bytes,11,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -405,6 +416,13 @@ func (x *SessionSummary) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *SessionSummary) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
 // FileNode is one entry of the project folder listing. The HTTP API handed this
 // out as an untyped tree; the shape was always this.
 type FileNode struct {
@@ -488,8 +506,13 @@ type ChatOptions struct {
 	AllowedRoots     []string `protobuf:"bytes,5,rep,name=allowed_roots,json=allowedRoots,proto3" json:"allowed_roots,omitempty"`
 	ApprovePlan      bool     `protobuf:"varint,6,opt,name=approve_plan,json=approvePlan,proto3" json:"approve_plan,omitempty"`
 	Planning         bool     `protobuf:"varint,7,opt,name=planning,proto3" json:"planning,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	ReasoningEffort  string   `protobuf:"bytes,8,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
+	// How long the answer may get: "short", "normal" or "max". Empty means
+	// normal. "max" resolves to whatever the model itself will write, capped by
+	// what is left of its context window.
+	OutputLevel   string `protobuf:"bytes,9,opt,name=output_level,json=outputLevel,proto3" json:"output_level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatOptions) Reset() {
@@ -571,6 +594,20 @@ func (x *ChatOptions) GetPlanning() bool {
 	return false
 }
 
+func (x *ChatOptions) GetReasoningEffort() string {
+	if x != nil {
+		return x.ReasoningEffort
+	}
+	return ""
+}
+
+func (x *ChatOptions) GetOutputLevel() string {
+	if x != nil {
+		return x.OutputLevel
+	}
+	return ""
+}
+
 type CreateSessionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ModelRef      string                 `protobuf:"bytes,1,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
@@ -581,6 +618,7 @@ type CreateSessionRequest struct {
 	ThinkingLevel string                 `protobuf:"bytes,6,opt,name=thinking_level,json=thinkingLevel,proto3" json:"thinking_level,omitempty"`
 	ResponseStyle string                 `protobuf:"bytes,7,opt,name=response_style,json=responseStyle,proto3" json:"response_style,omitempty"`
 	ProjectId     string                 `protobuf:"bytes,8,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	ConnectionId  string                 `protobuf:"bytes,9,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -671,6 +709,13 @@ func (x *CreateSessionRequest) GetProjectId() string {
 	return ""
 }
 
+func (x *CreateSessionRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
 type CreateSessionResponse struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -687,6 +732,7 @@ type CreateSessionResponse struct {
 	// context it was started with.
 	InstanceId    string `protobuf:"bytes,11,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
 	ContextLimit  int32  `protobuf:"varint,12,opt,name=context_limit,json=contextLimit,proto3" json:"context_limit,omitempty"`
+	ConnectionId  string `protobuf:"bytes,13,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -803,6 +849,13 @@ func (x *CreateSessionResponse) GetContextLimit() int32 {
 		return x.ContextLimit
 	}
 	return 0
+}
+
+func (x *CreateSessionResponse) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
 }
 
 type ListSessionsRequest struct {
@@ -930,16 +983,20 @@ func (x *GetHistoryRequest) GetSessionId() string {
 }
 
 type GetHistoryResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
-	ModelId       string                 `protobuf:"bytes,3,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	ModelRef      string                 `protobuf:"bytes,4,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,5,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	ContextLimit  int32                  `protobuf:"varint,6,opt,name=context_limit,json=contextLimit,proto3" json:"context_limit,omitempty"`
-	LockedBotId   string                 `protobuf:"bytes,7,opt,name=locked_bot_id,json=lockedBotId,proto3" json:"locked_bot_id,omitempty"`
-	ActiveBotId   string                 `protobuf:"bytes,8,opt,name=active_bot_id,json=activeBotId,proto3" json:"active_bot_id,omitempty"`
-	Messages      []*ChatMessage         `protobuf:"bytes,9,rep,name=messages,proto3" json:"messages,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	SessionId    string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Provider     string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	ModelId      string                 `protobuf:"bytes,3,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
+	ModelRef     string                 `protobuf:"bytes,4,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
+	DisplayName  string                 `protobuf:"bytes,5,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	ContextLimit int32                  `protobuf:"varint,6,opt,name=context_limit,json=contextLimit,proto3" json:"context_limit,omitempty"`
+	LockedBotId  string                 `protobuf:"bytes,7,opt,name=locked_bot_id,json=lockedBotId,proto3" json:"locked_bot_id,omitempty"`
+	ActiveBotId  string                 `protobuf:"bytes,8,opt,name=active_bot_id,json=activeBotId,proto3" json:"active_bot_id,omitempty"`
+	Messages     []*ChatMessage         `protobuf:"bytes,9,rep,name=messages,proto3" json:"messages,omitempty"`
+	ConnectionId string                 `protobuf:"bytes,10,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	// How full the model's context window is right now, so a reopened chat shows
+	// its meter without having to send a message first.
+	ContextUsage  *ContextUsage `protobuf:"bytes,11,opt,name=context_usage,json=contextUsage,proto3" json:"context_usage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1033,6 +1090,20 @@ func (x *GetHistoryResponse) GetActiveBotId() string {
 func (x *GetHistoryResponse) GetMessages() []*ChatMessage {
 	if x != nil {
 		return x.Messages
+	}
+	return nil
+}
+
+func (x *GetHistoryResponse) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *GetHistoryResponse) GetContextUsage() *ContextUsage {
+	if x != nil {
+		return x.ContextUsage
 	}
 	return nil
 }
@@ -1319,6 +1390,7 @@ type SetSessionModelRequest struct {
 	ModelRef      string                 `protobuf:"bytes,4,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`
 	DisplayName   string                 `protobuf:"bytes,5,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	ContextLimit  int32                  `protobuf:"varint,6,opt,name=context_limit,json=contextLimit,proto3" json:"context_limit,omitempty"`
+	ConnectionId  string                 `protobuf:"bytes,7,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1393,6 +1465,13 @@ func (x *SetSessionModelRequest) GetContextLimit() int32 {
 		return x.ContextLimit
 	}
 	return 0
+}
+
+func (x *SetSessionModelRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
 }
 
 type SetSessionModelResponse struct {
@@ -2152,6 +2231,105 @@ func (x *StreamDone) GetResponseStyle() string {
 	return ""
 }
 
+// ContextUsage is how much of the model's context window the conversation
+// occupies. Both numbers are estimates: limit_tokens may be a catalogue
+// average when nothing reported a real one, and used_tokens is counted by a
+// characters-per-token rule rather than the model's own tokenizer.
+type ContextUsage struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	LimitTokens int32                  `protobuf:"varint,1,opt,name=limit_tokens,json=limitTokens,proto3" json:"limit_tokens,omitempty"`
+	UsedTokens  int32                  `protobuf:"varint,2,opt,name=used_tokens,json=usedTokens,proto3" json:"used_tokens,omitempty"`
+	// Where limit_tokens came from: "local" (the engine started the instance
+	// with it), "provider" (a configured connection reported it), "catalog"
+	// (the OpenRouter model list, the same source as the thinking levels), or
+	// "average" (the mean over every model the catalogue knows).
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// How often this session's older turns have been folded into a summary.
+	Compactions int32 `protobuf:"varint,4,opt,name=compactions,proto3" json:"compactions,omitempty"`
+	// True on the reading that follows a folding, so the UI can explain a meter
+	// that just dropped.
+	Compacted bool `protobuf:"varint,5,opt,name=compacted,proto3" json:"compacted,omitempty"`
+	// What the model itself would allow, where limit_tokens is only what this
+	// instance was actually started with - the engine's memory plan routinely
+	// starts a local model well below its maximum. Zero when the two are the
+	// same, so the UI only explains the gap when there is one.
+	ModelLimitTokens int32 `protobuf:"varint,6,opt,name=model_limit_tokens,json=modelLimitTokens,proto3" json:"model_limit_tokens,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ContextUsage) Reset() {
+	*x = ContextUsage{}
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContextUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContextUsage) ProtoMessage() {}
+
+func (x *ContextUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContextUsage.ProtoReflect.Descriptor instead.
+func (*ContextUsage) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ContextUsage) GetLimitTokens() int32 {
+	if x != nil {
+		return x.LimitTokens
+	}
+	return 0
+}
+
+func (x *ContextUsage) GetUsedTokens() int32 {
+	if x != nil {
+		return x.UsedTokens
+	}
+	return 0
+}
+
+func (x *ContextUsage) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *ContextUsage) GetCompactions() int32 {
+	if x != nil {
+		return x.Compactions
+	}
+	return 0
+}
+
+func (x *ContextUsage) GetCompacted() bool {
+	if x != nil {
+		return x.Compacted
+	}
+	return false
+}
+
+func (x *ContextUsage) GetModelLimitTokens() int32 {
+	if x != nil {
+		return x.ModelLimitTokens
+	}
+	return 0
+}
+
 // StreamError ends the stream with a reason. It stays an event rather than a
 // gRPC status because the reply may already be half-written, and the client
 // needs the code to tell a warm-up problem from a real failure.
@@ -2167,7 +2345,7 @@ type StreamError struct {
 
 func (x *StreamError) Reset() {
 	*x = StreamError{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[32]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2179,7 +2357,7 @@ func (x *StreamError) String() string {
 func (*StreamError) ProtoMessage() {}
 
 func (x *StreamError) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[32]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2192,7 +2370,7 @@ func (x *StreamError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamError.ProtoReflect.Descriptor instead.
 func (*StreamError) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{32}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *StreamError) GetMessage() string {
@@ -2232,7 +2410,7 @@ type AgentEvent struct {
 
 func (x *AgentEvent) Reset() {
 	*x = AgentEvent{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[33]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2244,7 +2422,7 @@ func (x *AgentEvent) String() string {
 func (*AgentEvent) ProtoMessage() {}
 
 func (x *AgentEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[33]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2257,7 +2435,7 @@ func (x *AgentEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentEvent.ProtoReflect.Descriptor instead.
 func (*AgentEvent) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{33}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *AgentEvent) GetType() string {
@@ -2289,6 +2467,7 @@ type StreamMessageResponse struct {
 	//	*StreamMessageResponse_Done
 	//	*StreamMessageResponse_Error
 	//	*StreamMessageResponse_Agent
+	//	*StreamMessageResponse_ContextUsage
 	Event         isStreamMessageResponse_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2296,7 +2475,7 @@ type StreamMessageResponse struct {
 
 func (x *StreamMessageResponse) Reset() {
 	*x = StreamMessageResponse{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[34]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2308,7 +2487,7 @@ func (x *StreamMessageResponse) String() string {
 func (*StreamMessageResponse) ProtoMessage() {}
 
 func (x *StreamMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[34]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2321,7 +2500,7 @@ func (x *StreamMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamMessageResponse.ProtoReflect.Descriptor instead.
 func (*StreamMessageResponse) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{34}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *StreamMessageResponse) GetEvent() isStreamMessageResponse_Event {
@@ -2412,6 +2591,15 @@ func (x *StreamMessageResponse) GetAgent() *AgentEvent {
 	return nil
 }
 
+func (x *StreamMessageResponse) GetContextUsage() *ContextUsage {
+	if x != nil {
+		if x, ok := x.Event.(*StreamMessageResponse_ContextUsage); ok {
+			return x.ContextUsage
+		}
+	}
+	return nil
+}
+
 type isStreamMessageResponse_Event interface {
 	isStreamMessageResponse_Event()
 }
@@ -2452,6 +2640,10 @@ type StreamMessageResponse_Agent struct {
 	Agent *AgentEvent `protobuf:"bytes,9,opt,name=agent,proto3,oneof"`
 }
 
+type StreamMessageResponse_ContextUsage struct {
+	ContextUsage *ContextUsage `protobuf:"bytes,10,opt,name=context_usage,json=contextUsage,proto3,oneof"`
+}
+
 func (*StreamMessageResponse_TextDelta) isStreamMessageResponse_Event() {}
 
 func (*StreamMessageResponse_ReasoningDelta) isStreamMessageResponse_Event() {}
@@ -2470,6 +2662,8 @@ func (*StreamMessageResponse_Error) isStreamMessageResponse_Event() {}
 
 func (*StreamMessageResponse_Agent) isStreamMessageResponse_Event() {}
 
+func (*StreamMessageResponse_ContextUsage) isStreamMessageResponse_Event() {}
+
 type ListBotsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2478,7 +2672,7 @@ type ListBotsRequest struct {
 
 func (x *ListBotsRequest) Reset() {
 	*x = ListBotsRequest{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[35]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2490,7 +2684,7 @@ func (x *ListBotsRequest) String() string {
 func (*ListBotsRequest) ProtoMessage() {}
 
 func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[35]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2503,7 +2697,7 @@ func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotsRequest) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{35}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{36}
 }
 
 type ListBotsResponse struct {
@@ -2515,7 +2709,7 @@ type ListBotsResponse struct {
 
 func (x *ListBotsResponse) Reset() {
 	*x = ListBotsResponse{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[36]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2721,7 @@ func (x *ListBotsResponse) String() string {
 func (*ListBotsResponse) ProtoMessage() {}
 
 func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[36]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2734,7 @@ func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotsResponse) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{36}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListBotsResponse) GetBots() []*Bot {
@@ -2560,7 +2754,7 @@ type SaveBotRequest struct {
 
 func (x *SaveBotRequest) Reset() {
 	*x = SaveBotRequest{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[37]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2572,7 +2766,7 @@ func (x *SaveBotRequest) String() string {
 func (*SaveBotRequest) ProtoMessage() {}
 
 func (x *SaveBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[37]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2585,7 +2779,7 @@ func (x *SaveBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveBotRequest.ProtoReflect.Descriptor instead.
 func (*SaveBotRequest) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{37}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SaveBotRequest) GetBot() *Bot {
@@ -2604,7 +2798,7 @@ type SaveBotResponse struct {
 
 func (x *SaveBotResponse) Reset() {
 	*x = SaveBotResponse{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[38]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2616,7 +2810,7 @@ func (x *SaveBotResponse) String() string {
 func (*SaveBotResponse) ProtoMessage() {}
 
 func (x *SaveBotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[38]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2629,7 +2823,7 @@ func (x *SaveBotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveBotResponse.ProtoReflect.Descriptor instead.
 func (*SaveBotResponse) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{38}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SaveBotResponse) GetBot() *Bot {
@@ -2648,7 +2842,7 @@ type DeleteBotRequest struct {
 
 func (x *DeleteBotRequest) Reset() {
 	*x = DeleteBotRequest{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[39]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2660,7 +2854,7 @@ func (x *DeleteBotRequest) String() string {
 func (*DeleteBotRequest) ProtoMessage() {}
 
 func (x *DeleteBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[39]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2673,7 +2867,7 @@ func (x *DeleteBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBotRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBotRequest) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{39}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *DeleteBotRequest) GetId() string {
@@ -2691,7 +2885,7 @@ type DeleteBotResponse struct {
 
 func (x *DeleteBotResponse) Reset() {
 	*x = DeleteBotResponse{}
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[40]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2703,7 +2897,7 @@ func (x *DeleteBotResponse) String() string {
 func (*DeleteBotResponse) ProtoMessage() {}
 
 func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[40]
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2716,7 +2910,181 @@ func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBotResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBotResponse) Descriptor() ([]byte, []int) {
-	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{40}
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{41}
+}
+
+type ReasoningProfile struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Mandatory        bool                   `protobuf:"varint,3,opt,name=mandatory,proto3" json:"mandatory,omitempty"`
+	DefaultEnabled   bool                   `protobuf:"varint,4,opt,name=default_enabled,json=defaultEnabled,proto3" json:"default_enabled,omitempty"`
+	SupportedEfforts []string               `protobuf:"bytes,5,rep,name=supported_efforts,json=supportedEfforts,proto3" json:"supported_efforts,omitempty"`
+	DefaultEffort    string                 `protobuf:"bytes,6,opt,name=default_effort,json=defaultEffort,proto3" json:"default_effort,omitempty"`
+	// The model's context window in tokens, read from the same catalogue entry
+	// as the thinking levels above. Zero when the catalogue does not report one.
+	ContextLength int32 `protobuf:"varint,7,opt,name=context_length,json=contextLength,proto3" json:"context_length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReasoningProfile) Reset() {
+	*x = ReasoningProfile{}
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReasoningProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReasoningProfile) ProtoMessage() {}
+
+func (x *ReasoningProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReasoningProfile.ProtoReflect.Descriptor instead.
+func (*ReasoningProfile) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *ReasoningProfile) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ReasoningProfile) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ReasoningProfile) GetMandatory() bool {
+	if x != nil {
+		return x.Mandatory
+	}
+	return false
+}
+
+func (x *ReasoningProfile) GetDefaultEnabled() bool {
+	if x != nil {
+		return x.DefaultEnabled
+	}
+	return false
+}
+
+func (x *ReasoningProfile) GetSupportedEfforts() []string {
+	if x != nil {
+		return x.SupportedEfforts
+	}
+	return nil
+}
+
+func (x *ReasoningProfile) GetDefaultEffort() string {
+	if x != nil {
+		return x.DefaultEffort
+	}
+	return ""
+}
+
+func (x *ReasoningProfile) GetContextLength() int32 {
+	if x != nil {
+		return x.ContextLength
+	}
+	return 0
+}
+
+type ListReasoningProfilesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReasoningProfilesRequest) Reset() {
+	*x = ListReasoningProfilesRequest{}
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReasoningProfilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReasoningProfilesRequest) ProtoMessage() {}
+
+func (x *ListReasoningProfilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReasoningProfilesRequest.ProtoReflect.Descriptor instead.
+func (*ListReasoningProfilesRequest) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{43}
+}
+
+type ListReasoningProfilesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profiles      []*ReasoningProfile    `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReasoningProfilesResponse) Reset() {
+	*x = ListReasoningProfilesResponse{}
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReasoningProfilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReasoningProfilesResponse) ProtoMessage() {}
+
+func (x *ListReasoningProfilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_culpeostudio_scout_v1_scout_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReasoningProfilesResponse.ProtoReflect.Descriptor instead.
+func (*ListReasoningProfilesResponse) Descriptor() ([]byte, []int) {
+	return file_culpeostudio_scout_v1_scout_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ListReasoningProfilesResponse) GetProfiles() []*ReasoningProfile {
+	if x != nil {
+		return x.Profiles
+	}
+	return nil
 }
 
 var File_culpeostudio_scout_v1_scout_proto protoreflect.FileDescriptor
@@ -2728,7 +3096,7 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x15\n" +
 	"\x06bot_id\x18\x03 \x01(\tR\x05botId\x12\x19\n" +
-	"\bbot_name\x18\x04 \x01(\tR\abotName\"\xba\x01\n" +
+	"\bbot_name\x18\x04 \x01(\tR\abotName\"\xdf\x01\n" +
 	"\fModelBinding\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1b\n" +
 	"\tmodel_ref\x18\x02 \x01(\tR\bmodelRef\x12\x1a\n" +
@@ -2736,7 +3104,8 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\bmodel_id\x18\x04 \x01(\tR\amodelId\x12\x1f\n" +
 	"\vinstance_id\x18\x05 \x01(\tR\n" +
 	"instanceId\x12!\n" +
-	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\"\xc8\x02\n" +
+	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\x12#\n" +
+	"\rconnection_id\x18\a \x01(\tR\fconnectionId\"\xc8\x02\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -2747,7 +3116,7 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\rallowed_roots\x18\a \x03(\tR\fallowedRoots\x12\x1d\n" +
 	"\n" +
 	"is_default\x18\b \x01(\bR\tisDefault\x12H\n" +
-	"\rmodel_binding\x18\t \x01(\v2#.culpeostudio.scout.v1.ModelBindingR\fmodelBinding\"\xdc\x02\n" +
+	"\rmodel_binding\x18\t \x01(\v2#.culpeostudio.scout.v1.ModelBindingR\fmodelBinding\"\x81\x03\n" +
 	"\x0eSessionSummary\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
@@ -2762,12 +3131,13 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\rmessage_count\x18\t \x01(\x05R\fmessageCount\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x86\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12#\n" +
+	"\rconnection_id\x18\v \x01(\tR\fconnectionId\"\x86\x01\n" +
 	"\bFileNode\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x15\n" +
 	"\x06is_dir\x18\x03 \x01(\bR\x05isDir\x12;\n" +
-	"\bchildren\x18\x04 \x03(\v2\x1f.culpeostudio.scout.v1.FileNodeR\bchildren\"\x9d\x02\n" +
+	"\bchildren\x18\x04 \x03(\v2\x1f.culpeostudio.scout.v1.FileNodeR\bchildren\"\xeb\x02\n" +
 	"\vChatOptions\x12%\n" +
 	"\x0ethinking_level\x18\x01 \x01(\tR\rthinkingLevel\x12%\n" +
 	"\x0eresponse_style\x18\x02 \x01(\tR\rresponseStyle\x121\n" +
@@ -2775,8 +3145,10 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\x04mode\x18\x04 \x01(\tR\x04mode\x12#\n" +
 	"\rallowed_roots\x18\x05 \x03(\tR\fallowedRoots\x12!\n" +
 	"\fapprove_plan\x18\x06 \x01(\bR\vapprovePlan\x12\x1a\n" +
-	"\bplanning\x18\a \x01(\bR\bplanningB\x15\n" +
-	"\x13_edit_message_index\"\x8f\x02\n" +
+	"\bplanning\x18\a \x01(\bR\bplanning\x12)\n" +
+	"\x10reasoning_effort\x18\b \x01(\tR\x0freasoningEffort\x12!\n" +
+	"\foutput_level\x18\t \x01(\tR\voutputLevelB\x15\n" +
+	"\x13_edit_message_index\"\xb4\x02\n" +
 	"\x14CreateSessionRequest\x12\x1b\n" +
 	"\tmodel_ref\x18\x01 \x01(\tR\bmodelRef\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x19\n" +
@@ -2787,7 +3159,8 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\x0ethinking_level\x18\x06 \x01(\tR\rthinkingLevel\x12%\n" +
 	"\x0eresponse_style\x18\a \x01(\tR\rresponseStyle\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\b \x01(\tR\tprojectId\"\xfb\x02\n" +
+	"project_id\x18\b \x01(\tR\tprojectId\x12#\n" +
+	"\rconnection_id\x18\t \x01(\tR\fconnectionId\"\xa0\x03\n" +
 	"\x15CreateSessionResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
@@ -2803,13 +3176,14 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	" \x01(\tR\vlockedBotId\x12\x1f\n" +
 	"\vinstance_id\x18\v \x01(\tR\n" +
 	"instanceId\x12#\n" +
-	"\rcontext_limit\x18\f \x01(\x05R\fcontextLimit\"\x15\n" +
+	"\rcontext_limit\x18\f \x01(\x05R\fcontextLimit\x12#\n" +
+	"\rconnection_id\x18\r \x01(\tR\fconnectionId\"\x15\n" +
 	"\x13ListSessionsRequest\"Y\n" +
 	"\x14ListSessionsResponse\x12A\n" +
 	"\bsessions\x18\x01 \x03(\v2%.culpeostudio.scout.v1.SessionSummaryR\bsessions\"2\n" +
 	"\x11GetHistoryRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xd7\x02\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xc6\x03\n" +
 	"\x12GetHistoryResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1a\n" +
@@ -2820,7 +3194,10 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\rcontext_limit\x18\x06 \x01(\x05R\fcontextLimit\x12\"\n" +
 	"\rlocked_bot_id\x18\a \x01(\tR\vlockedBotId\x12\"\n" +
 	"\ractive_bot_id\x18\b \x01(\tR\vactiveBotId\x12>\n" +
-	"\bmessages\x18\t \x03(\v2\".culpeostudio.scout.v1.ChatMessageR\bmessages\"K\n" +
+	"\bmessages\x18\t \x03(\v2\".culpeostudio.scout.v1.ChatMessageR\bmessages\x12#\n" +
+	"\rconnection_id\x18\n" +
+	" \x01(\tR\fconnectionId\x12H\n" +
+	"\rcontext_usage\x18\v \x01(\v2#.culpeostudio.scout.v1.ContextUsageR\fcontextUsage\"K\n" +
 	"\x14RenameSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
@@ -2837,7 +3214,7 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\"\\\n" +
 	"\x19SetSessionProjectResponse\x12?\n" +
-	"\asession\x18\x01 \x01(\v2%.culpeostudio.scout.v1.SessionSummaryR\asession\"\xd3\x01\n" +
+	"\asession\x18\x01 \x01(\v2%.culpeostudio.scout.v1.SessionSummaryR\asession\"\xf8\x01\n" +
 	"\x16SetSessionModelRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1a\n" +
@@ -2845,7 +3222,8 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\bmodel_id\x18\x03 \x01(\tR\amodelId\x12\x1b\n" +
 	"\tmodel_ref\x18\x04 \x01(\tR\bmodelRef\x12!\n" +
 	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\x12#\n" +
-	"\rcontext_limit\x18\x06 \x01(\x05R\fcontextLimit\"Z\n" +
+	"\rcontext_limit\x18\x06 \x01(\x05R\fcontextLimit\x12#\n" +
+	"\rconnection_id\x18\a \x01(\tR\fconnectionId\"Z\n" +
 	"\x17SetSessionModelResponse\x12?\n" +
 	"\asession\x18\x01 \x01(\v2%.culpeostudio.scout.v1.SessionSummaryR\asession\"6\n" +
 	"\x15GetSessionTreeRequest\x12\x1d\n" +
@@ -2902,7 +3280,15 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
 	"\x0ethinking_level\x18\x02 \x01(\tR\rthinkingLevel\x12%\n" +
-	"\x0eresponse_style\x18\x03 \x01(\tR\rresponseStyle\"\\\n" +
+	"\x0eresponse_style\x18\x03 \x01(\tR\rresponseStyle\"\xd8\x01\n" +
+	"\fContextUsage\x12!\n" +
+	"\flimit_tokens\x18\x01 \x01(\x05R\vlimitTokens\x12\x1f\n" +
+	"\vused_tokens\x18\x02 \x01(\x05R\n" +
+	"usedTokens\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12 \n" +
+	"\vcompactions\x18\x04 \x01(\x05R\vcompactions\x12\x1c\n" +
+	"\tcompacted\x18\x05 \x01(\bR\tcompacted\x12,\n" +
+	"\x12model_limit_tokens\x18\x06 \x01(\x05R\x10modelLimitTokens\"\\\n" +
 	"\vStreamError\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1f\n" +
@@ -2911,7 +3297,7 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\n" +
 	"AgentEvent\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12+\n" +
-	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\"\xfc\x04\n" +
+	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\"\xc8\x05\n" +
 	"\x15StreamMessageResponse\x12A\n" +
 	"\n" +
 	"text_delta\x18\x01 \x01(\v2 .culpeostudio.scout.v1.TextDeltaH\x00R\ttextDelta\x12P\n" +
@@ -2923,7 +3309,9 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\fmodel_warmup\x18\x06 \x01(\v2\".culpeostudio.scout.v1.ModelWarmupH\x00R\vmodelWarmup\x127\n" +
 	"\x04done\x18\a \x01(\v2!.culpeostudio.scout.v1.StreamDoneH\x00R\x04done\x12:\n" +
 	"\x05error\x18\b \x01(\v2\".culpeostudio.scout.v1.StreamErrorH\x00R\x05error\x129\n" +
-	"\x05agent\x18\t \x01(\v2!.culpeostudio.scout.v1.AgentEventH\x00R\x05agentB\a\n" +
+	"\x05agent\x18\t \x01(\v2!.culpeostudio.scout.v1.AgentEventH\x00R\x05agent\x12J\n" +
+	"\rcontext_usage\x18\n" +
+	" \x01(\v2#.culpeostudio.scout.v1.ContextUsageH\x00R\fcontextUsageB\a\n" +
 	"\x05event\"\x11\n" +
 	"\x0fListBotsRequest\"B\n" +
 	"\x10ListBotsResponse\x12.\n" +
@@ -2934,8 +3322,18 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\x03bot\x18\x01 \x01(\v2\x1a.culpeostudio.scout.v1.BotR\x03bot\"\"\n" +
 	"\x10DeleteBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x13\n" +
-	"\x11DeleteBotResponse2\xe2\n" +
-	"\n" +
+	"\x11DeleteBotResponse\"\xf8\x01\n" +
+	"\x10ReasoningProfile\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
+	"\tmandatory\x18\x03 \x01(\bR\tmandatory\x12'\n" +
+	"\x0fdefault_enabled\x18\x04 \x01(\bR\x0edefaultEnabled\x12+\n" +
+	"\x11supported_efforts\x18\x05 \x03(\tR\x10supportedEfforts\x12%\n" +
+	"\x0edefault_effort\x18\x06 \x01(\tR\rdefaultEffort\x12%\n" +
+	"\x0econtext_length\x18\a \x01(\x05R\rcontextLength\"\x1e\n" +
+	"\x1cListReasoningProfilesRequest\"d\n" +
+	"\x1dListReasoningProfilesResponse\x12C\n" +
+	"\bprofiles\x18\x01 \x03(\v2'.culpeostudio.scout.v1.ReasoningProfileR\bprofiles2\xe7\v\n" +
 	"\fScoutService\x12j\n" +
 	"\rCreateSession\x12+.culpeostudio.scout.v1.CreateSessionRequest\x1a,.culpeostudio.scout.v1.CreateSessionResponse\x12g\n" +
 	"\fListSessions\x12*.culpeostudio.scout.v1.ListSessionsRequest\x1a+.culpeostudio.scout.v1.ListSessionsResponse\x12a\n" +
@@ -2950,7 +3348,8 @@ const file_culpeostudio_scout_v1_scout_proto_rawDesc = "" +
 	"\rStreamMessage\x12+.culpeostudio.scout.v1.StreamMessageRequest\x1a,.culpeostudio.scout.v1.StreamMessageResponse0\x01\x12[\n" +
 	"\bListBots\x12&.culpeostudio.scout.v1.ListBotsRequest\x1a'.culpeostudio.scout.v1.ListBotsResponse\x12X\n" +
 	"\aSaveBot\x12%.culpeostudio.scout.v1.SaveBotRequest\x1a&.culpeostudio.scout.v1.SaveBotResponse\x12^\n" +
-	"\tDeleteBot\x12'.culpeostudio.scout.v1.DeleteBotRequest\x1a(.culpeostudio.scout.v1.DeleteBotResponseBBZ@github.com/culpeohq/backend/gen/go/culpeostudio/scout/v1;scoutv1b\x06proto3"
+	"\tDeleteBot\x12'.culpeostudio.scout.v1.DeleteBotRequest\x1a(.culpeostudio.scout.v1.DeleteBotResponse\x12\x82\x01\n" +
+	"\x15ListReasoningProfiles\x123.culpeostudio.scout.v1.ListReasoningProfilesRequest\x1a4.culpeostudio.scout.v1.ListReasoningProfilesResponseBBZ@github.com/culpeohq/backend/gen/go/culpeostudio/scout/v1;scoutv1b\x06proto3"
 
 var (
 	file_culpeostudio_scout_v1_scout_proto_rawDescOnce sync.Once
@@ -2964,110 +3363,119 @@ func file_culpeostudio_scout_v1_scout_proto_rawDescGZIP() []byte {
 	return file_culpeostudio_scout_v1_scout_proto_rawDescData
 }
 
-var file_culpeostudio_scout_v1_scout_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_culpeostudio_scout_v1_scout_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_culpeostudio_scout_v1_scout_proto_goTypes = []any{
-	(*ChatMessage)(nil),               // 0: culpeostudio.scout.v1.ChatMessage
-	(*ModelBinding)(nil),              // 1: culpeostudio.scout.v1.ModelBinding
-	(*Bot)(nil),                       // 2: culpeostudio.scout.v1.Bot
-	(*SessionSummary)(nil),            // 3: culpeostudio.scout.v1.SessionSummary
-	(*FileNode)(nil),                  // 4: culpeostudio.scout.v1.FileNode
-	(*ChatOptions)(nil),               // 5: culpeostudio.scout.v1.ChatOptions
-	(*CreateSessionRequest)(nil),      // 6: culpeostudio.scout.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),     // 7: culpeostudio.scout.v1.CreateSessionResponse
-	(*ListSessionsRequest)(nil),       // 8: culpeostudio.scout.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),      // 9: culpeostudio.scout.v1.ListSessionsResponse
-	(*GetHistoryRequest)(nil),         // 10: culpeostudio.scout.v1.GetHistoryRequest
-	(*GetHistoryResponse)(nil),        // 11: culpeostudio.scout.v1.GetHistoryResponse
-	(*RenameSessionRequest)(nil),      // 12: culpeostudio.scout.v1.RenameSessionRequest
-	(*RenameSessionResponse)(nil),     // 13: culpeostudio.scout.v1.RenameSessionResponse
-	(*DeleteSessionRequest)(nil),      // 14: culpeostudio.scout.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),     // 15: culpeostudio.scout.v1.DeleteSessionResponse
-	(*SetSessionProjectRequest)(nil),  // 16: culpeostudio.scout.v1.SetSessionProjectRequest
-	(*SetSessionProjectResponse)(nil), // 17: culpeostudio.scout.v1.SetSessionProjectResponse
-	(*SetSessionModelRequest)(nil),    // 18: culpeostudio.scout.v1.SetSessionModelRequest
-	(*SetSessionModelResponse)(nil),   // 19: culpeostudio.scout.v1.SetSessionModelResponse
-	(*GetSessionTreeRequest)(nil),     // 20: culpeostudio.scout.v1.GetSessionTreeRequest
-	(*GetSessionTreeResponse)(nil),    // 21: culpeostudio.scout.v1.GetSessionTreeResponse
-	(*SendMessageRequest)(nil),        // 22: culpeostudio.scout.v1.SendMessageRequest
-	(*SendMessageResponse)(nil),       // 23: culpeostudio.scout.v1.SendMessageResponse
-	(*StreamMessageRequest)(nil),      // 24: culpeostudio.scout.v1.StreamMessageRequest
-	(*TextDelta)(nil),                 // 25: culpeostudio.scout.v1.TextDelta
-	(*ReasoningDelta)(nil),            // 26: culpeostudio.scout.v1.ReasoningDelta
-	(*BotSelected)(nil),               // 27: culpeostudio.scout.v1.BotSelected
-	(*BotCreated)(nil),                // 28: culpeostudio.scout.v1.BotCreated
-	(*StatusUpdate)(nil),              // 29: culpeostudio.scout.v1.StatusUpdate
-	(*ModelWarmup)(nil),               // 30: culpeostudio.scout.v1.ModelWarmup
-	(*StreamDone)(nil),                // 31: culpeostudio.scout.v1.StreamDone
-	(*StreamError)(nil),               // 32: culpeostudio.scout.v1.StreamError
-	(*AgentEvent)(nil),                // 33: culpeostudio.scout.v1.AgentEvent
-	(*StreamMessageResponse)(nil),     // 34: culpeostudio.scout.v1.StreamMessageResponse
-	(*ListBotsRequest)(nil),           // 35: culpeostudio.scout.v1.ListBotsRequest
-	(*ListBotsResponse)(nil),          // 36: culpeostudio.scout.v1.ListBotsResponse
-	(*SaveBotRequest)(nil),            // 37: culpeostudio.scout.v1.SaveBotRequest
-	(*SaveBotResponse)(nil),           // 38: culpeostudio.scout.v1.SaveBotResponse
-	(*DeleteBotRequest)(nil),          // 39: culpeostudio.scout.v1.DeleteBotRequest
-	(*DeleteBotResponse)(nil),         // 40: culpeostudio.scout.v1.DeleteBotResponse
-	(*timestamppb.Timestamp)(nil),     // 41: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),           // 42: google.protobuf.Struct
+	(*ChatMessage)(nil),                   // 0: culpeostudio.scout.v1.ChatMessage
+	(*ModelBinding)(nil),                  // 1: culpeostudio.scout.v1.ModelBinding
+	(*Bot)(nil),                           // 2: culpeostudio.scout.v1.Bot
+	(*SessionSummary)(nil),                // 3: culpeostudio.scout.v1.SessionSummary
+	(*FileNode)(nil),                      // 4: culpeostudio.scout.v1.FileNode
+	(*ChatOptions)(nil),                   // 5: culpeostudio.scout.v1.ChatOptions
+	(*CreateSessionRequest)(nil),          // 6: culpeostudio.scout.v1.CreateSessionRequest
+	(*CreateSessionResponse)(nil),         // 7: culpeostudio.scout.v1.CreateSessionResponse
+	(*ListSessionsRequest)(nil),           // 8: culpeostudio.scout.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),          // 9: culpeostudio.scout.v1.ListSessionsResponse
+	(*GetHistoryRequest)(nil),             // 10: culpeostudio.scout.v1.GetHistoryRequest
+	(*GetHistoryResponse)(nil),            // 11: culpeostudio.scout.v1.GetHistoryResponse
+	(*RenameSessionRequest)(nil),          // 12: culpeostudio.scout.v1.RenameSessionRequest
+	(*RenameSessionResponse)(nil),         // 13: culpeostudio.scout.v1.RenameSessionResponse
+	(*DeleteSessionRequest)(nil),          // 14: culpeostudio.scout.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),         // 15: culpeostudio.scout.v1.DeleteSessionResponse
+	(*SetSessionProjectRequest)(nil),      // 16: culpeostudio.scout.v1.SetSessionProjectRequest
+	(*SetSessionProjectResponse)(nil),     // 17: culpeostudio.scout.v1.SetSessionProjectResponse
+	(*SetSessionModelRequest)(nil),        // 18: culpeostudio.scout.v1.SetSessionModelRequest
+	(*SetSessionModelResponse)(nil),       // 19: culpeostudio.scout.v1.SetSessionModelResponse
+	(*GetSessionTreeRequest)(nil),         // 20: culpeostudio.scout.v1.GetSessionTreeRequest
+	(*GetSessionTreeResponse)(nil),        // 21: culpeostudio.scout.v1.GetSessionTreeResponse
+	(*SendMessageRequest)(nil),            // 22: culpeostudio.scout.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),           // 23: culpeostudio.scout.v1.SendMessageResponse
+	(*StreamMessageRequest)(nil),          // 24: culpeostudio.scout.v1.StreamMessageRequest
+	(*TextDelta)(nil),                     // 25: culpeostudio.scout.v1.TextDelta
+	(*ReasoningDelta)(nil),                // 26: culpeostudio.scout.v1.ReasoningDelta
+	(*BotSelected)(nil),                   // 27: culpeostudio.scout.v1.BotSelected
+	(*BotCreated)(nil),                    // 28: culpeostudio.scout.v1.BotCreated
+	(*StatusUpdate)(nil),                  // 29: culpeostudio.scout.v1.StatusUpdate
+	(*ModelWarmup)(nil),                   // 30: culpeostudio.scout.v1.ModelWarmup
+	(*StreamDone)(nil),                    // 31: culpeostudio.scout.v1.StreamDone
+	(*ContextUsage)(nil),                  // 32: culpeostudio.scout.v1.ContextUsage
+	(*StreamError)(nil),                   // 33: culpeostudio.scout.v1.StreamError
+	(*AgentEvent)(nil),                    // 34: culpeostudio.scout.v1.AgentEvent
+	(*StreamMessageResponse)(nil),         // 35: culpeostudio.scout.v1.StreamMessageResponse
+	(*ListBotsRequest)(nil),               // 36: culpeostudio.scout.v1.ListBotsRequest
+	(*ListBotsResponse)(nil),              // 37: culpeostudio.scout.v1.ListBotsResponse
+	(*SaveBotRequest)(nil),                // 38: culpeostudio.scout.v1.SaveBotRequest
+	(*SaveBotResponse)(nil),               // 39: culpeostudio.scout.v1.SaveBotResponse
+	(*DeleteBotRequest)(nil),              // 40: culpeostudio.scout.v1.DeleteBotRequest
+	(*DeleteBotResponse)(nil),             // 41: culpeostudio.scout.v1.DeleteBotResponse
+	(*ReasoningProfile)(nil),              // 42: culpeostudio.scout.v1.ReasoningProfile
+	(*ListReasoningProfilesRequest)(nil),  // 43: culpeostudio.scout.v1.ListReasoningProfilesRequest
+	(*ListReasoningProfilesResponse)(nil), // 44: culpeostudio.scout.v1.ListReasoningProfilesResponse
+	(*timestamppb.Timestamp)(nil),         // 45: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),               // 46: google.protobuf.Struct
 }
 var file_culpeostudio_scout_v1_scout_proto_depIdxs = []int32{
 	1,  // 0: culpeostudio.scout.v1.Bot.model_binding:type_name -> culpeostudio.scout.v1.ModelBinding
-	41, // 1: culpeostudio.scout.v1.SessionSummary.updated_at:type_name -> google.protobuf.Timestamp
+	45, // 1: culpeostudio.scout.v1.SessionSummary.updated_at:type_name -> google.protobuf.Timestamp
 	4,  // 2: culpeostudio.scout.v1.FileNode.children:type_name -> culpeostudio.scout.v1.FileNode
 	3,  // 3: culpeostudio.scout.v1.ListSessionsResponse.sessions:type_name -> culpeostudio.scout.v1.SessionSummary
 	0,  // 4: culpeostudio.scout.v1.GetHistoryResponse.messages:type_name -> culpeostudio.scout.v1.ChatMessage
-	3,  // 5: culpeostudio.scout.v1.RenameSessionResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
-	3,  // 6: culpeostudio.scout.v1.SetSessionProjectResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
-	3,  // 7: culpeostudio.scout.v1.SetSessionModelResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
-	4,  // 8: culpeostudio.scout.v1.GetSessionTreeResponse.tree:type_name -> culpeostudio.scout.v1.FileNode
-	5,  // 9: culpeostudio.scout.v1.SendMessageRequest.options:type_name -> culpeostudio.scout.v1.ChatOptions
-	2,  // 10: culpeostudio.scout.v1.SendMessageResponse.created_bot:type_name -> culpeostudio.scout.v1.Bot
-	5,  // 11: culpeostudio.scout.v1.StreamMessageRequest.options:type_name -> culpeostudio.scout.v1.ChatOptions
-	2,  // 12: culpeostudio.scout.v1.BotCreated.bot:type_name -> culpeostudio.scout.v1.Bot
-	42, // 13: culpeostudio.scout.v1.AgentEvent.data:type_name -> google.protobuf.Struct
-	25, // 14: culpeostudio.scout.v1.StreamMessageResponse.text_delta:type_name -> culpeostudio.scout.v1.TextDelta
-	26, // 15: culpeostudio.scout.v1.StreamMessageResponse.reasoning_delta:type_name -> culpeostudio.scout.v1.ReasoningDelta
-	27, // 16: culpeostudio.scout.v1.StreamMessageResponse.bot_selected:type_name -> culpeostudio.scout.v1.BotSelected
-	28, // 17: culpeostudio.scout.v1.StreamMessageResponse.bot_created:type_name -> culpeostudio.scout.v1.BotCreated
-	29, // 18: culpeostudio.scout.v1.StreamMessageResponse.status:type_name -> culpeostudio.scout.v1.StatusUpdate
-	30, // 19: culpeostudio.scout.v1.StreamMessageResponse.model_warmup:type_name -> culpeostudio.scout.v1.ModelWarmup
-	31, // 20: culpeostudio.scout.v1.StreamMessageResponse.done:type_name -> culpeostudio.scout.v1.StreamDone
-	32, // 21: culpeostudio.scout.v1.StreamMessageResponse.error:type_name -> culpeostudio.scout.v1.StreamError
-	33, // 22: culpeostudio.scout.v1.StreamMessageResponse.agent:type_name -> culpeostudio.scout.v1.AgentEvent
-	2,  // 23: culpeostudio.scout.v1.ListBotsResponse.bots:type_name -> culpeostudio.scout.v1.Bot
-	2,  // 24: culpeostudio.scout.v1.SaveBotRequest.bot:type_name -> culpeostudio.scout.v1.Bot
-	2,  // 25: culpeostudio.scout.v1.SaveBotResponse.bot:type_name -> culpeostudio.scout.v1.Bot
-	6,  // 26: culpeostudio.scout.v1.ScoutService.CreateSession:input_type -> culpeostudio.scout.v1.CreateSessionRequest
-	8,  // 27: culpeostudio.scout.v1.ScoutService.ListSessions:input_type -> culpeostudio.scout.v1.ListSessionsRequest
-	10, // 28: culpeostudio.scout.v1.ScoutService.GetHistory:input_type -> culpeostudio.scout.v1.GetHistoryRequest
-	12, // 29: culpeostudio.scout.v1.ScoutService.RenameSession:input_type -> culpeostudio.scout.v1.RenameSessionRequest
-	14, // 30: culpeostudio.scout.v1.ScoutService.DeleteSession:input_type -> culpeostudio.scout.v1.DeleteSessionRequest
-	16, // 31: culpeostudio.scout.v1.ScoutService.SetSessionProject:input_type -> culpeostudio.scout.v1.SetSessionProjectRequest
-	18, // 32: culpeostudio.scout.v1.ScoutService.SetSessionModel:input_type -> culpeostudio.scout.v1.SetSessionModelRequest
-	20, // 33: culpeostudio.scout.v1.ScoutService.GetSessionTree:input_type -> culpeostudio.scout.v1.GetSessionTreeRequest
-	22, // 34: culpeostudio.scout.v1.ScoutService.SendMessage:input_type -> culpeostudio.scout.v1.SendMessageRequest
-	24, // 35: culpeostudio.scout.v1.ScoutService.StreamMessage:input_type -> culpeostudio.scout.v1.StreamMessageRequest
-	35, // 36: culpeostudio.scout.v1.ScoutService.ListBots:input_type -> culpeostudio.scout.v1.ListBotsRequest
-	37, // 37: culpeostudio.scout.v1.ScoutService.SaveBot:input_type -> culpeostudio.scout.v1.SaveBotRequest
-	39, // 38: culpeostudio.scout.v1.ScoutService.DeleteBot:input_type -> culpeostudio.scout.v1.DeleteBotRequest
-	7,  // 39: culpeostudio.scout.v1.ScoutService.CreateSession:output_type -> culpeostudio.scout.v1.CreateSessionResponse
-	9,  // 40: culpeostudio.scout.v1.ScoutService.ListSessions:output_type -> culpeostudio.scout.v1.ListSessionsResponse
-	11, // 41: culpeostudio.scout.v1.ScoutService.GetHistory:output_type -> culpeostudio.scout.v1.GetHistoryResponse
-	13, // 42: culpeostudio.scout.v1.ScoutService.RenameSession:output_type -> culpeostudio.scout.v1.RenameSessionResponse
-	15, // 43: culpeostudio.scout.v1.ScoutService.DeleteSession:output_type -> culpeostudio.scout.v1.DeleteSessionResponse
-	17, // 44: culpeostudio.scout.v1.ScoutService.SetSessionProject:output_type -> culpeostudio.scout.v1.SetSessionProjectResponse
-	19, // 45: culpeostudio.scout.v1.ScoutService.SetSessionModel:output_type -> culpeostudio.scout.v1.SetSessionModelResponse
-	21, // 46: culpeostudio.scout.v1.ScoutService.GetSessionTree:output_type -> culpeostudio.scout.v1.GetSessionTreeResponse
-	23, // 47: culpeostudio.scout.v1.ScoutService.SendMessage:output_type -> culpeostudio.scout.v1.SendMessageResponse
-	34, // 48: culpeostudio.scout.v1.ScoutService.StreamMessage:output_type -> culpeostudio.scout.v1.StreamMessageResponse
-	36, // 49: culpeostudio.scout.v1.ScoutService.ListBots:output_type -> culpeostudio.scout.v1.ListBotsResponse
-	38, // 50: culpeostudio.scout.v1.ScoutService.SaveBot:output_type -> culpeostudio.scout.v1.SaveBotResponse
-	40, // 51: culpeostudio.scout.v1.ScoutService.DeleteBot:output_type -> culpeostudio.scout.v1.DeleteBotResponse
-	39, // [39:52] is the sub-list for method output_type
-	26, // [26:39] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	32, // 5: culpeostudio.scout.v1.GetHistoryResponse.context_usage:type_name -> culpeostudio.scout.v1.ContextUsage
+	3,  // 6: culpeostudio.scout.v1.RenameSessionResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
+	3,  // 7: culpeostudio.scout.v1.SetSessionProjectResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
+	3,  // 8: culpeostudio.scout.v1.SetSessionModelResponse.session:type_name -> culpeostudio.scout.v1.SessionSummary
+	4,  // 9: culpeostudio.scout.v1.GetSessionTreeResponse.tree:type_name -> culpeostudio.scout.v1.FileNode
+	5,  // 10: culpeostudio.scout.v1.SendMessageRequest.options:type_name -> culpeostudio.scout.v1.ChatOptions
+	2,  // 11: culpeostudio.scout.v1.SendMessageResponse.created_bot:type_name -> culpeostudio.scout.v1.Bot
+	5,  // 12: culpeostudio.scout.v1.StreamMessageRequest.options:type_name -> culpeostudio.scout.v1.ChatOptions
+	2,  // 13: culpeostudio.scout.v1.BotCreated.bot:type_name -> culpeostudio.scout.v1.Bot
+	46, // 14: culpeostudio.scout.v1.AgentEvent.data:type_name -> google.protobuf.Struct
+	25, // 15: culpeostudio.scout.v1.StreamMessageResponse.text_delta:type_name -> culpeostudio.scout.v1.TextDelta
+	26, // 16: culpeostudio.scout.v1.StreamMessageResponse.reasoning_delta:type_name -> culpeostudio.scout.v1.ReasoningDelta
+	27, // 17: culpeostudio.scout.v1.StreamMessageResponse.bot_selected:type_name -> culpeostudio.scout.v1.BotSelected
+	28, // 18: culpeostudio.scout.v1.StreamMessageResponse.bot_created:type_name -> culpeostudio.scout.v1.BotCreated
+	29, // 19: culpeostudio.scout.v1.StreamMessageResponse.status:type_name -> culpeostudio.scout.v1.StatusUpdate
+	30, // 20: culpeostudio.scout.v1.StreamMessageResponse.model_warmup:type_name -> culpeostudio.scout.v1.ModelWarmup
+	31, // 21: culpeostudio.scout.v1.StreamMessageResponse.done:type_name -> culpeostudio.scout.v1.StreamDone
+	33, // 22: culpeostudio.scout.v1.StreamMessageResponse.error:type_name -> culpeostudio.scout.v1.StreamError
+	34, // 23: culpeostudio.scout.v1.StreamMessageResponse.agent:type_name -> culpeostudio.scout.v1.AgentEvent
+	32, // 24: culpeostudio.scout.v1.StreamMessageResponse.context_usage:type_name -> culpeostudio.scout.v1.ContextUsage
+	2,  // 25: culpeostudio.scout.v1.ListBotsResponse.bots:type_name -> culpeostudio.scout.v1.Bot
+	2,  // 26: culpeostudio.scout.v1.SaveBotRequest.bot:type_name -> culpeostudio.scout.v1.Bot
+	2,  // 27: culpeostudio.scout.v1.SaveBotResponse.bot:type_name -> culpeostudio.scout.v1.Bot
+	42, // 28: culpeostudio.scout.v1.ListReasoningProfilesResponse.profiles:type_name -> culpeostudio.scout.v1.ReasoningProfile
+	6,  // 29: culpeostudio.scout.v1.ScoutService.CreateSession:input_type -> culpeostudio.scout.v1.CreateSessionRequest
+	8,  // 30: culpeostudio.scout.v1.ScoutService.ListSessions:input_type -> culpeostudio.scout.v1.ListSessionsRequest
+	10, // 31: culpeostudio.scout.v1.ScoutService.GetHistory:input_type -> culpeostudio.scout.v1.GetHistoryRequest
+	12, // 32: culpeostudio.scout.v1.ScoutService.RenameSession:input_type -> culpeostudio.scout.v1.RenameSessionRequest
+	14, // 33: culpeostudio.scout.v1.ScoutService.DeleteSession:input_type -> culpeostudio.scout.v1.DeleteSessionRequest
+	16, // 34: culpeostudio.scout.v1.ScoutService.SetSessionProject:input_type -> culpeostudio.scout.v1.SetSessionProjectRequest
+	18, // 35: culpeostudio.scout.v1.ScoutService.SetSessionModel:input_type -> culpeostudio.scout.v1.SetSessionModelRequest
+	20, // 36: culpeostudio.scout.v1.ScoutService.GetSessionTree:input_type -> culpeostudio.scout.v1.GetSessionTreeRequest
+	22, // 37: culpeostudio.scout.v1.ScoutService.SendMessage:input_type -> culpeostudio.scout.v1.SendMessageRequest
+	24, // 38: culpeostudio.scout.v1.ScoutService.StreamMessage:input_type -> culpeostudio.scout.v1.StreamMessageRequest
+	36, // 39: culpeostudio.scout.v1.ScoutService.ListBots:input_type -> culpeostudio.scout.v1.ListBotsRequest
+	38, // 40: culpeostudio.scout.v1.ScoutService.SaveBot:input_type -> culpeostudio.scout.v1.SaveBotRequest
+	40, // 41: culpeostudio.scout.v1.ScoutService.DeleteBot:input_type -> culpeostudio.scout.v1.DeleteBotRequest
+	43, // 42: culpeostudio.scout.v1.ScoutService.ListReasoningProfiles:input_type -> culpeostudio.scout.v1.ListReasoningProfilesRequest
+	7,  // 43: culpeostudio.scout.v1.ScoutService.CreateSession:output_type -> culpeostudio.scout.v1.CreateSessionResponse
+	9,  // 44: culpeostudio.scout.v1.ScoutService.ListSessions:output_type -> culpeostudio.scout.v1.ListSessionsResponse
+	11, // 45: culpeostudio.scout.v1.ScoutService.GetHistory:output_type -> culpeostudio.scout.v1.GetHistoryResponse
+	13, // 46: culpeostudio.scout.v1.ScoutService.RenameSession:output_type -> culpeostudio.scout.v1.RenameSessionResponse
+	15, // 47: culpeostudio.scout.v1.ScoutService.DeleteSession:output_type -> culpeostudio.scout.v1.DeleteSessionResponse
+	17, // 48: culpeostudio.scout.v1.ScoutService.SetSessionProject:output_type -> culpeostudio.scout.v1.SetSessionProjectResponse
+	19, // 49: culpeostudio.scout.v1.ScoutService.SetSessionModel:output_type -> culpeostudio.scout.v1.SetSessionModelResponse
+	21, // 50: culpeostudio.scout.v1.ScoutService.GetSessionTree:output_type -> culpeostudio.scout.v1.GetSessionTreeResponse
+	23, // 51: culpeostudio.scout.v1.ScoutService.SendMessage:output_type -> culpeostudio.scout.v1.SendMessageResponse
+	35, // 52: culpeostudio.scout.v1.ScoutService.StreamMessage:output_type -> culpeostudio.scout.v1.StreamMessageResponse
+	37, // 53: culpeostudio.scout.v1.ScoutService.ListBots:output_type -> culpeostudio.scout.v1.ListBotsResponse
+	39, // 54: culpeostudio.scout.v1.ScoutService.SaveBot:output_type -> culpeostudio.scout.v1.SaveBotResponse
+	41, // 55: culpeostudio.scout.v1.ScoutService.DeleteBot:output_type -> culpeostudio.scout.v1.DeleteBotResponse
+	44, // 56: culpeostudio.scout.v1.ScoutService.ListReasoningProfiles:output_type -> culpeostudio.scout.v1.ListReasoningProfilesResponse
+	43, // [43:57] is the sub-list for method output_type
+	29, // [29:43] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_culpeostudio_scout_v1_scout_proto_init() }
@@ -3076,7 +3484,7 @@ func file_culpeostudio_scout_v1_scout_proto_init() {
 		return
 	}
 	file_culpeostudio_scout_v1_scout_proto_msgTypes[5].OneofWrappers = []any{}
-	file_culpeostudio_scout_v1_scout_proto_msgTypes[34].OneofWrappers = []any{
+	file_culpeostudio_scout_v1_scout_proto_msgTypes[35].OneofWrappers = []any{
 		(*StreamMessageResponse_TextDelta)(nil),
 		(*StreamMessageResponse_ReasoningDelta)(nil),
 		(*StreamMessageResponse_BotSelected)(nil),
@@ -3086,6 +3494,7 @@ func file_culpeostudio_scout_v1_scout_proto_init() {
 		(*StreamMessageResponse_Done)(nil),
 		(*StreamMessageResponse_Error)(nil),
 		(*StreamMessageResponse_Agent)(nil),
+		(*StreamMessageResponse_ContextUsage)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -3093,7 +3502,7 @@ func file_culpeostudio_scout_v1_scout_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_culpeostudio_scout_v1_scout_proto_rawDesc), len(file_culpeostudio_scout_v1_scout_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   41,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

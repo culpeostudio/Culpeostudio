@@ -100,13 +100,15 @@ const GetAuthStatusResponse$json = {
       '5': 9,
       '10': 'authenticatorApp'
     },
+    {'1': 'guest_mode_active', '3': 3, '4': 1, '5': 8, '10': 'guestModeActive'},
   ],
 };
 
 /// Descriptor for `GetAuthStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getAuthStatusResponseDescriptor = $convert.base64Decode(
     'ChVHZXRBdXRoU3RhdHVzUmVzcG9uc2USJwoPdG90cF9jb25maWd1cmVkGAEgASgIUg50b3RwQ2'
-    '9uZmlndXJlZBIrChFhdXRoZW50aWNhdG9yX2FwcBgCIAEoCVIQYXV0aGVudGljYXRvckFwcA==');
+    '9uZmlndXJlZBIrChFhdXRoZW50aWNhdG9yX2FwcBgCIAEoCVIQYXV0aGVudGljYXRvckFwcBIq'
+    'ChFndWVzdF9tb2RlX2FjdGl2ZRgDIAEoCFIPZ3Vlc3RNb2RlQWN0aXZl');
 
 @$core.Deprecated('Use startAuthenticatorSetupRequestDescriptor instead')
 const StartAuthenticatorSetupRequest$json = {
@@ -225,15 +227,13 @@ const UserPreferences$json = {
   '2': [
     {'1': 'configured', '3': 1, '4': 1, '5': 8, '10': 'configured'},
     {'1': 'language', '3': 2, '4': 1, '5': 9, '10': 'language'},
-    {'1': 'frontend_version', '3': 3, '4': 1, '5': 9, '10': 'frontendVersion'},
   ],
 };
 
 /// Descriptor for `UserPreferences`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List userPreferencesDescriptor = $convert.base64Decode(
     'Cg9Vc2VyUHJlZmVyZW5jZXMSHgoKY29uZmlndXJlZBgBIAEoCFIKY29uZmlndXJlZBIaCghsYW'
-    '5ndWFnZRgCIAEoCVIIbGFuZ3VhZ2USKQoQZnJvbnRlbmRfdmVyc2lvbhgDIAEoCVIPZnJvbnRl'
-    'bmRWZXJzaW9u');
+    '5ndWFnZRgCIAEoCVIIbGFuZ3VhZ2U=');
 
 @$core.Deprecated('Use getUserPreferencesRequestDescriptor instead')
 const GetUserPreferencesRequest$json = {
@@ -270,7 +270,6 @@ const UpdateUserPreferencesRequest$json = {
   '1': 'UpdateUserPreferencesRequest',
   '2': [
     {'1': 'language', '3': 1, '4': 1, '5': 9, '10': 'language'},
-    {'1': 'frontend_version', '3': 2, '4': 1, '5': 9, '10': 'frontendVersion'},
   ],
 };
 
@@ -278,7 +277,7 @@ const UpdateUserPreferencesRequest$json = {
 final $typed_data.Uint8List updateUserPreferencesRequestDescriptor =
     $convert.base64Decode(
         'ChxVcGRhdGVVc2VyUHJlZmVyZW5jZXNSZXF1ZXN0EhoKCGxhbmd1YWdlGAEgASgJUghsYW5ndW'
-        'FnZRIpChBmcm9udGVuZF92ZXJzaW9uGAIgASgJUg9mcm9udGVuZFZlcnNpb24=');
+        'FnZQ==');
 
 @$core.Deprecated('Use updateUserPreferencesResponseDescriptor instead')
 const UpdateUserPreferencesResponse$json = {
@@ -300,3 +299,39 @@ final $typed_data.Uint8List updateUserPreferencesResponseDescriptor =
     $convert.base64Decode(
         'Ch1VcGRhdGVVc2VyUHJlZmVyZW5jZXNSZXNwb25zZRJICgtwcmVmZXJlbmNlcxgBIAEoCzImLm'
         'N1bHBlb3N0dWRpby5sb2dpbi52MS5Vc2VyUHJlZmVyZW5jZXNSC3ByZWZlcmVuY2Vz');
+
+@$core.Deprecated('Use enableGuestModeRequestDescriptor instead')
+const EnableGuestModeRequest$json = {
+  '1': 'EnableGuestModeRequest',
+};
+
+/// Descriptor for `EnableGuestModeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List enableGuestModeRequestDescriptor =
+    $convert.base64Decode('ChZFbmFibGVHdWVzdE1vZGVSZXF1ZXN0');
+
+@$core.Deprecated('Use enableGuestModeResponseDescriptor instead')
+const EnableGuestModeResponse$json = {
+  '1': 'EnableGuestModeResponse',
+};
+
+/// Descriptor for `EnableGuestModeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List enableGuestModeResponseDescriptor =
+    $convert.base64Decode('ChdFbmFibGVHdWVzdE1vZGVSZXNwb25zZQ==');
+
+@$core.Deprecated('Use disableGuestModeRequestDescriptor instead')
+const DisableGuestModeRequest$json = {
+  '1': 'DisableGuestModeRequest',
+};
+
+/// Descriptor for `DisableGuestModeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List disableGuestModeRequestDescriptor =
+    $convert.base64Decode('ChdEaXNhYmxlR3Vlc3RNb2RlUmVxdWVzdA==');
+
+@$core.Deprecated('Use disableGuestModeResponseDescriptor instead')
+const DisableGuestModeResponse$json = {
+  '1': 'DisableGuestModeResponse',
+};
+
+/// Descriptor for `DisableGuestModeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List disableGuestModeResponseDescriptor =
+    $convert.base64Decode('ChhEaXNhYmxlR3Vlc3RNb2RlUmVzcG9uc2U=');

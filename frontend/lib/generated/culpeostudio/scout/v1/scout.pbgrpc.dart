@@ -131,6 +131,13 @@ class ScoutServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deleteBot, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.ListReasoningProfilesResponse> listReasoningProfiles(
+    $0.ListReasoningProfilesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listReasoningProfiles, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createSession =
@@ -198,6 +205,11 @@ class ScoutServiceClient extends $grpc.Client {
           '/culpeostudio.scout.v1.ScoutService/DeleteBot',
           ($0.DeleteBotRequest value) => value.writeToBuffer(),
           $0.DeleteBotResponse.fromBuffer);
+  static final _$listReasoningProfiles = $grpc.ClientMethod<
+          $0.ListReasoningProfilesRequest, $0.ListReasoningProfilesResponse>(
+      '/culpeostudio.scout.v1.ScoutService/ListReasoningProfiles',
+      ($0.ListReasoningProfilesRequest value) => value.writeToBuffer(),
+      $0.ListReasoningProfilesResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('culpeostudio.scout.v1.ScoutService')
@@ -314,6 +326,15 @@ abstract class ScoutServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.DeleteBotRequest.fromBuffer(value),
         ($0.DeleteBotResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListReasoningProfilesRequest,
+            $0.ListReasoningProfilesResponse>(
+        'ListReasoningProfiles',
+        listReasoningProfiles_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListReasoningProfilesRequest.fromBuffer(value),
+        ($0.ListReasoningProfilesResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.CreateSessionResponse> createSession_Pre(
@@ -427,4 +448,13 @@ abstract class ScoutServiceBase extends $grpc.Service {
 
   $async.Future<$0.DeleteBotResponse> deleteBot(
       $grpc.ServiceCall call, $0.DeleteBotRequest request);
+
+  $async.Future<$0.ListReasoningProfilesResponse> listReasoningProfiles_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListReasoningProfilesRequest> $request) async {
+    return listReasoningProfiles($call, await $request);
+  }
+
+  $async.Future<$0.ListReasoningProfilesResponse> listReasoningProfiles(
+      $grpc.ServiceCall call, $0.ListReasoningProfilesRequest request);
 }
