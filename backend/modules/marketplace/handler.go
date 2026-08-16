@@ -18,12 +18,12 @@ import (
 	"github.com/culpeohq/backend/internal/appsettings"
 	"github.com/culpeohq/backend/internal/bus"
 	"github.com/culpeohq/backend/internal/modelstorage"
+	"github.com/culpeohq/backend/internal/noderouting"
 	"github.com/culpeohq/backend/modules/marketplace/common"
 	"github.com/culpeohq/backend/modules/marketplace/featherless"
 	"github.com/culpeohq/backend/modules/marketplace/huggingface"
 	"github.com/culpeohq/backend/modules/marketplace/openrouter"
 	"github.com/culpeohq/backend/modules/marketplace/types"
-	"github.com/culpeohq/backend/modules/node"
 )
 
 // nodeCallTimeout bounds a call a user made. Starting a download schedules it
@@ -45,7 +45,7 @@ type MarketplaceModule struct {
 
 	// nodes is nil until a node registry is wired in, which is what makes
 	// every download local by default.
-	nodes node.Directory
+	nodes noderouting.Directory
 
 	hfAPIBase string
 	orAPIBase string

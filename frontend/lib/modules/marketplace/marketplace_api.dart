@@ -175,6 +175,17 @@ class MarketplaceApi {
     }
   }
 
+  Future<Map<String, dynamic>> deleteActiveAPIModel(String modelRef) async {
+    try {
+      await _c.marketplaceClient.deleteActiveApiModel(
+        mppb.DeleteActiveApiModelRequest(modelRef: modelRef),
+      );
+      return {'success': true};
+    } catch (e) {
+      return {'error': _c.grpcErrorMessage(e)};
+    }
+  }
+
   static const Map<String, mppb.Provider> _providersByName = {
     'all': mppb.Provider.PROVIDER_ALL,
     'huggingface': mppb.Provider.PROVIDER_HUGGINGFACE,

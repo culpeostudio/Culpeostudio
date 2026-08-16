@@ -18,7 +18,7 @@ const (
 	ProviderOpenRouter  = "openrouter"
 	ProviderFeatherless = "featherless"
 
-	MaxActiveModels = 8
+	MaxActiveModels = 200
 )
 
 var ErrActiveModelsLimitReached = errors.New("limit fuer aktive api-modelle erreicht")

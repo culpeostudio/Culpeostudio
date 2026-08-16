@@ -13,11 +13,11 @@ import (
 	"github.com/culpeohq/backend/internal/apimodels"
 	"github.com/culpeohq/backend/internal/appsettings"
 	enginehardware "github.com/culpeohq/backend/internal/hardware"
+	"github.com/culpeohq/backend/internal/noderouting"
 	"github.com/culpeohq/backend/modules/marketplace/featherless"
 	"github.com/culpeohq/backend/modules/marketplace/huggingface"
 	"github.com/culpeohq/backend/modules/marketplace/openrouter"
 	"github.com/culpeohq/backend/modules/marketplace/types"
-	"github.com/culpeohq/backend/modules/node"
 )
 
 type grpcService struct {
@@ -279,7 +279,7 @@ func (s *grpcService) GetDownloadJob(
 	req *marketplacev1.GetDownloadJobRequest,
 ) (*marketplacev1.GetDownloadJobResponse, error) {
 	id := strings.TrimSpace(req.GetId())
-	if nodeID, localID, remote := node.Split(id); remote {
+	if nodeID, localID, remote := noderouting.Split(id); remote {
 		job, err := s.module.getDownloadJobFromNode(ctx, nodeID, localID)
 		if err != nil {
 			return nil, err
@@ -298,7 +298,7 @@ func (s *grpcService) DeleteDownloadJob(
 	req *marketplacev1.DeleteDownloadJobRequest,
 ) (*marketplacev1.DeleteDownloadJobResponse, error) {
 	id := strings.TrimSpace(req.GetId())
-	if nodeID, localID, remote := node.Split(id); remote {
+	if nodeID, localID, remote := noderouting.Split(id); remote {
 		if err := s.module.deleteDownloadJobOnNode(ctx, nodeID, localID); err != nil {
 			return nil, err
 		}
