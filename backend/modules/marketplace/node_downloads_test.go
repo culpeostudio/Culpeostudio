@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	marketplacev1 "github.com/culpeohq/backend/gen/go/culpeostudio/marketplace/v1"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // stubNodeMarketplace is a node's marketplace, reduced to the download calls.
@@ -45,17 +45,17 @@ func (s *stubNodeMarketplace) DeleteDownloadJob(_ context.Context, req *marketpl
 }
 
 type stubDirectory struct {
-	target     node.Target
+	target     noderouting.Target
 	connection *grpc.ClientConn
 }
 
-func (d *stubDirectory) EnabledTargets() []node.Target { return []node.Target{d.target} }
+func (d *stubDirectory) EnabledTargets() []noderouting.Target { return []noderouting.Target{d.target} }
 
-func (d *stubDirectory) LookupTarget(nodeID string) (node.Target, bool) {
+func (d *stubDirectory) LookupTarget(nodeID string) (noderouting.Target, bool) {
 	if nodeID == d.target.ID {
 		return d.target, true
 	}
-	return node.Target{}, false
+	return noderouting.Target{}, false
 }
 
 func (d *stubDirectory) Dial(nodeID string) (*grpc.ClientConn, error) {
@@ -83,7 +83,7 @@ func startStubNodeMarketplace(t *testing.T, module *MarketplaceModule, stub *stu
 	t.Cleanup(func() { _ = connection.Close() })
 
 	module.SetNodes(&stubDirectory{
-		target:     node.Target{ID: "nodeone", Name: "Werkstatt", Address: "10.77.0.1"},
+		target:     noderouting.Target{ID: "nodeone", Name: "Werkstatt", Address: "10.77.0.1"},
 		connection: connection,
 	})
 }

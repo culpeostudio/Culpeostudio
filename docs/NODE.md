@@ -1,154 +1,143 @@
-# Running Culpeo Studio models on a server
+# Culpeo Node
 
-A **node** is another machine this Studio may download models to and run them
-on. It is not a separate program: it is the same Go backend, started headless
-with `CULPEO_NODE_MODE=1` and reached over a WireGuard tunnel.
+A **Culpeo Node** is a small backend that runs on the machine which owns the
+disk, CPU and GPU for remote models. It contains only:
 
-Two properties follow, and both are the point of the feature:
+- the Engine (model catalog, runtimes, start/stop and inference),
+- the Marketplace (search, download jobs and disk checks), and
+- a small Node control service.
 
-- A download aimed at a node is fetched **by the node**, straight from the
-  model host. The weights never cross the tunnel.
-- A model started on a node appears beside the local ones in the engine and in
-  the chat model picker. Only the process is elsewhere; its output is streamed
-  back through the node's OpenAI gateway.
+It is not a headless copy of Culpeo Studio. It does not start Login, Memory,
+Scout, Skills, News, providers or a Studio-side node registry.
 
-A node needs no Flutter, no desktop session and no display — only Go to build
-the backend, and WireGuard for the tunnel.
+The normal flow is deliberately short:
 
----
+1. Install and start Culpeo Node on the remote machine.
+2. Run `culpeo-node pairing-link` there.
+3. In **Studio → Nodes → Add node**, paste that one link.
+4. Select the node in Marketplace or Engine.
 
-## 1. Install the node on the server
+When Studio asks for a download, the request goes to the Node and the Node
+downloads the model directly to its own model directory. When Studio starts a
+model, the Node starts it on its own CPU/GPU. Model weights and runtimes never
+pass through Studio.
 
-The server side has its own project — **culpeo-node** — which carries the
-installer, the systemd service and the tunnel setup. It holds no backend code:
-it fetches this repository at a pinned revision and builds only
-`backend/cmd/server` from it. Two copies of the same backend would drift apart,
-and then a server would be running something other than the Studio.
+## Network requirement
 
-```bash
-git clone <culpeo-node> culpeo-node
-cd culpeo-node
-sudo ./install.sh --endpoint node.example.org:51820 --name "Workshop"
-```
+Studio must be able to reach the Node. There is no hidden VPN, tunnel setup or
+network-interface manipulation.
 
-That installer:
+For a directly reachable Node, allow these TCP ports from the Studio machine:
 
-1. checks that Go, Git and `wireguard-tools` are present,
-2. fetches this repository (`--ref` pins a branch, tag or commit) and builds
-   **only** the backend — no Flutter involved,
-3. creates the `culpeo` service account and `/opt/culpeo-node`,
-4. runs the node once in setup mode, which creates its identity, writes the
-   tunnel config and prints the join code,
-5. installs the tunnel as `wg-quick@<interface>` and enables it,
-6. installs and starts the `culpeo-node` systemd service.
+| Port | Purpose |
+| --- | --- |
+| `50051` | TLS gRPC control plane: status, Marketplace, Engine |
+| `50052` | TLS OpenAI-compatible inference gateway |
 
-The rest of this document describes what a node *is* and how the Studio talks
-to it. For the installer's options, see that project's own documentation.
+If the Node is behind NAT, use port forwarding, an existing VPN/reverse proxy,
+or a later relay service. A Node behind NAT cannot be reached by a desktop
+application without one of those routes.
 
-### Running a node straight from this checkout
+## Build and run from this checkout
 
-For development it is enough to start the backend with the node settings, on a
-machine whose tunnel is already up:
+For development, build only the Node binary:
 
 ```bash
 cd backend
-CULPEO_NODE_MODE=1 CULPEO_NODE_WG_ENDPOINT=node.example.org:51820 go run ./cmd/server
+go build -o culpeo-node ./cmd/node
+
+export CULPEO_NODE_DATA_DIR=/var/lib/culpeo-node
+export CULPEO_NODE_ADVERTISE=node.example.org:50051
+export CULPEO_NODE_NAME='Workshop'
+
+./culpeo-node
 ```
 
-The first run only sets up — see below.
+`CULPEO_NODE_ADVERTISE` is the reachable gRPC address that Studio will use.
+It is required when the listener binds to all interfaces (the default). The
+Node prints no secret to service logs. To reveal the one pairing link on
+purpose, run:
 
-### Why a setup run rather than one start
+```bash
+./culpeo-node pairing-link
+```
 
-A node binds its control plane to its own address **inside** the tunnel, and
-that tunnel is described by a config the node itself writes on first start.
-The very first run therefore cannot serve anything — the interface does not
-exist yet. `CULPEO_NODE_INIT=1` does the setup, prints the join code and exits;
-the tunnel is brought up afterwards, and only then is the service started.
+Paste the complete `culpeo-node://pair/...` line into Studio. The link is a
+credential: anyone holding it can control this Node, so treat it like a
+password.
 
-The systemd unit records that dependency (`Requires=wg-quick@<interface>`), and
-a node whose control plane fails to bind stops rather than lingering as a
-process that is running but unreachable.
+## Configuration
 
----
+The normal installation needs only `CULPEO_NODE_ADVERTISE`; the rest has safe
+defaults.
 
-## 2. Add the node in the Studio
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `CULPEO_NODE_DATA_DIR` | `data/culpeo-node` | Private Node state, TLS certificate, jobs and Engine state |
+| `CULPEO_NODE_MODEL_DIR` | `<data-dir>/models` | Where this Node downloads model weights |
+| `CULPEO_NODE_LISTEN` | `0.0.0.0:50051` | gRPC listener |
+| `CULPEO_NODE_ADVERTISE` | required for wildcard listener | Reachable gRPC `host:port` included in the pairing link |
+| `CULPEO_NODE_GATEWAY_LISTEN` | `0.0.0.0:50052` | TLS inference gateway listener |
+| `CULPEO_NODE_GATEWAY_ADVERTISE` | same host as `CULPEO_NODE_ADVERTISE`, port `50052` | Public gateway `host:port`; use this for a different NAT/proxy port |
+| `CULPEO_NODE_NAME` | `Culpeo Node` | Name shown in Studio |
+| `CULPEO_NODE_VERSION` | `dev` | Version reported to Studio |
 
-**Settings → Nodes → Add node**, paste the join code.
+The Node creates a persistent identity and self-signed TLS certificate in its
+data directory. Do not delete those files while Studio is paired: their
+fingerprint and token are what make the connection trusted.
 
-The Studio writes its side of the tunnel to `data/wireguard/<interface>.conf`
-(mode 0600) and shows what is still missing — almost always the tunnel itself.
-**Bring tunnel up** runs `wg-quick` behind a privilege prompt:
+## Security model
 
-- **Linux:** via `pkexec`. Without it, the Studio shows the command to copy.
-- **Windows and macOS:** the command is shown only. A desktop app that quietly
-  takes administrator rights would be worse than one that asks.
+The pairing link includes a Node endpoint, a TLS certificate fingerprint and a
+pairing token.
 
-Then press **Refresh**. The node reports its hardware, free disk, model and
-instance counts, and issues the Studio a gateway key for inference.
+- Studio pins the TLS leaf certificate before sending the pairing token.
+- The token can call only NodeAgent, Engine and Marketplace methods. It cannot
+  log in to Studio or access Memory, Scout, Settings or a node registry.
+- Engine key/preset import/export methods remain blocked for pairing tokens.
+- The public inference gateway uses the same pinned TLS certificate and an
+  Engine gateway key issued only over the authenticated control connection.
+- The local Engine gateway stays on an ephemeral loopback address. The public
+  TLS gateway proxies only `/v1/` requests; it cannot become a generic proxy.
 
-### Without a public address
+If a pairing link leaks, remove the Node from Studio and rotate its identity
+with a deliberate Node data-directory reset, then add the newly generated link
+again. Do not put pairing links into tickets, shell history shared with other
+users, or public logs.
 
-If `CULPEO_NODE_WG_ENDPOINT` is unset, no tunnel is built and no join code is
-printed — a public address cannot be guessed. The node still works if you run
-your own tunnel: identity and token are created regardless and reported in the
-log, and in the Studio you switch the add dialog to the manual form and enter
-address, token and ports. The Studio then writes no config and touches no
-interface.
+## What Studio routes where
 
----
+```mermaid
+flowchart LR
+    Studio["Culpeo Studio"] -->|"pinned TLS gRPC"| Node["Culpeo Node"]
+    Studio -->|"pinned TLS HTTPS"| Gateway["Node inference gateway"]
+    Node --> Engine["Engine on Node CPU/GPU"]
+    Node --> Marketplace["Marketplace on Node disk"]
+    Marketplace --> Host["Model host"]
+    Gateway --> Engine
+```
 
-## 3. Security
+| Studio action | Where it runs |
+| --- | --- |
+| Browse target hardware / free disk | Node Marketplace and Node agent |
+| Download model to a selected Node | Node Marketplace downloads directly to the Node model directory |
+| Start, stop or inspect model | Node Engine on the Node hardware |
+| Chat with a ready Node model | Node Engine through the pinned HTTPS gateway |
 
-**The pairing token is not a login.** It reaches the engine and marketplace
-calls and nothing else. Memory, scouts, chats, accounts and the node's own
-gateway keys stay out of its range. A token that leaks can load and start
-models; it cannot read what is on the machine.
+## Troubleshooting
 
-**The join code contains the Studio's private key.** This is deliberate and
-unavoidable: a Studio cannot announce a public key over a tunnel it is trying
-to establish with that very announcement, and a node behind NAT cannot be told
-one afterwards. So the node generates both key pairs and hands one over. Treat
-a join code exactly like a WireGuard config file.
+| Studio shows | Check |
+| --- | --- |
+| **Not reachable** | Is the Node service running? Is `CULPEO_NODE_ADVERTISE` reachable from the Studio machine on TCP 50051? |
+| **Token rejected** | Paste a fresh link from the same Node data directory. A reset identity requires removing and re-adding the Node. |
+| Node is online but chat cannot answer | Allow the configured gateway port (default TCP 50052) and ensure it maps to `CULPEO_NODE_GATEWAY_ADVERTISE`. |
+| Download says disk space is insufficient | The check is performed on the Node's model directory, not Studio's disk. Change `CULPEO_NODE_MODEL_DIR` on the Node if required. |
+| Model begins downloading locally | This is expected: Studio only schedules it; the Node transfers the model directly from the model host. |
 
-**The link is unencrypted inside the tunnel.** WireGuard already authenticates
-both ends by key and encrypts everything between them; TLS on top would be a
-second certificate story for a path that is not reachable from anywhere else.
-The Studio therefore refuses to send a pairing token to a public address.
-
----
-
-## 4. Limits
-
-- **Quantizing, presets and runtime installation stay local.** Quantizing
-  writes a file next to another, on the machine that holds it. A model on a
-  node is refused with a clear message.
-- **No chains of nodes.** A node does not forward to further nodes; otherwise
-  the topology is a graph and every list is a question about cycles.
-- **One Studio per node.** The tunnel network is laid out for two addresses.
-- **Node events are polled, not pushed.** While an engine screen is open the
-  Studio asks every five seconds; after that it goes quiet. A node cannot open
-  a connection into the Studio, because the tunnel is dialed from there.
-- **A node that does not answer drops out of the lists — it does not empty
-  them.** Only a reachable node reporting that something is gone produces a
-  deletion.
-
----
-
-## 5. Operating it
+Useful service commands are:
 
 ```bash
 systemctl status culpeo-node
 journalctl -u culpeo-node -f
-systemctl status wg-quick@culpeo-<id>
+culpeo-node pairing-link
 ```
-
-| Studio shows | What is going on |
-|---|---|
-| **Not reachable** | Tunnel is down, or no backend is running on the node. Check `sudo wg show` on both sides |
-| **Token rejected** | The node got a new identity (e.g. `data/node_identity.json` was deleted). Remove the node in the Studio and add it again with the new join code |
-| **WireGuard missing** | `wireguard-tools` is not installed on the Studio machine. The config can be written, but nothing can be said about the interface |
-| **Managed elsewhere** | The node was added manually. The Studio does not control that tunnel, by design |
-| Model starts, chat says no gateway access | The node could not bind its gateway to the tunnel address. Refresh the node to fetch the key. If it persists, the node has no tunnel address — `CULPEO_NODE_WG_ENDPOINT` is missing |
-
-Models land in `<install dir>/data/models`. That is the volume that needs the
-space.

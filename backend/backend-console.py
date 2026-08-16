@@ -73,6 +73,9 @@ from textual.widgets import Button, Footer, Header, Label, RichLog, Static
 
 BACKEND_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BACKEND_DIR.parent / "frontend"
+FRONTEND_RELEASE_EXECUTABLE = (
+    FRONTEND_DIR / "build" / "linux" / "x64" / "release" / "bundle" / "culpeostudio"
+)
 
 
 
@@ -194,6 +197,8 @@ class BackendConsoleApp(App):
                 yield Button("Start all (Backend -> Frontend)", variant="success", id="start-all")
                 yield Button("Stop all", id="stop-all")
                 yield Button("Restart all", id="restart-all")
+                yield Button("Groß Test (Clean, Build & Run)", variant="primary", id="gross-test")
+                yield Button("Letzten Build starten (ohne Build)", id="run-compiled")
                 yield Button("Refresh status", id="refresh-status")
                 yield Button("Copy logs", id="copy-logs")
                 yield Button("Exit (stop all)", variant="error", id="exit-all")
@@ -232,11 +237,18 @@ class BackendConsoleApp(App):
         button_id = event.button.id or ""
 
         if button_id == "start-all":
+            # Reset to dev mode command in case Gross Test changed it
+            self.frontend.command = ["flutter", "run", "-d", "linux"]
             await self._start_all()
         elif button_id == "stop-all":
             await self._stop_all()
         elif button_id == "restart-all":
+            self.frontend.command = ["flutter", "run", "-d", "linux"]
             await self._restart_all()
+        elif button_id == "gross-test":
+            await self._run_gross_test()
+        elif button_id == "run-compiled":
+            await self._run_compiled_build()
         elif button_id == "refresh-status":
             self._update_status_widgets()
         elif button_id == "copy-logs":
@@ -245,6 +257,98 @@ class BackendConsoleApp(App):
             await self._stop_frontend()
             await self._stop_backend()
             self.exit()
+
+    async def _run_gross_test(self) -> None:
+        self._log("Starting Groß Test (Clean, Build, Run)...", source="console.lifecycle")
+        await self._stop_frontend()
+        
+        self._log("Running 'flutter clean'...", source="frontend.build")
+        clean_proc = await asyncio.create_subprocess_exec(
+            "flutter", "clean",
+            cwd=str(FRONTEND_DIR),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await clean_proc.communicate()
+        if clean_proc.returncode != 0:
+            self._log("flutter clean failed.", source="frontend.build", level="ERROR")
+            return
+            
+        self._log("Running 'flutter build linux'...", source="frontend.build")
+        build_proc = await asyncio.create_subprocess_exec(
+            "flutter", "build", "linux",
+            cwd=str(FRONTEND_DIR),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await build_proc.communicate()
+        if build_proc.returncode != 0:
+            self._log("flutter build linux failed.", source="frontend.build", level="ERROR")
+            for line in stderr.decode(errors="replace").splitlines():
+                if line.strip():
+                    self._log(line, source="frontend.build.stderr", level="ERROR")
+            return
+        
+        self._log("Build completed successfully.", source="frontend.build")
+        if not FRONTEND_RELEASE_EXECUTABLE.exists():
+            self._log(f"Executable not found at {FRONTEND_RELEASE_EXECUTABLE}", source="frontend.build", level="ERROR")
+            return
+
+        self.frontend.command = [str(FRONTEND_RELEASE_EXECUTABLE)]
+
+        if not await self._ensure_backend_running():
+            self._log("Groß Test aborted because backend did not start.", source="console.lifecycle", level="ERROR")
+            return
+        await self._start_frontend()
+
+    async def _run_compiled_build(self) -> None:
+        """Runs the most recently built release executable without rebuilding.
+
+        Mirrors _run_gross_test's backend/frontend startup but skips
+        'flutter clean' and 'flutter build linux', so an already-compiled
+        build can be tested quickly.
+        """
+        self._log("Starting last compiled build (no rebuild)...", source="console.lifecycle")
+        await self._stop_frontend()
+
+        if not FRONTEND_RELEASE_EXECUTABLE.exists():
+            self._log(
+                f"No compiled build found at {FRONTEND_RELEASE_EXECUTABLE}. Run 'Groß Test' first.",
+                source="frontend.build",
+                level="ERROR",
+            )
+            return
+
+        self.frontend.command = [str(FRONTEND_RELEASE_EXECUTABLE)]
+
+        if not await self._ensure_backend_running():
+            self._log("Compiled build run aborted because backend did not start.", source="console.lifecycle", level="ERROR")
+            return
+        await self._start_frontend()
+
+    async def _ensure_backend_running(self) -> bool:
+        """Starts the backend and waits for its health check if it isn't running yet.
+
+        Returns True once the backend is up (or already was) and it's safe to
+        point a frontend at it.
+        """
+        if self.backend.running:
+            return True
+
+        await self._start_backend()
+        if not self.backend.running:
+            return False
+
+        self._log("Waiting for backend health check before starting frontend.", source="console.lifecycle")
+        if not await self._wait_for_backend_health():
+            self._log(
+                "Backend did not report healthy in time; starting frontend anyway.",
+                source="console.lifecycle",
+                level="WARN",
+            )
+        return True
 
     async def _start_backend(self) -> None:
         if self.backend.running:

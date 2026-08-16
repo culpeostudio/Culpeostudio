@@ -22,9 +22,10 @@ type identity struct {
 	Token     string    `json:"token"`
 	CreatedAt time.Time `json:"created_at"`
 
-	// The WireGuard side. Empty when the node has no public endpoint
-	// configured: it can still be added by hand by an operator who runs their
-	// own tunnel, it just cannot print a join code.
+	// The WireGuard side. For a tunnel managed outside Culpeo, Endpoint and the
+	// generated-config fields stay empty, while NodeAddress is the explicit
+	// private bind address from CULPEO_NODE_TUNNEL_ADDRESS. It can then be
+	// added by hand but cannot print a join code.
 	InterfaceName string `json:"interface_name,omitempty"`
 	ConfigPath    string `json:"config_path,omitempty"`
 	NodeAddress   string `json:"node_address,omitempty"`

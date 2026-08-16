@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,6 +29,23 @@ func (m *Module) initializeNodeMode() error {
 		return err
 	}
 	if existing, ok := m.identity.get(); ok {
+		// A node without a generated WireGuard config is safe only when the
+		// exact private address of its externally managed tunnel is known. Old
+		// endpointless identities did not have one, so adopt the new explicit
+		// setting before the caller can start gRPC or the gateway.
+		if strings.TrimSpace(existing.Endpoint) == "" {
+			address, err := manualTunnelAddress()
+			if err != nil {
+				return fmt.Errorf("manueller Node-Tunnel: %w", err)
+			}
+			if existing.NodeAddress != address {
+				existing.NodeAddress = address
+				if err := m.identity.save(existing); err != nil {
+					return err
+				}
+				log.Printf("[node] Extern verwaltete Tunnel-Adresse auf %s aktualisiert.", address)
+			}
+		}
 		m.announceIdentity(existing, false)
 		return nil
 	}
@@ -44,15 +62,19 @@ func (m *Module) initializeNodeMode() error {
 
 	endpoint := strings.TrimSpace(os.Getenv("CULPEO_NODE_WG_ENDPOINT"))
 	if endpoint == "" {
-		// Without a public address there is nothing to write into a peer
-		// block, so no tunnel is built. The node still works for an operator
-		// who runs their own: the identity and the token exist, and the Studio
-		// can be pointed at them by hand.
+		// An externally operated tunnel does not need an endpoint or a join
+		// code, but it does need the exact address assigned to this node. Do
+		// not fall back to :<port> here: that would bind the gateway to every
+		// network interface and make an otherwise private pairing public.
+		address, err := manualTunnelAddress()
+		if err != nil {
+			return fmt.Errorf("manueller Node-Tunnel: %w", err)
+		}
+		fresh.NodeAddress = address
 		if err := m.identity.save(fresh); err != nil {
 			return err
 		}
-		log.Printf("[node] Node-Modus ohne WireGuard: CULPEO_NODE_WG_ENDPOINT ist nicht gesetzt.")
-		log.Printf("[node] Dieser Node laesst sich nur manuell hinzufuegen. Adresse und Ports selbst eintragen, Token: %s", fresh.Token)
+		m.announceIdentity(fresh, true)
 		return nil
 	}
 
@@ -154,6 +176,12 @@ func (m *Module) announceIdentity(current identity, fresh bool) {
 	}
 	if current.NodeAddress != "" {
 		log.Printf("[node] Adresse im Tunnel: %s", current.NodeAddress)
+	}
+	if current.Endpoint == "" {
+		log.Printf("[node] Tunnel wird extern verwaltet; gRPC und Gateway binden ausschliesslich an %s.", current.NodeAddress)
+		if fresh {
+			log.Printf("[node] Manuell im Studio hinzufuegen mit Adresse, Ports und Pairing-Token: %s", current.Token)
+		}
 	}
 }
 
@@ -290,15 +318,19 @@ func (m *Module) reachableGatewayURL(baseURL, nodeAddress string) string {
 	if baseURL == "" || strings.TrimSpace(nodeAddress) == "" {
 		return ""
 	}
-	trimmed := strings.TrimPrefix(strings.TrimPrefix(baseURL, "http://"), "https://")
-	host, port, found := strings.Cut(trimmed, ":")
-	if !found {
+	parsed, err := url.Parse(baseURL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return ""
 	}
-	switch host {
+	host := parsed.Hostname()
+	port := parsed.Port()
+	if host == "" || port == "" {
+		return ""
+	}
+	switch strings.ToLower(host) {
 	case "127.0.0.1", "localhost", "::1", "[::1]":
 		return ""
-	case "0.0.0.0", "::", "[::]":
+	case "0.0.0.0", "::":
 		// Listening everywhere includes the tunnel, so the address the Studio
 		// should use is the node's address in it.
 		host = nodeAddress

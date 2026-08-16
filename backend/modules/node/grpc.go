@@ -4,9 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,8 +22,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	enginev1 "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1"
 	hardwarev1 "github.com/culpeohq/backend/gen/go/culpeostudio/hardware/v1"
 	nodev1 "github.com/culpeohq/backend/gen/go/culpeostudio/node/v1"
+	"github.com/culpeohq/backend/internal/nodeconnection"
 	"github.com/culpeohq/backend/internal/wireguard"
 )
 
@@ -66,6 +73,10 @@ func (s *grpcService) AddNode(
 }
 
 func (s *grpcService) addFromJoinCode(ctx context.Context, rawCode, nameOverride string) (*nodev1.AddNodeResponse, error) {
+	if isDirectConnectionLink(rawCode) {
+		return s.addDirectConnection(ctx, rawCode, nameOverride)
+	}
+
 	code, err := wireguard.DecodeJoinCode(rawCode)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -101,6 +112,7 @@ func (s *grpcService) addFromJoinCode(ctx context.Context, rawCode, nameOverride
 			InterfaceName: interfaceName,
 			ConfigPath:    configPath,
 			LocalAddress:  code.LocalAddress,
+			Network:       code.Network,
 			Endpoint:      code.Endpoint,
 			PeerPublicKey: code.PeerPublicKey,
 			Managed:       true,
@@ -110,7 +122,7 @@ func (s *grpcService) addFromJoinCode(ctx context.Context, rawCode, nameOverride
 	})
 	if err != nil {
 		_ = os.Remove(configPath)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, toStatus(err)
 	}
 
 	steps := []string{}
@@ -131,6 +143,232 @@ func (s *grpcService) addFromJoinCode(ctx context.Context, rawCode, nameOverride
 		Node:      s.module.nodeToProto(refreshed),
 		NextSteps: steps,
 	}, nil
+}
+
+// isDirectConnectionLink keeps the new one-link pairing format separate from
+// the legacy WireGuard join code. Decode itself accepts whitespace around a
+// link, so detection intentionally does as well.
+func isDirectConnectionLink(raw string) bool {
+	return strings.HasPrefix(strings.Join(strings.Fields(raw), ""), nodeconnection.Prefix)
+}
+
+// addDirectConnection registers a standalone Node from its single connection
+// link. The link is already a complete and pinned TLS description, so this
+// path deliberately never writes, starts, or checks a WireGuard interface.
+//
+// The status request is part of pairing rather than deferred to Refresh: a
+// copied-but-wrong token or certificate pin must not leave a broken Node in
+// the Studio registry.
+func (s *grpcService) addDirectConnection(ctx context.Context, rawLink, nameOverride string) (*nodev1.AddNodeResponse, error) {
+	connection, err := nodeconnection.Decode(rawLink)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	host, rawPort, err := net.SplitHostPort(connection.Endpoint)
+	if err != nil {
+		// Decode validates this before it reaches us. Keep the guard so a
+		// future connection format cannot accidentally create an unusable
+		// registry record.
+		return nil, status.Error(codes.InvalidArgument, "Node-Endpunkt muss Host:Port sein")
+	}
+	grpcPort, err := strconv.Atoi(rawPort)
+	if err != nil || grpcPort < 1 || grpcPort > 65535 {
+		return nil, status.Error(codes.InvalidArgument, "Node-Endpunkt hat keinen gueltigen Port")
+	}
+
+	name := nameOverride
+	if name == "" {
+		name = connection.Name
+	}
+
+	// New links carry the Node's persistent identity. That lets an operator
+	// paste an updated link after a DNS, IP, or port change without registering
+	// a second view of the same models and instances.
+	previous := storedNode{}
+	hadPrevious := false
+	var entry storedNode
+	if connection.NodeID != "" {
+		if existing, found := s.module.registry.get(connection.NodeID); found {
+			if existing.TLSFingerprint != connection.Fingerprint {
+				return nil, status.Error(codes.AlreadyExists,
+					"diese stabile Node-ID ist bereits mit einem anderen TLS-Zertifikat hinterlegt; bitte den alten Node bewusst entfernen und dann neu verbinden")
+			}
+			if existing.Address == host && existing.GRPCPort == grpcPort {
+				return nil, status.Error(codes.AlreadyExists, "dieser Node ist bereits hinterlegt")
+			}
+			previous = existing
+			hadPrevious = true
+			entry, err = s.module.registry.update(existing.ID, func(value *storedNode) {
+				value.Address = host
+				value.GRPCPort = grpcPort
+				value.Token = connection.Token
+				value.TLSFingerprint = connection.Fingerprint
+				value.Enabled = true
+				value.State = stateOffline
+				value.StatusMessage = ""
+				if name != "" {
+					value.Name = name
+				}
+			})
+			if err != nil {
+				return nil, toStatus(err)
+			}
+		}
+	}
+	if !hadPrevious {
+		for _, existing := range s.module.registry.list() {
+			if existing.TLSFingerprint == connection.Fingerprint &&
+				existing.Address == host && existing.GRPCPort == grpcPort {
+				return nil, status.Error(codes.AlreadyExists, "dieser Node ist bereits hinterlegt")
+			}
+		}
+		nodeID := connection.NodeID
+		if nodeID == "" {
+			nodeID = newID() // compatibility for early direct connection links
+		}
+		entry, err = s.module.registry.add(storedNode{
+			ID:              nodeID,
+			Name:            name,
+			Address:         host,
+			GRPCPort:        grpcPort,
+			Enabled:         true,
+			Token:           connection.Token,
+			TLSFingerprint:  connection.Fingerprint,
+			GatewayKeyLabel: newGatewayKeyLabel(),
+			// Direct nodes do not have a WireGuard route or a locally managed
+			// tunnel. The TLS pin is what makes a public endpoint safe.
+			Tunnel:  storedTunnel{Managed: false},
+			AddedAt: time.Now().UTC(),
+			State:   stateOffline,
+		})
+		if err != nil {
+			return nil, toStatus(err)
+		}
+	}
+
+	refreshed := s.module.refresh(ctx, entry.ID)
+	if refreshed.State == stateOnline {
+		if err := s.module.probeDirectGateway(ctx, refreshed); err == nil {
+			return &nodev1.AddNodeResponse{Node: s.module.nodeToProto(refreshed)}, nil
+		} else {
+			refreshed.StatusMessage = "Das HTTPS-Inferenzgateway des Nodes konnte nicht mit dem gepinnten Zertifikat und dem ausgestellten Zugang geprueft werden: " + err.Error()
+		}
+	}
+
+	// Do not retain a new entry that was never successfully authenticated. For
+	// an endpoint migration restore the previously verified record instead.
+	// This also closes a pooled connection that a failed TLS handshake may have
+	// created before the server rejected it.
+	s.module.dropConnection(entry.ID)
+	var rollbackErr error
+	if hadPrevious {
+		restored := previous
+		// refresh has already rotated this Studio's key on the Node. Do not
+		// resurrect the revoked old secret when a new endpoint's HTTPS probe
+		// fails; retain the fresh key but route it through the last verified
+		// gateway address from the previous record.
+		if refreshed.GatewayKeyID != "" && refreshed.GatewayKey != "" {
+			restored.GatewayKeyID = refreshed.GatewayKeyID
+			restored.GatewayKey = refreshed.GatewayKey
+		}
+		_, rollbackErr = s.module.registry.update(entry.ID, func(value *storedNode) { *value = restored })
+	} else {
+		_, rollbackErr = s.module.registry.remove(entry.ID)
+	}
+	if rollbackErr != nil {
+		return nil, status.Errorf(codes.Internal,
+			"Node-Verbindung konnte nicht geprueft werden und der vorherige Registry-Stand konnte nicht wiederhergestellt werden: %v",
+			rollbackErr,
+		)
+	}
+
+	message := strings.TrimSpace(refreshed.StatusMessage)
+	if refreshed.State == stateUnauthorized {
+		if message == "" {
+			message = "Der Node hat den Pairing-Token abgelehnt. Bitte einen neuen Verbindungslink kopieren."
+		}
+		return nil, status.Error(codes.Unauthenticated, message)
+	}
+	if message == "" {
+		message = "Der Node antwortet nicht. Bitte Adresse, Erreichbarkeit und den laufenden Node-Dienst pruefen."
+	}
+	return nil, status.Error(codes.Unavailable, message)
+}
+
+// probeDirectGateway proves the second half of a direct Node connection
+// before Studio persists it. A successful gRPC status call alone is not
+// enough: downloads and starts would work, while every later inference could
+// still fail because the separately exposed HTTPS gateway was misconfigured.
+//
+// The gateway uses the exact same leaf pin as gRPC. Proxy use and redirects
+// are disabled, so a gateway response cannot turn first contact into a request
+// to an unrelated machine.
+func (m *Module) probeDirectGateway(ctx context.Context, entry storedNode) error {
+	if strings.TrimSpace(entry.TLSFingerprint) == "" {
+		return fmt.Errorf("dem direkten Node fehlt der TLS-Fingerprint")
+	}
+	if strings.TrimSpace(entry.GatewayKey) == "" {
+		return fmt.Errorf("der Node hat keinen Gateway-Zugang ausgestellt")
+	}
+	baseURL, err := directGatewayBaseURL(entry.GatewayBaseURL)
+	if err != nil {
+		return err
+	}
+	tlsConfig, err := nodeconnection.PinnedTLSConfig(entry.TLSFingerprint)
+	if err != nil {
+		return fmt.Errorf("TLS-Fingerprint: %w", err)
+	}
+	transport := &http.Transport{
+		Proxy: nil,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSClientConfig:       tlsConfig,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		DisableCompression:    true,
+		MaxIdleConnsPerHost:   1,
+	}
+	client := &http.Client{
+		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	defer transport.CloseIdleConnections()
+
+	callCtx, cancel := remoteContext(ctx)
+	defer cancel()
+	request, err := http.NewRequestWithContext(callCtx, http.MethodGet, baseURL+"/v1/models", nil)
+	if err != nil {
+		return fmt.Errorf("Gateway-Anfrage: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+entry.GatewayKey)
+	response, err := client.Do(request)
+	if err != nil {
+		return fmt.Errorf("Gateway antwortet nicht: %w", err)
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("Gateway meldet HTTP %d", response.StatusCode)
+	}
+	return nil
+}
+
+func directGatewayBaseURL(raw string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed == nil {
+		return "", fmt.Errorf("der Node hat keine gueltige Gateway-Adresse gemeldet")
+	}
+	if parsed.Scheme != "https" || parsed.Hostname() == "" {
+		return "", fmt.Errorf("die Gateway-Adresse muss HTTPS mit Host verwenden")
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return "", fmt.Errorf("die Gateway-Adresse enthaelt unzulaessige Bestandteile")
+	}
+	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
 func (s *grpcService) addManually(ctx context.Context, details *nodev1.ManualNodeDetails, nameOverride string) (*nodev1.AddNodeResponse, error) {
@@ -163,7 +401,7 @@ func (s *grpcService) addManually(ctx context.Context, details *nodev1.ManualNod
 		State:   stateOffline,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, toStatus(err)
 	}
 	refreshed := s.module.refresh(ctx, entry.ID)
 	steps := []string{}
@@ -177,12 +415,34 @@ func (s *grpcService) UpdateNode(
 	ctx context.Context,
 	req *nodev1.UpdateNodeRequest,
 ) (*nodev1.UpdateNodeResponse, error) {
+	previous, found := s.module.registry.get(req.GetNodeId())
+	if !found {
+		return nil, status.Error(codes.NotFound, errNodeUnknown.Error())
+	}
+	disabling := req.Enabled != nil && !req.GetEnabled()
+	revocationWarning := ""
+	revokedGatewayKey := false
+	if disabling && strings.TrimSpace(previous.TLSFingerprint) != "" {
+		if err := s.module.revokeDirectGatewayKey(ctx, previous); err != nil {
+			log.Printf("[node] Gateway-Schluessel von %s konnte beim Deaktivieren nicht widerrufen werden: %v", previous.Name, err)
+			revocationWarning = "Der Node war nicht erreichbar; sein bestehender HTTPS-Gateway-Zugang konnte nicht widerrufen werden. Beim erneuten Aktivieren wird ein neuer Zugang ausgestellt."
+		} else {
+			revokedGatewayKey = true
+		}
+	}
 	entry, err := s.module.registry.update(req.GetNodeId(), func(value *storedNode) {
 		if req.Name != nil && strings.TrimSpace(req.GetName()) != "" {
 			value.Name = strings.TrimSpace(req.GetName())
 		}
 		if req.Enabled != nil {
 			value.Enabled = req.GetEnabled()
+		}
+		if disabling && revokedGatewayKey {
+			value.GatewayKeyID = ""
+			value.GatewayKey = ""
+		}
+		if revocationWarning != "" {
+			value.StatusMessage = revocationWarning
 		}
 	})
 	if err != nil {
@@ -191,6 +451,20 @@ func (s *grpcService) UpdateNode(
 	if !entry.Enabled {
 		// Nothing should keep talking to a node that was switched off.
 		s.module.dropConnection(entry.ID)
+		return &nodev1.UpdateNodeResponse{Node: s.module.nodeToProto(entry)}, nil
+	}
+	if req.Enabled != nil && req.GetEnabled() && !previous.Enabled {
+		// A disabled direct Node deliberately had its Gateway key revoked. Bring
+		// it back to a usable state in this same action rather than requiring a
+		// surprising second click on Refresh before chat can work again.
+		entry = s.module.refresh(ctx, entry.ID)
+		if strings.TrimSpace(entry.TLSFingerprint) != "" && entry.State == stateOnline {
+			if probeErr := s.module.probeDirectGateway(ctx, entry); probeErr != nil {
+				s.module.markUnreachable(entry.ID, stateOffline,
+					"Das HTTPS-Inferenzgateway konnte nach dem Aktivieren nicht geprueft werden: "+probeErr.Error())
+				entry, _ = s.module.registry.get(entry.ID)
+			}
+		}
 	}
 	return &nodev1.UpdateNodeResponse{Node: s.module.nodeToProto(entry)}, nil
 }
@@ -202,6 +476,14 @@ func (s *grpcService) RemoveNode(
 	entry, ok := s.module.registry.get(req.GetNodeId())
 	if !ok {
 		return nil, status.Error(codes.NotFound, errNodeUnknown.Error())
+	}
+	if strings.TrimSpace(entry.TLSFingerprint) != "" {
+		if err := s.module.revokeDirectGatewayKey(ctx, entry); err != nil {
+			// Removing an unreachable node must still be possible. The warning is
+			// kept out of the gRPC response because it has no message field, but
+			// it remains visible to the Studio backend operator in the log.
+			log.Printf("[node] Gateway-Schluessel von %s konnte beim Entfernen nicht widerrufen werden: %v", entry.Name, err)
+		}
 	}
 	if req.GetDeleteTunnelConfig() && entry.Tunnel.Managed && entry.Tunnel.ConfigPath != "" {
 		if wireguard.Query(entry.Tunnel.InterfaceName).State == wireguard.StateUp {
@@ -368,6 +650,9 @@ func (m *Module) refresh(ctx context.Context, nodeID string) storedNode {
 		value.InstanceCount = int(report.GetInstanceCount())
 		value.DiskFreeBytes = report.GetDiskFreeBytes()
 		value.GatewayBaseURL = report.GetGatewayBaseUrl()
+		if port := gatewayPortFromBaseURL(report.GetGatewayBaseUrl()); port > 0 {
+			value.GatewayPort = port
+		}
 		if hardwareBytes != nil {
 			value.HardwareProto = hardwareBytes
 		}
@@ -380,14 +665,41 @@ func (m *Module) refresh(ctx context.Context, nodeID string) storedNode {
 	}
 
 	// Inference is streamed from the node's gateway, which needs a key of its
-	// own. Fetching it here means a node becomes usable for chat as soon as it
-	// is reachable, rather than at the first message.
-	if strings.TrimSpace(updated.GatewayKey) == "" && strings.TrimSpace(updated.GatewayBaseURL) != "" {
+	// own. Refreshing deliberately gets a fresh, Studio-specific key. That
+	// recovers from a restarted or revoked gateway without breaking a second
+	// Studio: each registry entry has its own stable label on the Node.
+	if strings.TrimSpace(updated.GatewayBaseURL) != "" {
 		if issued := m.issueGatewayKey(ctx, nodeID); issued.ID != "" {
 			updated = issued
 		}
 	}
 	return updated
+}
+
+// gatewayPortFromBaseURL preserves the public inference port in the regular
+// Node response too. Direct Nodes report an HTTPS gateway URL rather than a
+// tunnel port in their connection link, but the Flutter node card still shows
+// the familiar port field.
+func gatewayPortFromBaseURL(raw string) int {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed == nil {
+		return 0
+	}
+	if rawPort := parsed.Port(); rawPort != "" {
+		port, parseErr := strconv.Atoi(rawPort)
+		if parseErr == nil && port > 0 && port <= 65535 {
+			return port
+		}
+		return 0
+	}
+	switch strings.ToLower(parsed.Scheme) {
+	case "https":
+		return 443
+	case "http":
+		return 80
+	default:
+		return 0
+	}
 }
 
 // issueGatewayKey asks a node for the key its gateway will accept, and stores
@@ -400,7 +712,12 @@ func (m *Module) issueGatewayKey(ctx context.Context, nodeID string) storedNode 
 	}
 	callCtx, cancel := remoteContext(ctx)
 	defer cancel()
-	issued, err := client.IssueGatewayKey(callCtx, &nodev1.IssueGatewayKeyRequest{Label: "Culpeo Studio"})
+	label, err := m.gatewayKeyLabel(nodeID)
+	if err != nil {
+		log.Printf("[node] Gateway-Schluesselbezeichnung von %s: %v", nodeID, err)
+		return storedNode{}
+	}
+	issued, err := client.IssueGatewayKey(callCtx, &nodev1.IssueGatewayKeyRequest{Label: label})
 	if err != nil {
 		log.Printf("[node] Gateway-Schluessel von %s: %v", nodeID, err)
 		return storedNode{}
@@ -416,6 +733,60 @@ func (m *Module) issueGatewayKey(ctx context.Context, nodeID string) storedNode 
 		return storedNode{}
 	}
 	return updated
+}
+
+// gatewayKeyLabel returns a stable, locally generated label for a registry
+// entry. The remote Node ID is intentionally not used: it is identical in
+// every Studio that paired the Node, whereas this random label belongs to one
+// Studio only.
+func (m *Module) gatewayKeyLabel(nodeID string) (string, error) {
+	entry, ok := m.registry.get(nodeID)
+	if !ok {
+		return "", errNodeUnknown
+	}
+	if label := strings.TrimSpace(entry.GatewayKeyLabel); label != "" {
+		return label, nil
+	}
+	updated, err := m.registry.update(nodeID, func(value *storedNode) {
+		if strings.TrimSpace(value.GatewayKeyLabel) == "" {
+			value.GatewayKeyLabel = newGatewayKeyLabel()
+		}
+	})
+	if err != nil {
+		return "", err
+	}
+	return updated.GatewayKeyLabel, nil
+}
+
+func newGatewayKeyLabel() string {
+	return "Culpeo Studio " + newID()
+}
+
+// revokeDirectGatewayKey removes precisely the key this Studio received for a
+// direct Node. Pairing tokens are otherwise allowed to operate models, but
+// revocation is used only during disable/remove so an old registry backup
+// cannot retain an HTTPS inference credential indefinitely.
+func (m *Module) revokeDirectGatewayKey(ctx context.Context, entry storedNode) error {
+	if strings.TrimSpace(entry.GatewayKeyID) == "" {
+		return nil
+	}
+	connection, err := m.Dial(entry.ID)
+	if err != nil {
+		return err
+	}
+	callCtx, cancel := remoteContext(ctx)
+	defer cancel()
+	response, err := enginev1.NewEngineServiceClient(connection).RevokeKey(callCtx, &enginev1.RevokeKeyRequest{KeyId: entry.GatewayKeyID})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil // already rotated or revoked is the intended end state
+		}
+		return err
+	}
+	if !response.GetRevoked() {
+		return fmt.Errorf("Node bestaetigte keinen Widerruf")
+	}
+	return nil
 }
 
 func (m *Module) nodeToProto(entry storedNode) *nodev1.Node {
@@ -478,8 +849,15 @@ func tunnelToProto(entry storedNode) *nodev1.NodeTunnel {
 		PeerPublicKey: entry.Tunnel.PeerPublicKey,
 	}
 	if !entry.Tunnel.Managed {
-		// Nothing to report and nothing to run: the tunnel is somebody else's.
+		// A direct link does not use a tunnel at all. Keep the legacy message
+		// for manually managed WireGuard entries so existing installations are
+		// not misrepresented.
 		message.State = nodev1.TunnelState_TUNNEL_STATE_UNSPECIFIED
+		if strings.TrimSpace(entry.TLSFingerprint) != "" {
+			message.StatusMessage = "Direkte TLS-Verbindung; kein Tunnel erforderlich."
+			return message
+		}
+		// Nothing to report and nothing to run: the tunnel is somebody else's.
 		message.StatusMessage = "Der Tunnel wird ausserhalb des Studios verwaltet."
 		return message
 	}
@@ -510,6 +888,8 @@ func toStatus(err error) error {
 	case errors.Is(err, errNodeUnknown):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, errNodeDisabled):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, errTunnelNetworkConflict), errors.Is(err, errTunnelNetworkUnknown):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		return status.Error(codes.Internal, err.Error())

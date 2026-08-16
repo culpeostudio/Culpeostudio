@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	enginev1 "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // nodeCallTimeout bounds a call a user made: starting a model, stopping one,
@@ -27,10 +27,10 @@ const nodeListTimeout = 4 * time.Second
 
 // SetNodes wires the node registry. Without one the engine is what it always
 // was: the models and instances of this machine.
-func (m *EngineModule) SetNodes(directory node.Directory) { m.nodes = directory }
+func (m *EngineModule) SetNodes(directory noderouting.Directory) { m.nodes = directory }
 
 // nodeTargets lists the nodes a merged view should include.
-func (m *EngineModule) nodeTargets() []node.Target {
+func (m *EngineModule) nodeTargets() []noderouting.Target {
 	if m.nodes == nil {
 		return nil
 	}
@@ -38,38 +38,38 @@ func (m *EngineModule) nodeTargets() []node.Target {
 }
 
 // nodeEngine resolves a node and a client for its engine.
-func (m *EngineModule) nodeEngine(nodeID string) (node.Target, enginev1.EngineServiceClient, error) {
+func (m *EngineModule) nodeEngine(nodeID string) (noderouting.Target, enginev1.EngineServiceClient, error) {
 	if m.nodes == nil {
-		return node.Target{}, nil, status.Error(codes.FailedPrecondition, "Nodes sind in dieser Instanz nicht eingerichtet")
+		return noderouting.Target{}, nil, status.Error(codes.FailedPrecondition, "Nodes sind in dieser Instanz nicht eingerichtet")
 	}
 	target, ok := m.nodes.LookupTarget(nodeID)
 	if !ok {
-		return node.Target{}, nil, status.Errorf(codes.NotFound, "Node %s ist nicht hinterlegt", nodeID)
+		return noderouting.Target{}, nil, status.Errorf(codes.NotFound, "Node %s ist nicht hinterlegt", nodeID)
 	}
 	connection, err := m.nodes.Dial(nodeID)
 	if err != nil {
-		return node.Target{}, nil, status.Errorf(codes.FailedPrecondition, "Node %s: %v", target.Name, err)
+		return noderouting.Target{}, nil, status.Errorf(codes.FailedPrecondition, "Node %s: %v", target.Name, err)
 	}
 	return target, enginev1.NewEngineServiceClient(connection), nil
 }
 
 // nodeEngineFor resolves the node an identifier belongs to. It reports false
 // for a local identifier, which is the ordinary case.
-func (m *EngineModule) nodeEngineFor(id string) (node.Target, enginev1.EngineServiceClient, string, bool, error) {
-	nodeID, localID, remote := node.Split(id)
+func (m *EngineModule) nodeEngineFor(id string) (noderouting.Target, enginev1.EngineServiceClient, string, bool, error) {
+	nodeID, localID, remote := noderouting.Split(id)
 	if !remote {
-		return node.Target{}, nil, id, false, nil
+		return noderouting.Target{}, nil, id, false, nil
 	}
 	target, client, err := m.nodeEngine(nodeID)
 	if err != nil {
-		return node.Target{}, nil, "", true, err
+		return noderouting.Target{}, nil, "", true, err
 	}
 	return target, client, localID, true, nil
 }
 
 // nodeError names the node in whatever it answered. An engine error that talks
 // about free VRAM is confusing without saying whose.
-func nodeError(target node.Target, err error) error {
+func nodeError(target noderouting.Target, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -87,22 +87,22 @@ func nodeError(target node.Target, err error) error {
 // entries. Every identifier a client may send back is qualified with the node,
 // which is what lets the next call route itself.
 
-func qualifyModelRecord(target node.Target, record *enginev1.ModelRecord) *enginev1.ModelRecord {
+func qualifyModelRecord(target noderouting.Target, record *enginev1.ModelRecord) *enginev1.ModelRecord {
 	if record == nil {
 		return nil
 	}
-	record.Id = node.Qualify(target.ID, record.GetId())
+	record.Id = noderouting.Qualify(target.ID, record.GetId())
 	record.NodeId = target.ID
 	record.NodeName = target.Name
 	return record
 }
 
-func qualifyInstance(target node.Target, instance *enginev1.EngineInstance) *enginev1.EngineInstance {
+func qualifyInstance(target noderouting.Target, instance *enginev1.EngineInstance) *enginev1.EngineInstance {
 	if instance == nil {
 		return nil
 	}
-	instance.Id = node.Qualify(target.ID, instance.GetId())
-	instance.ModelId = node.Qualify(target.ID, instance.GetModelId())
+	instance.Id = noderouting.Qualify(target.ID, instance.GetId())
+	instance.ModelId = noderouting.Qualify(target.ID, instance.GetModelId())
 	instance.NodeId = target.ID
 	instance.NodeName = target.Name
 	return instance
@@ -114,7 +114,7 @@ func qualifyInstance(target node.Target, instance *enginev1.EngineInstance) *eng
 // the call: the local catalog is still worth showing, and the node screen is
 // where an unreachable node is reported.
 func (m *EngineModule) nodeModels(ctx context.Context) []*enginev1.ModelRecord {
-	return fanOutToNodes(ctx, m, "Modelle", func(ctx context.Context, target node.Target, client enginev1.EngineServiceClient) ([]*enginev1.ModelRecord, error) {
+	return fanOutToNodes(ctx, m, "Modelle", func(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient) ([]*enginev1.ModelRecord, error) {
 		response, err := client.ListModels(ctx, &enginev1.ListModelsRequest{})
 		if err != nil {
 			return nil, err
@@ -138,7 +138,7 @@ func fanOutToNodes[T any](
 	ctx context.Context,
 	m *EngineModule,
 	what string,
-	ask func(context.Context, node.Target, enginev1.EngineServiceClient) ([]T, error),
+	ask func(context.Context, noderouting.Target, enginev1.EngineServiceClient) ([]T, error),
 ) []T {
 	targets := m.nodeTargets()
 	if len(targets) == 0 {
@@ -152,7 +152,7 @@ func fanOutToNodes[T any](
 			continue
 		}
 		waiting.Add(1)
-		go func(index int, target node.Target, client enginev1.EngineServiceClient) {
+		go func(index int, target noderouting.Target, client enginev1.EngineServiceClient) {
 			defer waiting.Done()
 			callCtx, cancel := context.WithTimeout(ctx, nodeListTimeout)
 			defer cancel()
@@ -177,7 +177,7 @@ func fanOutToNodes[T any](
 // A download that finished there is only in its catalog after this, which is
 // exactly what the user pressed the button for.
 func (m *EngineModule) rescanNodeModels(ctx context.Context) []*enginev1.ModelRecord {
-	return fanOutToNodes(ctx, m, "Neu-Einlesen", func(ctx context.Context, target node.Target, client enginev1.EngineServiceClient) ([]*enginev1.ModelRecord, error) {
+	return fanOutToNodes(ctx, m, "Neu-Einlesen", func(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient) ([]*enginev1.ModelRecord, error) {
 		response, err := client.RescanModels(ctx, &enginev1.RescanModelsRequest{})
 		if err != nil {
 			return nil, err
@@ -192,7 +192,7 @@ func (m *EngineModule) rescanNodeModels(ctx context.Context) []*enginev1.ModelRe
 
 // deleteModelOnNode removes a model from the machine that holds it and hands
 // back that machine's catalog, qualified.
-func (m *EngineModule) deleteModelOnNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, modelID string) (*enginev1.DeleteModelResponse, error) {
+func (m *EngineModule) deleteModelOnNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, modelID string) (*enginev1.DeleteModelResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.DeleteModel(callCtx, &enginev1.DeleteModelRequest{ModelId: modelID})
@@ -207,7 +207,7 @@ func (m *EngineModule) deleteModelOnNode(ctx context.Context, target node.Target
 
 // nodeInstances does the same for what the nodes are running.
 func (m *EngineModule) nodeInstances(ctx context.Context) []*enginev1.EngineInstance {
-	return fanOutToNodes(ctx, m, "Instanzen", func(ctx context.Context, target node.Target, client enginev1.EngineServiceClient) ([]*enginev1.EngineInstance, error) {
+	return fanOutToNodes(ctx, m, "Instanzen", func(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient) ([]*enginev1.EngineInstance, error) {
 		response, err := client.ListInstances(ctx, &enginev1.ListInstancesRequest{})
 		if err != nil {
 			return nil, err
@@ -242,14 +242,14 @@ func (m *EngineModule) createInstanceOnNode(
 		return nil, nodeError(target, err)
 	}
 	response.Instance = qualifyInstance(target, response.GetInstance())
-	response.OperationId = node.Qualify(target.ID, response.GetOperationId())
+	response.OperationId = noderouting.Qualify(target.ID, response.GetOperationId())
 	return response, nil
 }
 
 // The remaining forwards are one-liners around the same shape: send the local
 // identifier, qualify whatever comes back.
 
-func (m *EngineModule) getInstanceFromNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.GetInstanceResponse, error) {
+func (m *EngineModule) getInstanceFromNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.GetInstanceResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.GetInstance(callCtx, &enginev1.GetInstanceRequest{InstanceId: instanceID})
@@ -260,7 +260,7 @@ func (m *EngineModule) getInstanceFromNode(ctx context.Context, target node.Targ
 	return response, nil
 }
 
-func (m *EngineModule) updateInstanceOnNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, req *enginev1.UpdateInstanceRequest, instanceID string) (*enginev1.UpdateInstanceResponse, error) {
+func (m *EngineModule) updateInstanceOnNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, req *enginev1.UpdateInstanceRequest, instanceID string) (*enginev1.UpdateInstanceResponse, error) {
 	forwarded := &enginev1.UpdateInstanceRequest{InstanceId: instanceID, Change: req.GetChange()}
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
@@ -269,11 +269,11 @@ func (m *EngineModule) updateInstanceOnNode(ctx context.Context, target node.Tar
 		return nil, nodeError(target, err)
 	}
 	response.Instance = qualifyInstance(target, response.GetInstance())
-	response.OperationId = node.Qualify(target.ID, response.GetOperationId())
+	response.OperationId = noderouting.Qualify(target.ID, response.GetOperationId())
 	return response, nil
 }
 
-func (m *EngineModule) deleteInstanceOnNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.DeleteInstanceResponse, error) {
+func (m *EngineModule) deleteInstanceOnNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.DeleteInstanceResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.DeleteInstance(callCtx, &enginev1.DeleteInstanceRequest{InstanceId: instanceID})
@@ -281,11 +281,11 @@ func (m *EngineModule) deleteInstanceOnNode(ctx context.Context, target node.Tar
 		return nil, nodeError(target, err)
 	}
 	response.Instance = qualifyInstance(target, response.GetInstance())
-	response.OperationId = node.Qualify(target.ID, response.GetOperationId())
+	response.OperationId = noderouting.Qualify(target.ID, response.GetOperationId())
 	return response, nil
 }
 
-func (m *EngineModule) ensureReadyOnNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.EnsureInstanceReadyResponse, error) {
+func (m *EngineModule) ensureReadyOnNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, instanceID string) (*enginev1.EnsureInstanceReadyResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.EnsureInstanceReady(callCtx, &enginev1.EnsureInstanceReadyRequest{InstanceId: instanceID})
@@ -293,11 +293,11 @@ func (m *EngineModule) ensureReadyOnNode(ctx context.Context, target node.Target
 		return nil, nodeError(target, err)
 	}
 	response.Instance = qualifyInstance(target, response.GetInstance())
-	response.OperationId = node.Qualify(target.ID, response.GetOperationId())
+	response.OperationId = noderouting.Qualify(target.ID, response.GetOperationId())
 	return response, nil
 }
 
-func (m *EngineModule) getOperationFromNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, operationID string) (*enginev1.GetOperationResponse, error) {
+func (m *EngineModule) getOperationFromNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, operationID string) (*enginev1.GetOperationResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.GetOperation(callCtx, &enginev1.GetOperationRequest{OperationId: operationID})
@@ -308,7 +308,7 @@ func (m *EngineModule) getOperationFromNode(ctx context.Context, target node.Tar
 	return response, nil
 }
 
-func (m *EngineModule) cancelOperationOnNode(ctx context.Context, target node.Target, client enginev1.EngineServiceClient, operationID string) (*enginev1.CancelOperationResponse, error) {
+func (m *EngineModule) cancelOperationOnNode(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient, operationID string) (*enginev1.CancelOperationResponse, error) {
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.CancelOperation(callCtx, &enginev1.CancelOperationRequest{OperationId: operationID})
@@ -319,14 +319,14 @@ func (m *EngineModule) cancelOperationOnNode(ctx context.Context, target node.Ta
 	return response, nil
 }
 
-func qualifyOperation(target node.Target, operation *enginev1.EngineOperation) *enginev1.EngineOperation {
+func qualifyOperation(target noderouting.Target, operation *enginev1.EngineOperation) *enginev1.EngineOperation {
 	if operation == nil {
 		return nil
 	}
-	operation.Id = node.Qualify(target.ID, operation.GetId())
-	operation.InstanceId = node.Qualify(target.ID, operation.GetInstanceId())
+	operation.Id = noderouting.Qualify(target.ID, operation.GetId())
+	operation.InstanceId = noderouting.Qualify(target.ID, operation.GetInstanceId())
 	for index, evicted := range operation.GetEvictedInstanceIds() {
-		operation.EvictedInstanceIds[index] = node.Qualify(target.ID, evicted)
+		operation.EvictedInstanceIds[index] = noderouting.Qualify(target.ID, evicted)
 	}
 	return operation
 }

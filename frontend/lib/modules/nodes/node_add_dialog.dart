@@ -9,10 +9,9 @@ import './node_format.dart';
 
 /// Asks for a node and registers it.
 ///
-/// The join code is the ordinary way in: the node printed one, it carries the
-/// token and the finished tunnel config, and pasting it is the whole
-/// interaction. The manual form is for an operator who runs their own tunnel
-/// and only needs the Studio to know where to send things.
+/// A standalone Node prints one direct, TLS-pinned connection link. Pasting
+/// that link is the whole normal interaction; Studio never asks a user to
+/// transcribe addresses, ports, tokens, or tunnel settings.
 Future<NodeAddResult?> showNodeAddDialog(BuildContext context) {
   return showDialog<NodeAddResult>(
     context: context,
@@ -33,12 +32,7 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
 
   final _joinCodeController = TextEditingController();
   final _nameController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _tokenController = TextEditingController();
-  final _grpcPortController = TextEditingController(text: '50051');
-  final _gatewayPortController = TextEditingController(text: '8091');
 
-  bool _manual = false;
   bool _submitting = false;
   String _error = '';
 
@@ -46,10 +40,6 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
   void dispose() {
     _joinCodeController.dispose();
     _nameController.dispose();
-    _addressController.dispose();
-    _tokenController.dispose();
-    _grpcPortController.dispose();
-    _gatewayPortController.dispose();
     super.dispose();
   }
 
@@ -59,19 +49,10 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
       _error = '';
     });
     try {
-      final result = _manual
-          ? await _api.nodes.addNodeManually(
-              name: _nameController.text,
-              address: _addressController.text,
-              token: _tokenController.text,
-              grpcPort: int.tryParse(_grpcPortController.text.trim()) ?? 50051,
-              gatewayPort:
-                  int.tryParse(_gatewayPortController.text.trim()) ?? 8091,
-            )
-          : await _api.nodes.addNodeFromJoinCode(
-              _joinCodeController.text,
-              name: _nameController.text,
-            );
+      final result = await _api.nodes.addNodeFromJoinCode(
+        _joinCodeController.text,
+        name: _nameController.text,
+      );
       if (!mounted) return;
       Navigator.of(context).pop(result);
     } catch (error) {
@@ -84,12 +65,7 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
   }
 
   bool get _canSubmit {
-    if (_submitting) return false;
-    if (_manual) {
-      return _addressController.text.trim().isNotEmpty &&
-          _tokenController.text.trim().isNotEmpty;
-    }
-    return _joinCodeController.text.trim().isNotEmpty;
+    return !_submitting && _joinCodeController.text.trim().isNotEmpty;
   }
 
   @override
@@ -107,7 +83,7 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_manual) ..._manualFields() else ..._joinCodeFields(),
+              ..._joinCodeFields(),
               const SizedBox(height: 16),
               TextField(
                 controller: _nameController,
@@ -123,17 +99,6 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
                     color: SettingsPalette.textVeryFaint,
                     fontSize: 11,
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _submitting
-                    ? null
-                    : () => setState(() => _manual = !_manual),
-                child: Text(
-                  _manual
-                      ? tr('nodes.add.joinToggle')
-                      : tr('nodes.add.manualToggle'),
                 ),
               ),
               if (_error.isNotEmpty) ...[
@@ -208,75 +173,6 @@ class _NodeAddDialogState extends State<_NodeAddDialog> {
           helper: tr('nodes.add.joinCodeDescription'),
         ),
         onChanged: (_) => setState(() {}),
-      ),
-    ];
-  }
-
-  List<Widget> _manualFields() {
-    return [
-      Text(
-        tr('nodes.add.addressLabel'),
-        style: const TextStyle(
-          color: SettingsPalette.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 8),
-      TextField(
-        controller: _addressController,
-        autofocus: true,
-        style: const TextStyle(color: SettingsPalette.textPrimary),
-        decoration: nodeInputDecoration(tr('nodes.add.addressHint')),
-        onChanged: (_) => setState(() {}),
-      ),
-      const SizedBox(height: 16),
-      Text(
-        tr('nodes.add.tokenLabel'),
-        style: const TextStyle(
-          color: SettingsPalette.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 8),
-      TextField(
-        controller: _tokenController,
-        style: const TextStyle(
-          color: SettingsPalette.textPrimary,
-          fontFamily: 'monospace',
-          fontSize: 12,
-        ),
-        decoration: nodeInputDecoration(''),
-        onChanged: (_) => setState(() {}),
-      ),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _grpcPortController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: SettingsPalette.textPrimary),
-              decoration: nodeInputDecoration(
-                '50051',
-                helper: tr('nodes.add.grpcPortLabel'),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: _gatewayPortController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: SettingsPalette.textPrimary),
-              decoration: nodeInputDecoration(
-                '8091',
-                helper: tr('nodes.add.gatewayPortLabel'),
-              ),
-            ),
-          ),
-        ],
       ),
     ];
   }

@@ -27,9 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-
 	hardwarev1 "github.com/culpeohq/backend/gen/go/culpeostudio/hardware/v1"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 var (
@@ -53,20 +52,6 @@ type AgentBridge struct {
 	InstanceCount   func() int
 	GatewayBaseURL  func() string
 	IssueGatewayKey func(label string) (keyID string, secret string, err error)
-}
-
-// Directory is the part of a node module the engine and the marketplace use:
-// which nodes to fan out to, and how to reach one.
-type Directory interface {
-	// EnabledTargets lists the nodes that should take part in a merged view.
-	EnabledTargets() []Target
-	// LookupTarget resolves a single node, enabled or not, because a call that
-	// names a node explicitly deserves a clearer answer than "not found".
-	LookupTarget(nodeID string) (Target, bool)
-	// Dial returns a connection to a node's gRPC control plane, authenticated
-	// with its pairing token. The connection is pooled; it must not be closed
-	// by the caller.
-	Dial(nodeID string) (*grpc.ClientConn, error)
 }
 
 // Module is the node module. On a Studio it holds the registry of nodes; in
@@ -150,9 +135,9 @@ func (m *Module) Initialize() error {
 }
 
 // GatewayBind is where a node's OpenAI gateway should listen: its own address
-// inside the tunnel. It is empty on a Studio, and on a node whose tunnel was
-// set up outside the app - there is no address to bind to that this knows of,
-// and guessing one would open the gateway wider than intended.
+// inside the tunnel. A manually managed tunnel supplies that address explicitly
+// through CULPEO_NODE_TUNNEL_ADDRESS during Initialize; guessing one would
+// otherwise open the gateway wider than intended.
 func (m *Module) GatewayBind() string {
 	if !m.nodeMode {
 		return ""
@@ -161,7 +146,7 @@ func (m *Module) GatewayBind() string {
 	if !ok || strings.TrimSpace(current.NodeAddress) == "" {
 		return ""
 	}
-	return joinHostPort(current.NodeAddress, gatewayPortFromEnv())
+	return noderouting.JoinHostPort(current.NodeAddress, gatewayPortFromEnv())
 }
 
 // ControlPlaneHost is the address a node's gRPC server has to listen on.
@@ -231,6 +216,7 @@ func targetFrom(entry storedNode) Target {
 		GRPCPort:       entry.GRPCPort,
 		GatewayPort:    entry.GatewayPort,
 		Token:          entry.Token,
+		TLSFingerprint: entry.TLSFingerprint,
 		GatewayKey:     entry.GatewayKey,
 		GatewayBaseURL: entry.GatewayBaseURL,
 	}

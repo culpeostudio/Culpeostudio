@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	enginev1 "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // stubNodeEngine is a node's engine, reduced to the calls the routing sends
@@ -90,17 +90,17 @@ func (s *stubNodeEngine) CreateInstance(ctx context.Context, req *enginev1.Creat
 
 // stubDirectory stands in for the node registry, pointing at the stub server.
 type stubDirectory struct {
-	target     node.Target
+	target     noderouting.Target
 	connection *grpc.ClientConn
 }
 
-func (d *stubDirectory) EnabledTargets() []node.Target { return []node.Target{d.target} }
+func (d *stubDirectory) EnabledTargets() []noderouting.Target { return []noderouting.Target{d.target} }
 
-func (d *stubDirectory) LookupTarget(nodeID string) (node.Target, bool) {
+func (d *stubDirectory) LookupTarget(nodeID string) (noderouting.Target, bool) {
 	if nodeID == d.target.ID {
 		return d.target, true
 	}
-	return node.Target{}, false
+	return noderouting.Target{}, false
 }
 
 func (d *stubDirectory) Dial(nodeID string) (*grpc.ClientConn, error) {
@@ -129,7 +129,7 @@ func startStubNode(t *testing.T, module *EngineModule, stub *stubNodeEngine) *st
 	t.Cleanup(func() { _ = connection.Close() })
 
 	directory := &stubDirectory{
-		target: node.Target{
+		target: noderouting.Target{
 			ID: "nodeone", Name: "Werkstatt", Address: "127.0.0.1",
 			GatewayKey: "gateway-secret", GatewayBaseURL: "http://127.0.0.1:9999",
 		},

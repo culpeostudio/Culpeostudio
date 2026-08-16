@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,7 +18,8 @@ import (
 
 	enginev1 "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1"
 	"github.com/culpeohq/backend/internal/localinference"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/nodeconnection"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // nodeProbeTimeout bounds the listing behind the chat model picker. It is
@@ -44,11 +46,53 @@ func newNodeChatClient() *http.Client {
 	}}
 }
 
+// newPinnedNodeChatClient is the HTTP counterpart of the pinned gRPC control
+// connection. A direct Node exposes its OpenAI-compatible gateway over the
+// same self-signed certificate, so its TLS leaf must match the fingerprint
+// the Studio stored when it paired the Node. Legacy WireGuard entries keep
+// using newNodeChatClient because their encryption happens in the tunnel.
+func newPinnedNodeChatClient(fingerprint string) (*http.Client, error) {
+	tlsConfig, err := nodeconnection.PinnedTLSConfig(fingerprint)
+	if err != nil {
+		return nil, err
+	}
+	return &http.Client{Transport: &http.Transport{
+		Proxy: nil,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 120 * time.Second,
+		DisableCompression:    true,
+		MaxIdleConnsPerHost:   4,
+		TLSClientConfig:       tlsConfig,
+	}}, nil
+}
+
+func (m *EngineModule) nodeChatHTTPClient(target noderouting.Target) (*http.Client, bool, error) {
+	if strings.TrimSpace(target.TLSFingerprint) == "" {
+		if m.nodeChatClient != nil {
+			return m.nodeChatClient, false, nil
+		}
+		return newNodeChatClient(), true, nil
+	}
+	parsed, err := url.Parse(target.GatewayURL())
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.Host == "" {
+		return nil, false, fmt.Errorf("direkter Node %s hat keinen gueltigen HTTPS-Gateway-Endpunkt", target.Name)
+	}
+	client, err := newPinnedNodeChatClient(target.TLSFingerprint)
+	if err != nil {
+		return nil, false, fmt.Errorf("TLS-Gateway von Node %s: %w", target.Name, err)
+	}
+	return client, true, nil
+}
+
 // nodeReadyModels lists what the nodes have loaded, for the chat picker.
 func (m *EngineModule) nodeReadyModels() []localinference.Model {
 	ctx, cancel := context.WithTimeout(context.Background(), nodeProbeTimeout)
 	defer cancel()
-	return fanOutToNodes(ctx, m, "geladene Modelle", func(ctx context.Context, target node.Target, client enginev1.EngineServiceClient) ([]localinference.Model, error) {
+	return fanOutToNodes(ctx, m, "geladene Modelle", func(ctx context.Context, target noderouting.Target, client enginev1.EngineServiceClient) ([]localinference.Model, error) {
 		response, err := client.ListInstances(ctx, &enginev1.ListInstancesRequest{})
 		if err != nil {
 			return nil, err
@@ -67,7 +111,7 @@ func (m *EngineModule) nodeReadyModels() []localinference.Model {
 // nodeModelView describes a node's instance in the terms the chat uses. The
 // node's name goes into the label, because in a picker that mixes machines
 // "Qwen3 8B" twice over is not a choice.
-func nodeModelView(target node.Target, instance *enginev1.EngineInstance) localinference.Model {
+func nodeModelView(target noderouting.Target, instance *enginev1.EngineInstance) localinference.Model {
 	displayName := strings.TrimSpace(instance.GetServedModelName())
 	if displayName == "" {
 		displayName = strings.TrimSpace(instance.GetEndpointName())
@@ -79,8 +123,8 @@ func nodeModelView(target node.Target, instance *enginev1.EngineInstance) locali
 		displayName = displayName + " (" + name + ")"
 	}
 	return localinference.Model{
-		InstanceID:   node.Qualify(target.ID, instance.GetId()),
-		ModelID:      node.Qualify(target.ID, instance.GetModelId()),
+		InstanceID:   noderouting.Qualify(target.ID, instance.GetId()),
+		ModelID:      noderouting.Qualify(target.ID, instance.GetModelId()),
 		DisplayName:  displayName,
 		ContextLimit: int(instance.GetPlan().GetEffectiveContextTokens()),
 	}
@@ -88,35 +132,35 @@ func nodeModelView(target node.Target, instance *enginev1.EngineInstance) locali
 
 // resolveNodeModel reads one node instance back and reports whether it can
 // take a request right now.
-func (m *EngineModule) resolveNodeModel(ctx context.Context, nodeID, instanceID string) (node.Target, localinference.Model, error) {
+func (m *EngineModule) resolveNodeModel(ctx context.Context, nodeID, instanceID string) (noderouting.Target, localinference.Model, error) {
 	target, client, err := m.nodeEngine(nodeID)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return node.Target{}, localinference.Model{}, localinference.ErrNotFound
+			return noderouting.Target{}, localinference.Model{}, localinference.ErrNotFound
 		}
-		return node.Target{}, localinference.Model{}, fmt.Errorf("%w: %v", localinference.ErrWorkerUnavailable, err)
+		return noderouting.Target{}, localinference.Model{}, fmt.Errorf("%w: %v", localinference.ErrWorkerUnavailable, err)
 	}
 	callCtx, cancel := context.WithTimeout(ctx, nodeCallTimeout)
 	defer cancel()
 	response, err := client.GetInstance(callCtx, &enginev1.GetInstanceRequest{InstanceId: instanceID})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return node.Target{}, localinference.Model{}, localinference.ErrNotFound
+			return noderouting.Target{}, localinference.Model{}, localinference.ErrNotFound
 		}
-		return node.Target{}, localinference.Model{}, fmt.Errorf("%w: %v", localinference.ErrWorkerUnavailable, err)
+		return noderouting.Target{}, localinference.Model{}, translateNodeWarmupError(target, err)
 	}
 	instance := response.GetInstance()
 	if instance == nil {
-		return node.Target{}, localinference.Model{}, localinference.ErrNotFound
+		return noderouting.Target{}, localinference.Model{}, localinference.ErrNotFound
 	}
 	if instance.GetState() != enginev1.InstanceState_INSTANCE_STATE_READY {
-		return node.Target{}, localinference.Model{}, localinference.ErrNotReady
+		return noderouting.Target{}, localinference.Model{}, localinference.ErrNotReady
 	}
 	if strings.TrimSpace(target.GatewayURL()) == "" || strings.TrimSpace(target.GatewayKey) == "" {
 		// The node runs the model but has handed out no gateway key, so there
 		// is nothing to stream through yet. Saying that plainly is better than
 		// a connection error the user cannot act on.
-		return node.Target{}, localinference.Model{}, fmt.Errorf(
+		return noderouting.Target{}, localinference.Model{}, fmt.Errorf(
 			"%w: der Node %s hat noch keinen Gateway-Zugang ausgestellt; bitte den Node in den Einstellungen aktualisieren",
 			localinference.ErrNotReady, target.Name)
 	}
@@ -136,19 +180,19 @@ func (m *EngineModule) streamNodeChat(
 	nodeID, instanceID string,
 	request localinference.ChatRequest,
 	emit func(string) error,
-) (string, error) {
+) (string, string, error) {
 	target, model, err := m.resolveNodeModel(ctx, nodeID, instanceID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if len(request.Messages) == 0 {
-		return "", fmt.Errorf("%w: mindestens eine Chat-Nachricht ist erforderlich", localinference.ErrInvalidRequest)
+		return "", "", fmt.Errorf("%w: mindestens eine Chat-Nachricht ist erforderlich", localinference.ErrInvalidRequest)
 	}
 	messages := make([]interface{}, 0, len(request.Messages))
 	for _, message := range request.Messages {
 		role := strings.ToLower(strings.TrimSpace(message.Role))
 		if role != "system" && role != "user" && role != "assistant" {
-			return "", fmt.Errorf("%w: ungueltige Chat-Rolle %q", localinference.ErrInvalidRequest, message.Role)
+			return "", "", fmt.Errorf("%w: ungueltige Chat-Rolle %q", localinference.ErrInvalidRequest, message.Role)
 		}
 		messages = append(messages, map[string]interface{}{"role": role, "content": message.Content})
 	}
@@ -161,50 +205,52 @@ func (m *EngineModule) streamNodeChat(
 	}
 	if request.MaxTokens != nil {
 		if *request.MaxTokens < 0 {
-			return "", fmt.Errorf("%w: max_tokens darf nicht negativ sein", localinference.ErrInvalidRequest)
+			return "", "", fmt.Errorf("%w: max_tokens darf nicht negativ sein", localinference.ErrInvalidRequest)
 		}
 		payload["max_tokens"] = *request.MaxTokens
 	}
 	if exceedsApproximateContext(payload, model.ContextLimit) {
-		return "", fmt.Errorf("%w: maximal %d Tokens", localinference.ErrContextLimit, model.ContextLimit)
+		return "", "", fmt.Errorf("%w: maximal %d Tokens", localinference.ErrContextLimit, model.ContextLimit)
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	httpRequest, err := http.NewRequestWithContext(
 		ctx, http.MethodPost, target.GatewayURL()+"/v1/chat/completions", bytes.NewReader(body),
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 	httpRequest.Header.Set("Accept", "text/event-stream")
 	httpRequest.Header.Set("Authorization", "Bearer "+target.GatewayKey)
 
-	client := m.nodeChatClient
-	if client == nil {
-		client = newNodeChatClient()
+	client, closeClient, err := m.nodeChatHTTPClient(target)
+	if err != nil {
+		return "", "", err
+	}
+	if closeClient {
 		defer client.CloseIdleConnections()
 	}
 	response, err := client.Do(httpRequest)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return "", ctx.Err()
+			return "", "", ctx.Err()
 		}
-		return "", fmt.Errorf("%w: Node %s antwortet nicht", localinference.ErrWorkerUnavailable, target.Name)
+		return "", "", fmt.Errorf("%w: Node %s antwortet nicht", localinference.ErrWorkerUnavailable, target.Name)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return "", nodeGatewayError(target, response)
+		return "", "", nodeGatewayError(target, response)
 	}
-	return localinference.ReadOpenAIStream(response.Body, emit)
+	return localinference.ReadOpenAIStreamWithReason(response.Body, emit)
 }
 
 // nodeGatewayError turns what the node's gateway refused with into the same
 // sentinels a local worker's refusal produces, so the chat handles both alike.
-func nodeGatewayError(target node.Target, response *http.Response) error {
+func nodeGatewayError(target noderouting.Target, response *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 	var payload struct {
 		Error struct {
@@ -268,13 +314,13 @@ func (m *EngineModule) ensureNodeModelReady(
 		return localinference.Model{}, translateNodeWarmupError(target, err)
 	}
 
-	qualifiedInstance := node.Qualify(nodeID, instanceID)
+	qualifiedInstance := noderouting.Qualify(nodeID, instanceID)
 	report := func(state string, phase string, progress float64, message string, queuePosition int32, operationID string) error {
 		if emit == nil {
 			return nil
 		}
 		return emit(localinference.WarmupProgress{
-			OperationID:   node.Qualify(nodeID, operationID),
+			OperationID:   noderouting.Qualify(nodeID, operationID),
 			InstanceID:    qualifiedInstance,
 			Status:        state,
 			Phase:         phase,
@@ -338,7 +384,7 @@ func (m *EngineModule) ensureNodeModelReady(
 
 // translateNodeWarmupError maps a failed call onto the sentinels the chat
 // already knows.
-func translateNodeWarmupError(target node.Target, err error) error {
+func translateNodeWarmupError(target noderouting.Target, err error) error {
 	switch status.Code(err) {
 	case codes.NotFound:
 		return localinference.ErrNotFound
@@ -355,7 +401,7 @@ func translateNodeWarmupError(target node.Target, err error) error {
 	}
 }
 
-func nodeOperationError(target node.Target, operation *enginev1.EngineOperation) error {
+func nodeOperationError(target noderouting.Target, operation *enginev1.EngineOperation) error {
 	message := strings.TrimSpace(operation.GetErrorSummary())
 	if message == "" {
 		message = strings.TrimSpace(operation.GetError())

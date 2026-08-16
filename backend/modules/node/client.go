@@ -9,10 +9,12 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	nodev1 "github.com/culpeohq/backend/gen/go/culpeostudio/node/v1"
+	"github.com/culpeohq/backend/internal/nodeconnection"
 )
 
 // remoteCallTimeout bounds every control call to a node. Downloads and model
@@ -28,22 +30,22 @@ type pooledConnection struct {
 	fingerprint string
 }
 
-// bearerCredentials puts the node's pairing token on every call.
-//
-// RequireTransportSecurity is false on purpose: the connection runs inside a
-// WireGuard tunnel, which already authenticates both ends by key and encrypts
-// everything between them. Adding TLS on top would mean shipping a second
-// certificate story for a link that is not reachable from anywhere else, and
-// Dial refuses any address that is not the node's tunnel address.
+// bearerCredentials puts the node's pairing token on every call. Legacy node
+// entries run inside WireGuard and therefore retain their existing plaintext
+// gRPC transport. A direct entry has a pinned TLS certificate, so gRPC must
+// refuse to send the token unless that TLS transport is active.
 type bearerCredentials struct {
-	token string
+	token                    string
+	requireTransportSecurity bool
 }
 
 func (c bearerCredentials) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
 	return map[string]string{"authorization": "Bearer " + c.token}, nil
 }
 
-func (c bearerCredentials) RequireTransportSecurity() bool { return false }
+func (c bearerCredentials) RequireTransportSecurity() bool {
+	return c.requireTransportSecurity
+}
 
 // Dial returns the pooled connection to a node.
 func (m *Module) Dial(nodeID string) (*grpc.ClientConn, error) {
@@ -56,11 +58,17 @@ func (m *Module) Dial(nodeID string) (*grpc.ClientConn, error) {
 	}
 	target := targetFrom(entry)
 	endpoint := target.Endpoint()
-	if err := checkTunnelAddress(entry.Address); err != nil {
-		return nil, err
+	directTLS := strings.TrimSpace(target.TLSFingerprint) != ""
+	if !directTLS {
+		// A legacy record has no certificate pin and is therefore only safe
+		// inside its WireGuard tunnel. Do not loosen this restriction while
+		// migrating existing installations.
+		if err := checkTunnelAddress(entry.Address); err != nil {
+			return nil, err
+		}
 	}
 
-	fingerprint := endpoint + "|" + target.Token
+	fingerprint := endpoint + "|" + target.Token + "|" + target.TLSFingerprint
 
 	m.connectionsMu.Lock()
 	defer m.connectionsMu.Unlock()
@@ -72,10 +80,22 @@ func (m *Module) Dial(nodeID string) (*grpc.ClientConn, error) {
 		delete(m.connections, nodeID)
 	}
 
+	transportCredentials := credentials.TransportCredentials(insecure.NewCredentials())
+	if directTLS {
+		tlsCredentials, tlsErr := pinnedTLSCredentials(target.TLSFingerprint)
+		if tlsErr != nil {
+			return nil, fmt.Errorf("TLS-Fingerprint von %s: %w", target.Name, tlsErr)
+		}
+		transportCredentials = tlsCredentials
+	}
+
 	connection, err := grpc.NewClient(
 		endpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithPerRPCCredentials(bearerCredentials{token: target.Token}),
+		grpc.WithTransportCredentials(transportCredentials),
+		grpc.WithPerRPCCredentials(bearerCredentials{
+			token:                    target.Token,
+			requireTransportSecurity: directTLS,
+		}),
 		// A node serves the same messages a local module does, and an engine
 		// catalog on a well-stocked machine outgrows the four megabyte default.
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)),
@@ -85,6 +105,21 @@ func (m *Module) Dial(nodeID string) (*grpc.ClientConn, error) {
 	}
 	m.connections[nodeID] = &pooledConnection{connection: connection, fingerprint: fingerprint}
 	return connection, nil
+}
+
+// pinnedTLSCredentials creates the transport used by a direct Node link. A
+// freshly installed Node uses a self-signed certificate, so a public CA chain
+// and DNS hostname are not meaningful here. Instead, the connection link
+// carries the SHA-256 digest of the exact leaf certificate. Go requires
+// InsecureSkipVerify to take over normal CA/hostname verification; it is used
+// only together with VerifyPeerCertificate below, which rejects every leaf
+// except the pinned one in constant time.
+func pinnedTLSCredentials(rawFingerprint string) (credentials.TransportCredentials, error) {
+	config, err := nodeconnection.PinnedTLSConfig(rawFingerprint)
+	if err != nil {
+		return nil, err
+	}
+	return credentials.NewTLS(config), nil
 }
 
 // dropConnection forgets a node's connection, which is what removing or
@@ -98,10 +133,10 @@ func (m *Module) dropConnection(nodeID string) {
 	}
 }
 
-// checkTunnelAddress refuses to send a pairing token anywhere but into the
-// tunnel. The token authorises downloads and model starts, and the transport
-// is unencrypted by design, so a node address that is a public one is a
-// misconfiguration worth failing on rather than a preference.
+// checkTunnelAddress refuses to send a legacy pairing token anywhere but into
+// the tunnel. The legacy transport is unencrypted by design. Direct records
+// never call this function: their token travels over pinned TLS and may use a
+// public endpoint.
 //
 // A hostname is accepted: an operator who runs their own tunnel may well have
 // named its far end in /etc/hosts, and a name cannot be judged here without

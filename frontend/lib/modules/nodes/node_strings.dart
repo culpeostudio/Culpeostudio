@@ -6,13 +6,11 @@ const Map<String, String> nodeStringsDe = {
   'nodes.title': 'Nodes',
   'nodes.subtitle':
       'Andere Rechner, auf denen dieses Studio Modelle laden und starten darf. '
-      'Ein Modell wird dort heruntergeladen, wo es laufen soll, und nur die '
-      'Antwort kommt durch den Tunnel zurueck.',
+      'Ein Modell wird direkt auf dem Ziel-Node heruntergeladen und dort ausgefuehrt.',
   'nodes.empty.title': 'Noch kein Node verbunden',
   'nodes.empty.body':
-      'Starte das Backend auf dem anderen Rechner mit CULPEO_NODE_MODE=1 und '
-      'CULPEO_NODE_WG_ENDPOINT=<oeffentliche Adresse>. Es gibt beim ersten '
-      'Start einen Join-Code aus, den du hier einfuegst.',
+      'Installiere und starte Culpeo Node auf dem anderen Rechner. Fuehre dort '
+      '`culpeo-node pairing-link` aus und fuege den einen Verbindungslink hier ein.',
 
   'nodes.action.add': 'Node hinzufuegen',
   'nodes.action.refresh': 'Aktualisieren',
@@ -60,11 +58,11 @@ const Map<String, String> nodeStringsDe = {
       'Ein deaktivierter Node taucht in keiner Liste auf und bekommt keine Auftraege.',
 
   'nodes.add.title': 'Node hinzufuegen',
-  'nodes.add.joinCodeLabel': 'Join-Code',
-  'nodes.add.joinCodeHint': 'culpeonode1_…',
+  'nodes.add.joinCodeLabel': 'Node-Verbindungslink',
+  'nodes.add.joinCodeHint': 'culpeo-node://pair/…',
   'nodes.add.joinCodeDescription':
-      'Der Node gibt den Code beim ersten Start im Log aus. Er enthaelt den '
-      'Pairing-Token und die fertige Tunnel-Konfiguration fuer dieses Studio.',
+      'Auf dem Node `culpeo-node pairing-link` ausfuehren und die gesamte Zeile '
+      'hier einfuegen. Der Link ist ein Zugangsschluessel – bitte vertraulich behandeln.',
   'nodes.add.nameLabel': 'Name (optional)',
   'nodes.add.nameHint': 'Werkstatt-PC',
   'nodes.add.manualToggle': 'Tunnel steht schon? Manuell eintragen',
@@ -108,13 +106,11 @@ const Map<String, String> nodeStringsEn = {
   'nodes.title': 'Nodes',
   'nodes.subtitle':
       'Other machines this Studio may download to and run models on. A model '
-      'is downloaded where it will run, and only the answer comes back '
-      'through the tunnel.',
+      'is downloaded directly onto and run by its target node.',
   'nodes.empty.title': 'No node connected yet',
   'nodes.empty.body':
-      'Start the backend on the other machine with CULPEO_NODE_MODE=1 and '
-      'CULPEO_NODE_WG_ENDPOINT=<public address>. It prints a join code on '
-      'first start; paste that here.',
+      'Install and start Culpeo Node on the other machine. Run '
+      '`culpeo-node pairing-link` there, then paste the single connection link here.',
 
   'nodes.action.add': 'Add node',
   'nodes.action.refresh': 'Refresh',
@@ -162,11 +158,11 @@ const Map<String, String> nodeStringsEn = {
       'A node that is switched off appears in no list and is given no work.',
 
   'nodes.add.title': 'Add node',
-  'nodes.add.joinCodeLabel': 'Join code',
-  'nodes.add.joinCodeHint': 'culpeonode1_…',
+  'nodes.add.joinCodeLabel': 'Node connection link',
+  'nodes.add.joinCodeHint': 'culpeo-node://pair/…',
   'nodes.add.joinCodeDescription':
-      'The node prints the code to its log on first start. It carries the '
-      'pairing token and the finished tunnel configuration for this Studio.',
+      'Run `culpeo-node pairing-link` on the node and paste the complete line '
+      'here. The link is an access credential; keep it private.',
   'nodes.add.nameLabel': 'Name (optional)',
   'nodes.add.nameHint': 'Workshop PC',
   'nodes.add.manualToggle': 'Tunnel already up? Enter it by hand',

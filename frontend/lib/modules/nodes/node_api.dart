@@ -195,7 +195,7 @@ class NodeApi {
     }
   }
 
-  /// Registers a node from the join code its node mode printed.
+  /// Registers a node from its single, TLS-pinned connection link.
   Future<NodeAddResult> addNodeFromJoinCode(
     String joinCode, {
     String name = '',
@@ -258,7 +258,10 @@ class NodeApi {
     }
   }
 
-  Future<void> removeNode(String nodeId, {bool deleteTunnelConfig = true}) async {
+  Future<void> removeNode(
+    String nodeId, {
+    bool deleteTunnelConfig = true,
+  }) async {
     try {
       await _client.nodeClient.removeNode(
         nodepb.RemoveNodeRequest(

@@ -28,6 +28,18 @@ func (m *EngineModule) EnableNodeGateway(address string) {
 	m.gatewayNeedsBootstrapKey = true
 }
 
+// SetGatewayBind selects the local address of the Engine's OpenAI-compatible
+// gateway before Initialize starts it.  A standalone Node uses a loopback
+// listener with an ephemeral port and exposes it only through its own pinned
+// TLS proxy; unlike EnableNodeGateway this does not permit a network bind.
+func (m *EngineModule) SetGatewayBind(address string) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return
+	}
+	m.gatewayBind = address
+}
+
 // ensureBootstrapGatewayKey creates the first key of a node, so the gateway
 // may bind to a network address at all.
 func (m *EngineModule) ensureBootstrapGatewayKey() error {

@@ -81,6 +81,7 @@ func TestPairRendersBothSidesAndRoundTrips(t *testing.T) {
 		Token:       "pairing-token",
 		GRPCPort:    50051,
 		GatewayPort: 8091,
+		Network:     DefaultNetwork,
 		Endpoint:    "node.example.org",
 	})
 	if err != nil {
@@ -118,8 +119,75 @@ func TestPairRendersBothSidesAndRoundTrips(t *testing.T) {
 	if decoded.NodeAddress != "10.77.0.1" {
 		t.Errorf("join code node address = %q, want 10.77.0.1", decoded.NodeAddress)
 	}
+	if decoded.Network != DefaultNetwork || pairing.Network != DefaultNetwork {
+		t.Errorf("explicit network was not kept: join code=%q pairing=%q", decoded.Network, pairing.Network)
+	}
 	if decoded.TunnelConfig != pairing.ClientConfig {
 		t.Error("the join code does not carry the config that was rendered for the Studio")
+	}
+}
+
+func TestPairAutomaticallyAllocatesSeparateNetworksForDifferentNodes(t *testing.T) {
+	first, err := Pair(PairingRequest{
+		NodeID:   "node-a-012345",
+		Token:    "first-token",
+		Endpoint: "first.example.org",
+	})
+	if err != nil {
+		t.Fatalf("Pair first node: %v", err)
+	}
+	second, err := Pair(PairingRequest{
+		NodeID:   "node-b-012345",
+		Token:    "second-token",
+		Endpoint: "second.example.org",
+	})
+	if err != nil {
+		t.Fatalf("Pair second node: %v", err)
+	}
+
+	if first.Network == second.Network {
+		t.Fatalf("automatic networks collide: both nodes received %s", first.Network)
+	}
+	overlaps, err := NetworksOverlap(first.Network, second.Network)
+	if err != nil {
+		t.Fatalf("NetworksOverlap: %v", err)
+	}
+	if overlaps {
+		t.Errorf("automatic networks overlap: %s and %s", first.Network, second.Network)
+	}
+	if want := AutomaticNetwork("node-a-012345"); first.Network != want {
+		t.Errorf("first automatic network = %q, want %q", first.Network, want)
+	}
+	if !strings.Contains(first.ClientConfig, "AllowedIPs = "+first.Network) {
+		t.Errorf("first client config does not route its allocated network:\n%s", first.ClientConfig)
+	}
+}
+
+func TestDecodeJoinCodeDerivesNetworkFromLegacyCode(t *testing.T) {
+	pairing, err := Pair(PairingRequest{
+		NodeID:   "legacy-node",
+		Token:    "legacy-token",
+		Network:  "10.65.0.0/24",
+		Endpoint: "legacy.example.org",
+	})
+	if err != nil {
+		t.Fatalf("Pair: %v", err)
+	}
+	code, err := DecodeJoinCode(pairing.JoinCode)
+	if err != nil {
+		t.Fatalf("Decode current code: %v", err)
+	}
+	code.Network = ""
+	legacyCode, err := code.Encode()
+	if err != nil {
+		t.Fatalf("Encode legacy code: %v", err)
+	}
+	decoded, err := DecodeJoinCode(legacyCode)
+	if err != nil {
+		t.Fatalf("Decode legacy code: %v", err)
+	}
+	if decoded.Network != "10.65.0.0/24" {
+		t.Errorf("derived legacy network = %q, want 10.65.0.0/24", decoded.Network)
 	}
 }
 

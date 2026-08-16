@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	enginev1 "github.com/culpeohq/backend/gen/go/culpeostudio/engine/v1"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // nodeWatchInterval is how often the nodes are asked what they are running
@@ -89,7 +89,7 @@ func (m *EngineModule) publishNodeInstanceChanges(lastSeen map[string]*enginev1.
 		// A node that did not answer has not told us anything. Announcing its
 		// instances as deleted would empty the list on every dropped tunnel,
 		// and put it back on the next round.
-		if !answered[node.NodeIDOf(id)] {
+		if !answered[noderouting.NodeIDOf(id)] {
 			continue
 		}
 		delete(lastSeen, id)
@@ -118,7 +118,7 @@ func (m *EngineModule) pollNodeInstances(ctx context.Context) ([]*enginev1.Engin
 			continue
 		}
 		waiting.Add(1)
-		go func(index int, target node.Target, client enginev1.EngineServiceClient) {
+		go func(index int, target noderouting.Target, client enginev1.EngineServiceClient) {
 			defer waiting.Done()
 			callCtx, cancel := context.WithTimeout(ctx, nodeListTimeout)
 			defer cancel()

@@ -1,14 +1,17 @@
 package wireguard
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 )
 
-// DefaultNetwork is the tunnel a node carves its two addresses out of. It sits
-// in the private range and is small on purpose: a node accepts one Studio.
+// DefaultNetwork is kept for callers of TunnelAddresses that do not have a
+// node identity. Pair never uses it for a new node: a static default caused
+// every independently installed node to claim the same route.
 const DefaultNetwork = "10.77.0.0/24"
 
 // DefaultListenPort is the UDP port a node listens on when none is configured.
@@ -22,7 +25,9 @@ type PairingRequest struct {
 	Token       string
 	GRPCPort    int
 	GatewayPort int
-	// Network is the tunnel network, e.g. 10.77.0.0/24.
+	// Network is the tunnel network. When it is empty Pair derives a stable,
+	// node-specific /30 from NodeID. An explicit value remains an operator
+	// override for networks managed outside the automatic allocation.
 	Network string
 	// Endpoint is where the Studio dials the node, as host:port. It cannot be
 	// detected: a node behind NAT is reached at an address only its operator
@@ -44,8 +49,10 @@ type Pairing struct {
 	InterfaceName string
 	NodeAddress   string
 	ClientAddress string
-	NodeKeys      KeyPair
-	ClientKeys    KeyPair
+	// Network is the canonical CIDR routed by this pair.
+	Network    string
+	NodeKeys   KeyPair
+	ClientKeys KeyPair
 }
 
 // Pair draws both key pairs and renders both configs.
@@ -67,7 +74,11 @@ func Pair(request PairingRequest) (Pairing, error) {
 	if err != nil {
 		return Pairing{}, err
 	}
-	nodeAddress, clientAddress, allowedIPs, err := TunnelAddresses(request.Network)
+	network := strings.TrimSpace(request.Network)
+	if network == "" {
+		network = AutomaticNetwork(nodeID)
+	}
+	nodeAddress, clientAddress, allowedIPs, err := TunnelAddresses(network)
 	if err != nil {
 		return Pairing{}, err
 	}
@@ -128,6 +139,7 @@ func Pair(request PairingRequest) (Pairing, error) {
 		InterfaceName: interfaceName,
 		NodeAddress:   nodeAddress,
 		LocalAddress:  clientAddress,
+		Network:       allowedIPs,
 		PeerPublicKey: nodeKeys.PublicKey,
 		Endpoint:      endpoint,
 		TunnelConfig:  clientConfig,
@@ -144,9 +156,28 @@ func Pair(request PairingRequest) (Pairing, error) {
 		InterfaceName: interfaceName,
 		NodeAddress:   nodeAddress,
 		ClientAddress: clientAddress,
+		Network:       allowedIPs,
 		NodeKeys:      nodeKeys,
 		ClientKeys:    clientKeys,
 	}, nil
+}
+
+// AutomaticNetwork derives a stable, dedicated /30 in 10.0.0.0/8 for a
+// node. A /30 is exactly large enough for the node and its Studio, and the
+// full private /8 yields more than four million possible tunnel networks.
+//
+// Node IDs are random, but this remains deterministic so a restart preserves
+// a node's address. The Studio still rejects any collision (including a
+// deliberate explicit override) before it writes the second config.
+func AutomaticNetwork(nodeID string) string {
+	digest := sha256.Sum256([]byte("culpeo-wireguard-network-v1:" + strings.TrimSpace(nodeID)))
+	slot := binary.BigEndian.Uint32(digest[:4]) & ((1 << 22) - 1)
+	return fmt.Sprintf(
+		"10.%d.%d.%d/30",
+		(slot>>14)&0xff,
+		(slot>>6)&0xff,
+		(slot&0x3f)<<2,
+	)
 }
 
 // normalizeEndpoint accepts a bare host and fills in the listen port, because

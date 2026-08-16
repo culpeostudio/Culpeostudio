@@ -11,12 +11,12 @@ import (
 	"google.golang.org/grpc/status"
 
 	marketplacev1 "github.com/culpeohq/backend/gen/go/culpeostudio/marketplace/v1"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 // SetNodes wires the node registry. Without one the marketplace behaves as it
 // always has: every download happens on this machine.
-func (m *MarketplaceModule) SetNodes(directory node.Directory) { m.nodes = directory }
+func (m *MarketplaceModule) SetNodes(directory noderouting.Directory) { m.nodes = directory }
 
 // startDownloadOnNode hands the job to the machine that will keep the model.
 //
@@ -52,7 +52,7 @@ func (s *grpcService) startDownloadOnNode(
 		return nil, nodeCallError(target, err)
 	}
 	return &marketplacev1.StartDownloadResponse{
-		JobId:     node.Qualify(nodeID, response.GetJobId()),
+		JobId:     noderouting.Qualify(nodeID, response.GetJobId()),
 		Status:    response.GetStatus(),
 		Existing:  response.GetExisting(),
 		TargetDir: response.GetTargetDir(),
@@ -84,7 +84,7 @@ func (m *MarketplaceModule) nodeDownloadJobs(ctx context.Context) []*marketplace
 			continue
 		}
 		waiting.Add(1)
-		go func(index int, target node.Target, client marketplacev1.MarketplaceServiceClient) {
+		go func(index int, target noderouting.Target, client marketplacev1.MarketplaceServiceClient) {
 			defer waiting.Done()
 			callCtx, cancel := context.WithTimeout(ctx, nodeListTimeout)
 			defer cancel()
@@ -98,7 +98,7 @@ func (m *MarketplaceModule) nodeDownloadJobs(ctx context.Context) []*marketplace
 				if job == nil {
 					continue
 				}
-				job.Id = node.Qualify(target.ID, job.GetId())
+				job.Id = noderouting.Qualify(target.ID, job.GetId())
 				job.NodeId = target.ID
 				job.NodeName = target.Name
 				jobs = append(jobs, job)
@@ -143,7 +143,7 @@ func (m *MarketplaceModule) getDownloadJobFromNode(ctx context.Context, nodeID, 
 	if job == nil {
 		return nil, status.Error(codes.NotFound, "job nicht gefunden")
 	}
-	job.Id = node.Qualify(nodeID, job.GetId())
+	job.Id = noderouting.Qualify(nodeID, job.GetId())
 	job.NodeId = target.ID
 	job.NodeName = target.Name
 	return job, nil
@@ -168,17 +168,17 @@ func (m *MarketplaceModule) marketplaceClient(nodeID string) (marketplacev1.Mark
 	return client, err
 }
 
-func (m *MarketplaceModule) nodeClientWithTarget(nodeID string) (node.Target, marketplacev1.MarketplaceServiceClient, error) {
+func (m *MarketplaceModule) nodeClientWithTarget(nodeID string) (noderouting.Target, marketplacev1.MarketplaceServiceClient, error) {
 	if m.nodes == nil {
-		return node.Target{}, nil, status.Error(codes.FailedPrecondition, "Nodes sind in dieser Instanz nicht eingerichtet")
+		return noderouting.Target{}, nil, status.Error(codes.FailedPrecondition, "Nodes sind in dieser Instanz nicht eingerichtet")
 	}
 	target, ok := m.nodes.LookupTarget(nodeID)
 	if !ok {
-		return node.Target{}, nil, status.Errorf(codes.NotFound, "Node %s ist nicht hinterlegt", nodeID)
+		return noderouting.Target{}, nil, status.Errorf(codes.NotFound, "Node %s ist nicht hinterlegt", nodeID)
 	}
 	connection, err := m.nodes.Dial(nodeID)
 	if err != nil {
-		return node.Target{}, nil, status.Errorf(codes.FailedPrecondition, "Node %s: %v", target.Name, err)
+		return noderouting.Target{}, nil, status.Errorf(codes.FailedPrecondition, "Node %s: %v", target.Name, err)
 	}
 	return target, marketplacev1.NewMarketplaceServiceClient(connection), nil
 }
@@ -186,7 +186,7 @@ func (m *MarketplaceModule) nodeClientWithTarget(nodeID string) (node.Target, ma
 // nodeCallError names the node in whatever it answered, because an error that
 // says only "not enough disk space" is confusing when the disk in question is
 // on another machine.
-func nodeCallError(target node.Target, err error) error {
+func nodeCallError(target noderouting.Target, err error) error {
 	if err == nil {
 		return nil
 	}

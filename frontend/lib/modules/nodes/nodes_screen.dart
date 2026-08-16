@@ -16,7 +16,11 @@ import './node_format.dart';
 /// show which node they belong to but never let one be added or removed, so
 /// there is one screen that answers "what is connected".
 class NodesScreen extends StatefulWidget {
-  const NodesScreen({super.key});
+  const NodesScreen({super.key, this.onNodesChanged});
+
+  /// Lets a host that shows its own node count keep it current, without this
+  /// screen having to know who is watching.
+  final VoidCallback? onNodesChanged;
 
   @override
   State<NodesScreen> createState() => _NodesScreenState();
@@ -105,6 +109,7 @@ class _NodesScreenState extends State<NodesScreen> {
     final result = await showNodeAddDialog(context);
     if (result == null || !mounted) return;
     setState(() => _replace(result.node));
+    widget.onNodesChanged?.call();
     _notify(tr('nodes.notification.added', {'name': result.node.name}));
     if (result.nextSteps.isNotEmpty) {
       await _showNextSteps(result.nextSteps);
@@ -264,7 +269,10 @@ class _NodesScreenState extends State<NodesScreen> {
     try {
       await _api.nodes.removeNode(node.id, deleteTunnelConfig: deleteConfig);
       if (!mounted) return;
-      setState(() => _nodes.removeWhere((candidate) => candidate.id == node.id));
+      setState(
+        () => _nodes.removeWhere((candidate) => candidate.id == node.id),
+      );
+      widget.onNodesChanged?.call();
       _notify(tr('nodes.notification.removed', {'name': node.name}));
     } catch (error) {
       if (!mounted) return;
@@ -351,9 +359,7 @@ class _NodesScreenState extends State<NodesScreen> {
           actions: [
             TextButton(
               onPressed: () async {
-                await Clipboard.setData(
-                  ClipboardData(text: detail.configText),
-                );
+                await Clipboard.setData(ClipboardData(text: detail.configText));
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
                 _notify(tr('nodes.notification.copied'));
@@ -657,16 +663,16 @@ class _NodesScreenState extends State<NodesScreen> {
               ),
             ),
           ],
-          const Divider(color: SettingsPalette.dividerLine, height: 32),
-          _buildTunnelRow(node, busy),
-          const SizedBox(height: 8),
+          if (node.tunnel.isManaged) ...[
+            const Divider(color: SettingsPalette.dividerLine, height: 32),
+            _buildTunnelRow(node, busy),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               Switch(
                 value: node.enabled,
-                onChanged: busy
-                    ? null
-                    : (value) => _setEnabled(node, value),
+                onChanged: busy ? null : (value) => _setEnabled(node, value),
                 activeThumbColor: CulpeoColors.action,
               ),
               const SizedBox(width: 8),

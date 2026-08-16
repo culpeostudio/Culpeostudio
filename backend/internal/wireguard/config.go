@@ -37,7 +37,11 @@ type JoinCode struct {
 	NodeAddress string `json:"node_address"`
 	// LocalAddress is the address the Studio takes inside the tunnel, with its
 	// mask, as it goes into the config.
-	LocalAddress  string `json:"local_address"`
+	LocalAddress string `json:"local_address"`
+	// Network is the tunnel's canonical IPv4 CIDR. It was added after the
+	// first join-code format shipped, so DecodeJoinCode also derives it from
+	// TunnelConfig for older codes that do not carry it.
+	Network       string `json:"network,omitempty"`
 	PeerPublicKey string `json:"peer_public_key"`
 	Endpoint      string `json:"endpoint"`
 	// TunnelConfig is the complete client-side config file.
@@ -81,9 +85,40 @@ func DecodeJoinCode(value string) (JoinCode, error) {
 	if strings.TrimSpace(code.NodeID) == "" || strings.TrimSpace(code.Token) == "" {
 		return JoinCode{}, fmt.Errorf("Join-Code ist unvollstaendig: Node-Kennung oder Token fehlt")
 	}
-	if net.ParseIP(strings.TrimSpace(code.NodeAddress)) == nil {
+	network, networkErr := TunnelNetworkFromConfig(code.TunnelConfig)
+	if networkErr != nil {
+		return JoinCode{}, fmt.Errorf("Join-Code enthaelt kein gueltiges Tunnel-Netz: %w", networkErr)
+	}
+	_, subnet, networkErr := net.ParseCIDR(network)
+	if networkErr != nil {
+		// TunnelNetworkFromConfig already normalises and validates the value.
+		// Keep this guard here so a future implementation cannot turn a broken
+		// code into a config write.
+		return JoinCode{}, fmt.Errorf("Join-Code enthaelt kein gueltiges Tunnel-Netz")
+	}
+	nodeAddress := net.ParseIP(strings.TrimSpace(code.NodeAddress))
+	if nodeAddress == nil || nodeAddress.To4() == nil {
 		return JoinCode{}, fmt.Errorf("Join-Code enthaelt keine gueltige Node-Adresse im Tunnel")
 	}
+	if !subnet.Contains(nodeAddress) {
+		return JoinCode{}, fmt.Errorf("Join-Code enthaelt eine Node-Adresse ausserhalb des Tunnel-Netzes")
+	}
+	localAddress, _, localErr := net.ParseCIDR(strings.TrimSpace(code.LocalAddress))
+	if localErr != nil || localAddress.To4() == nil {
+		return JoinCode{}, fmt.Errorf("Join-Code enthaelt keine gueltige Studio-Adresse im Tunnel")
+	}
+	if !subnet.Contains(localAddress) || nodeAddress.Equal(localAddress) {
+		return JoinCode{}, fmt.Errorf("Join-Code enthaelt unpassende Tunnel-Adressen")
+	}
+	if strings.TrimSpace(code.Network) != "" {
+		declaredNetwork, declaredErr := NormalizeTunnelNetwork(code.Network)
+		if declaredErr != nil || declaredNetwork != network {
+			return JoinCode{}, fmt.Errorf("Join-Code enthaelt widerspruechliche Tunnel-Netze")
+		}
+	}
+	// A v1 code from before Network was added has exactly the same data in its
+	// rendered config. Populate the field so callers have one source of truth.
+	code.Network = network
 	if !ValidKey(strings.TrimSpace(code.PeerPublicKey)) {
 		return JoinCode{}, fmt.Errorf("Join-Code enthaelt keinen gueltigen WireGuard-Schluessel")
 	}
@@ -163,31 +198,101 @@ func InterfaceName(nodeID string) string {
 	return "culpeo-" + cleaned
 }
 
-// TunnelAddresses splits a /24 into the node's address and the Studio's. The
-// node takes .1 and the Studio .2, which is enough for the one peer a node
-// currently accepts and keeps the config readable.
+// TunnelAddresses assigns the first two host addresses in a network to the
+// node and Studio. That is enough for the one peer a node currently accepts.
 func TunnelAddresses(network string) (nodeAddress, clientAddress, allowedIPs string, err error) {
 	network = strings.TrimSpace(network)
 	if network == "" {
-		network = "10.77.0.0/24"
+		network = DefaultNetwork
 	}
-	ip, subnet, parseErr := net.ParseCIDR(network)
+	subnet, canonicalNetwork, parseErr := parseTunnelNetwork(network)
 	if parseErr != nil {
-		return "", "", "", fmt.Errorf("ungueltiges Tunnel-Netz %q: %w", network, parseErr)
+		return "", "", "", parseErr
 	}
-	base := ip.Mask(subnet.Mask).To4()
-	if base == nil {
-		return "", "", "", fmt.Errorf("Tunnel-Netz %q ist kein IPv4-Netz", network)
-	}
-	ones, bits := subnet.Mask.Size()
-	if bits-ones < 2 {
-		return "", "", "", fmt.Errorf("Tunnel-Netz %q ist zu klein fuer zwei Adressen", network)
-	}
+	base := subnet.IP.To4()
 	nodeIP := make(net.IP, len(base))
 	copy(nodeIP, base)
 	nodeIP[3] |= 1
 	clientIP := make(net.IP, len(base))
 	copy(clientIP, base)
 	clientIP[3] |= 2
-	return nodeIP.String(), clientIP.String() + "/32", subnet.String(), nil
+	return nodeIP.String(), clientIP.String() + "/32", canonicalNetwork, nil
+}
+
+// NormalizeTunnelNetwork checks a tunnel network and returns its canonical
+// IPv4 CIDR form. A tunnel has one node and one Studio peer, so it needs at
+// least two usable addresses.
+func NormalizeTunnelNetwork(network string) (string, error) {
+	_, canonicalNetwork, err := parseTunnelNetwork(network)
+	return canonicalNetwork, err
+}
+
+// NetworksOverlap reports whether two validated tunnel networks share any
+// address. Studio uses it before writing a second config: overlapping AllowedIPs
+// would otherwise make the operating system choose an arbitrary interface.
+func NetworksOverlap(first, second string) (bool, error) {
+	firstSubnet, _, err := parseTunnelNetwork(first)
+	if err != nil {
+		return false, err
+	}
+	secondSubnet, _, err := parseTunnelNetwork(second)
+	if err != nil {
+		return false, err
+	}
+	return firstSubnet.Contains(secondSubnet.IP) || secondSubnet.Contains(firstSubnet.IP), nil
+}
+
+// TunnelNetworkFromConfig extracts the sole routed network from the Studio
+// side of a Culpeo WireGuard config. Join codes predating JoinCode.Network
+// still carry this config, so parsing it keeps them usable and safe.
+func TunnelNetworkFromConfig(config string) (string, error) {
+	section := ""
+	allowedIPs := ""
+	for _, rawLine := range strings.Split(config, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section = strings.ToLower(strings.TrimSpace(line[1 : len(line)-1]))
+			continue
+		}
+		key, value, found := strings.Cut(line, "=")
+		if !found || section != "peer" || !strings.EqualFold(strings.TrimSpace(key), "AllowedIPs") {
+			continue
+		}
+		if allowedIPs != "" {
+			return "", fmt.Errorf("Tunnel-Konfiguration enthaelt mehrere AllowedIPs-Angaben")
+		}
+		parts := strings.Split(value, ",")
+		if len(parts) != 1 {
+			return "", fmt.Errorf("Tunnel-Konfiguration muss genau ein Tunnel-Netz routen")
+		}
+		allowedIPs = strings.TrimSpace(parts[0])
+	}
+	if allowedIPs == "" {
+		return "", fmt.Errorf("Tunnel-Konfiguration enthaelt kein AllowedIPs")
+	}
+	return NormalizeTunnelNetwork(allowedIPs)
+}
+
+func parseTunnelNetwork(network string) (*net.IPNet, string, error) {
+	network = strings.TrimSpace(network)
+	if network == "" {
+		return nil, "", fmt.Errorf("Tunnel-Netz fehlt")
+	}
+	ip, subnet, err := net.ParseCIDR(network)
+	if err != nil {
+		return nil, "", fmt.Errorf("ungueltiges Tunnel-Netz %q: %w", network, err)
+	}
+	base := ip.Mask(subnet.Mask).To4()
+	if base == nil {
+		return nil, "", fmt.Errorf("Tunnel-Netz %q ist kein IPv4-Netz", network)
+	}
+	ones, bits := subnet.Mask.Size()
+	if bits != 32 || bits-ones < 2 {
+		return nil, "", fmt.Errorf("Tunnel-Netz %q ist zu klein fuer zwei Adressen", network)
+	}
+	canonical := &net.IPNet{IP: base, Mask: subnet.Mask}
+	return canonical, canonical.String(), nil
 }
