@@ -22,11 +22,7 @@ class _RecordingLoginService extends loginpb.LoginServiceBase {
   ) async {
     _record(call);
     return loginpb.GetUserPreferencesResponse(
-      preferences: loginpb.UserPreferences(
-        configured: true,
-        language: 'en',
-        frontendVersion: 'lite',
-      ),
+      preferences: loginpb.UserPreferences(configured: true, language: 'en'),
     );
   }
 
@@ -41,7 +37,6 @@ class _RecordingLoginService extends loginpb.LoginServiceBase {
       preferences: loginpb.UserPreferences(
         configured: true,
         language: request.language,
-        frontendVersion: request.frontendVersion,
       ),
     );
   }
@@ -82,6 +77,18 @@ class _RecordingLoginService extends loginpb.LoginServiceBase {
     ServiceCall call,
     loginpb.ResetPasswordRequest r,
   ) async => throw UnimplementedError();
+
+  @override
+  Future<loginpb.EnableGuestModeResponse> enableGuestMode(
+    ServiceCall call,
+    loginpb.EnableGuestModeRequest r,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<loginpb.DisableGuestModeResponse> disableGuestMode(
+    ServiceCall call,
+    loginpb.DisableGuestModeRequest r,
+  ) async => throw UnimplementedError();
 }
 
 Future<(ApiService, _RecordingLoginService)> startBackend(String token) async {
@@ -111,29 +118,17 @@ void main() {
       final preferences = await api.login.getUserPreferences();
 
       expect(service.seenAuthorization, 'Bearer token');
-      expect(preferences, {
-        'configured': true,
-        'language': 'en',
-        'frontend_version': 'lite',
-      });
+      expect(preferences, {'configured': true, 'language': 'en'});
     },
   );
 
-  test('sends both user preference choices with authentication', () async {
+  test('sends the user preference choice with authentication', () async {
     final (api, service) = await startBackend('account-token');
 
-    final updated = await api.login.updateUserPreferences(
-      language: 'en',
-      frontendVersion: 'lite',
-    );
+    final updated = await api.login.updateUserPreferences(language: 'en');
 
     expect(service.seenAuthorization, 'Bearer account-token');
     expect(service.seenUpdate?.language, 'en');
-    expect(service.seenUpdate?.frontendVersion, 'lite');
-    expect(updated, {
-      'configured': true,
-      'language': 'en',
-      'frontend_version': 'lite',
-    });
+    expect(updated, {'configured': true, 'language': 'en'});
   });
 }

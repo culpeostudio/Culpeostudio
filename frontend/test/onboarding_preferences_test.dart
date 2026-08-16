@@ -16,14 +16,9 @@ class _RecordingLoginApi extends LoginApi {
   @override
   Future<Map<String, dynamic>> updateUserPreferences({
     required String language,
-    required String frontendVersion,
   }) async {
-    updates.add({'language': language, 'frontend_version': frontendVersion});
-    return {
-      'configured': true,
-      'language': language,
-      'frontend_version': frontendVersion,
-    };
+    updates.add({'language': language});
+    return {'configured': true, 'language': language};
   }
 }
 
@@ -56,7 +51,7 @@ class _OnboardingHostState extends State<_OnboardingHost> {
 void main() {
   tearDown(() => appLanguage = 'de');
 
-  testWidgets('confirmation saves both preferences before closing onboarding', (
+  testWidgets('confirmation saves the language preference before closing onboarding', (
     tester,
   ) async {
     appLanguage = 'de';
@@ -72,18 +67,13 @@ void main() {
 
     expect(find.byType(OnboardingDialog), findsOneWidget);
     await tester.tap(find.text('English'));
-    await tester.tap(find.text('Lite'));
     await tester.tap(find.text("Los geht's"));
     await tester.pump();
     await tester.pump();
 
     expect(find.byType(OnboardingDialog), findsNothing);
     expect(appState.language, 'en');
-    expect(appState.frontendVersion, 'lite');
     expect(service.updates, hasLength(1));
-    expect(service.updates.single, {
-      'language': 'en',
-      'frontend_version': 'lite',
-    });
+    expect(service.updates.single, {'language': 'en'});
   });
 }

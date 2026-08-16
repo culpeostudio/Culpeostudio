@@ -17,7 +17,6 @@ class OnboardingDialog extends StatefulWidget {
 class _OnboardingDialogState extends State<OnboardingDialog> {
   late final AppState _appState;
   late String _language;
-  late String _frontendVersion;
   bool _isSaving = false;
   String? _saveError;
   bool _recoveringInitialLoad = false;
@@ -28,7 +27,6 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
     super.initState();
     _appState = widget.appState ?? AppState();
     _language = _appState.language;
-    _frontendVersion = _appState.frontendVersion;
     _saveError = _appState.userPreferencesError;
     _recoveringInitialLoad = _saveError != null;
   }
@@ -59,10 +57,7 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
       return;
     }
 
-    final saved = await _appState.saveUserPreferences(
-      language: _language,
-      frontendVersion: _frontendVersion,
-    );
+    final saved = await _appState.saveUserPreferences(language: _language);
     if (!mounted) return;
 
     if (saved) {
@@ -79,6 +74,34 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
   void _closeAfterSuccessfulSave() {
     setState(() => _canPop = true);
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  Future<void> _openProviderSettings() async {
+    if (_isSaving) return;
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    final saved = _recoveringInitialLoad
+        ? await _appState.retryUserPreferencesLoad()
+        : await _appState.saveUserPreferences(language: _language);
+    if (!mounted) return;
+
+    if (!saved) {
+      setState(() {
+        _isSaving = false;
+        _saveError = _appState.userPreferencesError;
+      });
+      return;
+    }
+
+    _appState.pendingSettingsSection = 1;
+    _appState.setScreen('settings');
+    setState(() => _canPop = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Navigator.of(context).pop();
     });
@@ -160,24 +183,25 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
                   ),
                 ]),
                 const SizedBox(height: 24),
-                _SectionTitle(tr('onboarding.versionTitle')),
+                _SectionTitle(tr('onboarding.providerTitle')),
                 const SizedBox(height: 8),
-                _optionGrid([
-                  _OptionCard(
-                    title: tr('onboarding.versionClassic'),
-                    description: tr('onboarding.versionClassicDesc'),
-                    selected: _frontendVersion == 'classic',
-                    enabled: !_isSaving,
-                    onTap: () => setState(() => _frontendVersion = 'classic'),
+                Text(
+                  tr('onboarding.providerDescription'),
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
                   ),
-                  _OptionCard(
-                    title: tr('onboarding.versionLite'),
-                    description: tr('onboarding.versionLiteDesc'),
-                    selected: _frontendVersion == 'lite',
-                    enabled: !_isSaving,
-                    onTap: () => setState(() => _frontendVersion = 'lite'),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _isSaving ? null : _openProviderSettings,
+                    icon: const Icon(Icons.cable_outlined, size: 16),
+                    label: Text(tr('onboarding.providerButton')),
                   ),
-                ]),
+                ),
                 if (_saveError != null) ...[
                   const SizedBox(height: 18),
                   Container(
@@ -269,11 +293,9 @@ class _OptionCard extends StatelessWidget {
     required this.selected,
     required this.enabled,
     required this.onTap,
-    this.description,
   });
 
   final String title;
-  final String? description;
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
@@ -281,7 +303,6 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textPrimary = AppColors.textPrimary;
-    final textSecondary = AppColors.textSecondary;
 
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -300,30 +321,13 @@ class _OptionCard extends StatelessWidget {
               width: selected ? 1.5 : 1,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (description != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  description!,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ],
+          child: Text(
+            title,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),

@@ -3,8 +3,12 @@ package login
 import (
 	"context"
 	"errors"
+	"log"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/culpeohq/backend/internal/usermigrator"
 
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
@@ -30,17 +34,23 @@ func (s *grpcService) Login(ctx context.Context, req *loginv1.LoginRequest) (*lo
 	username := strings.TrimSpace(req.GetUsername())
 	password := strings.TrimSpace(req.GetPassword())
 	if username == "" || password == "" {
-		return nil, status.Error(codes.InvalidArgument, "Username und Passwort sind erforderlich")
+		if !(m.authStore.IsGuestMode() && username == "guest") {
+			return nil, status.Error(codes.InvalidArgument, "Username und Passwort sind erforderlich")
+		}
 	}
 
 	if err := m.accountStore.Load(); err != nil {
 		return nil, status.Error(codes.Internal, "Konnte Accounts nicht laden")
 	}
-	if !m.accountStore.ValidateCredentials(username, password) {
-		return nil, status.Error(codes.Unauthenticated, "Ungueltige Anmeldedaten")
-	}
-	if canonical, ok := m.accountStore.CanonicalUsername(username); ok {
-		username = canonical
+	if m.authStore.IsGuestMode() && username == "guest" {
+		// Guest mode bypasses credentials check
+	} else {
+		if !m.accountStore.ValidateCredentials(username, password) {
+			return nil, status.Error(codes.Unauthenticated, "Ungueltige Anmeldedaten")
+		}
+		if canonical, ok := m.accountStore.CanonicalUsername(username); ok {
+			username = canonical
+		}
 	}
 
 	granted := resolveSessionDuration(req.GetSessionDuration())
@@ -94,7 +104,24 @@ func (s *grpcService) GetAuthStatus(ctx context.Context, req *loginv1.GetAuthSta
 	return &loginv1.GetAuthStatusResponse{
 		TotpConfigured:   s.module.authStore.IsConfigured(),
 		AuthenticatorApp: s.module.authStore.App(),
+		GuestModeActive:  s.module.authStore.IsGuestMode(),
 	}, nil
+}
+
+func (s *grpcService) EnableGuestMode(ctx context.Context, req *loginv1.EnableGuestModeRequest) (*loginv1.EnableGuestModeResponse, error) {
+	if err := s.module.authStore.SetGuestMode(true); err != nil {
+		return nil, status.Error(codes.Internal, "Konnte Gastmodus nicht aktivieren")
+	}
+	_ = s.module.accountStore.CreateUser("guest", "")
+	_ = s.module.notifyUserCreated("guest")
+	return &loginv1.EnableGuestModeResponse{}, nil
+}
+
+func (s *grpcService) DisableGuestMode(ctx context.Context, req *loginv1.DisableGuestModeRequest) (*loginv1.DisableGuestModeResponse, error) {
+	if err := s.module.authStore.SetGuestMode(false); err != nil {
+		return nil, status.Error(codes.Internal, "Konnte Gastmodus nicht deaktivieren")
+	}
+	return &loginv1.DisableGuestModeResponse{}, nil
 }
 
 func (s *grpcService) StartAuthenticatorSetup(ctx context.Context, req *loginv1.StartAuthenticatorSetupRequest) (*loginv1.StartAuthenticatorSetupResponse, error) {
@@ -156,6 +183,13 @@ func (s *grpcService) CreateAccount(ctx context.Context, req *loginv1.CreateAcco
 	if err := m.accountStore.Load(); err != nil {
 		return nil, status.Error(codes.Internal, "Konnte Accounts nicht laden")
 	}
+
+	users := m.accountStore.ListUsers()
+	shouldMigrateGuest := false
+	if len(users) == 1 && users[0] == "guest" {
+		shouldMigrateGuest = true
+	}
+
 	if err := m.accountStore.CreateUser(req.GetUsername(), req.GetPassword()); err != nil {
 		if errors.Is(err, ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "Benutzer existiert bereits")
@@ -167,6 +201,21 @@ func (s *grpcService) CreateAccount(ctx context.Context, req *loginv1.CreateAcco
 	if canonical, ok := m.accountStore.CanonicalUsername(username); ok {
 		username = canonical
 	}
+
+	if shouldMigrateGuest {
+		dataDir := filepath.Dir(m.accountStore.Path())
+		if err := usermigrator.MigrateData(dataDir, "guest", username); err != nil {
+			log.Printf("Fehler bei der Migration der Gast-Daten: %v", err)
+		}
+
+		// Update the internal preferences store explicitly
+		if pref, ok := m.preferencesStore.Get("guest"); ok {
+			_, _ = m.preferencesStore.Set(username, pref.Language)
+		}
+
+		_, _ = m.accountStore.DeleteUser("guest")
+	}
+
 	if err := m.notifyUserCreated(username); err != nil {
 		return nil, status.Error(codes.Internal, "Account wurde erstellt, aber das Benutzerprofil konnte nicht initialisiert werden")
 	}
@@ -213,7 +262,7 @@ func (s *grpcService) UpdateUserPreferences(ctx context.Context, req *loginv1.Up
 		return nil, err
 	}
 
-	preferences, updateErr := s.module.preferencesStore.Set(userID, req.GetLanguage(), req.GetFrontendVersion())
+	preferences, updateErr := s.module.preferencesStore.Set(userID, req.GetLanguage())
 	if updateErr != nil {
 		return nil, status.Error(codes.InvalidArgument, updateErr.Error())
 	}
@@ -235,9 +284,8 @@ func authenticatedUser(ctx context.Context) (string, error) {
 
 func userPreferencesToProto(preferences UserPreferences, configured bool) *loginv1.UserPreferences {
 	return &loginv1.UserPreferences{
-		Configured:      configured,
-		Language:        preferences.Language,
-		FrontendVersion: preferences.FrontendVersion,
+		Configured: configured,
+		Language:   preferences.Language,
 	}
 }
 

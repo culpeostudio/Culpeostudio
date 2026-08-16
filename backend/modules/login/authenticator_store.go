@@ -31,6 +31,7 @@ type authenticatorConfig struct {
 	AccountName  string    `json:"account_name"`
 	Secret       string    `json:"secret"`
 	App          string    `json:"app"`
+	GuestMode    bool      `json:"guest_mode,omitempty"`
 	ConfiguredAt time.Time `json:"configured_at"`
 }
 
@@ -92,6 +93,45 @@ func (s *AuthenticatorStore) IsConfigured() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.cfg != nil && s.cfg.Secret != ""
+}
+
+func (s *AuthenticatorStore) IsGuestMode() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg != nil && s.cfg.GuestMode
+}
+
+func (s *AuthenticatorStore) SetGuestMode(enabled bool) error {
+	if s.path == "" {
+		return errors.New("authenticator file path is empty")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var cfg authenticatorConfig
+	if s.cfg != nil {
+		cfg = *s.cfg
+	}
+	cfg.GuestMode = enabled
+
+	serialized, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	serialized = append(serialized, '\n')
+
+	dir := filepath.Dir(s.path)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(s.path, serialized, 0o600); err != nil {
+		return err
+	}
+	s.cfg = &cfg
+	return nil
 }
 
 func (s *AuthenticatorStore) SaveConfigured(secret string, configuredAt time.Time, app ...string) error {

@@ -239,3 +239,35 @@ func TestUnaryAuthPrefersTheSessionToken(t *testing.T) {
 		t.Fatalf("user_id = %q, erwartet %q", got, "user-1")
 	}
 }
+
+func TestUnaryAuthNeverAcceptsJWTWithAnEmptySecret(t *testing.T) {
+	// An empty signing key is publicly known. A service that supplies no
+	// Studio JWT secret must therefore reject this otherwise valid token.
+	token := signedToken(t, "", "attacker", "attacker")
+	_, err := callUnary(AuthConfig{}, contextWithAuth("Bearer "+token), "/svc/Method")
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("empty-secret JWT = %s, want Unauthenticated (%v)", status.Code(err), err)
+	}
+}
+
+func TestUnaryAuthOnlyAlternateRejectsAValidSessionJWT(t *testing.T) {
+	token := signedToken(t, testSecret, "user-1", "anna")
+	cfg := AuthConfig{
+		Secret:            testSecret,
+		OnlyAlternateAuth: true,
+		AlternateAuth: func(_ context.Context, fullMethod, credential string) (string, bool) {
+			return "node-1", fullMethod == "/node/Method" && credential == "pairing-token"
+		},
+	}
+	_, err := callUnary(cfg, contextWithAuth("Bearer "+token), "/svc/Method")
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("JWT on alternate-only service = %s, want Unauthenticated (%v)", status.Code(err), err)
+	}
+	seen, err := callUnary(cfg, contextWithAuth("Bearer pairing-token"), "/node/Method")
+	if err != nil {
+		t.Fatalf("pairing credential: %v", err)
+	}
+	if got := UserIDFromContext(seen); got != "node-1" {
+		t.Fatalf("alternate user id = %q, want node-1", got)
+	}
+}

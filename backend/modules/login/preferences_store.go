@@ -11,19 +11,14 @@ import (
 )
 
 const (
-	defaultUserLanguage        = "de"
-	defaultUserFrontendVersion = "classic"
-	userPreferencesSchema      = 1
+	defaultUserLanguage   = "de"
+	userPreferencesSchema = 1
 )
 
-var (
-	errInvalidUserLanguage        = errors.New("language muss 'de' oder 'en' sein")
-	errInvalidUserFrontendVersion = errors.New("frontend_version muss 'lite' oder 'classic' sein")
-)
+var errInvalidUserLanguage = errors.New("language muss 'de' oder 'en' sein")
 
 type UserPreferences struct {
-	Language        string `json:"language"`
-	FrontendVersion string `json:"frontend_version"`
+	Language string `json:"language"`
 }
 
 type persistedUserPreferences struct {
@@ -81,7 +76,7 @@ func (s *UserPreferencesStore) Load() error {
 		if userID == "" {
 			continue
 		}
-		preferences, err = normalizedUserPreferences(preferences.Language, preferences.FrontendVersion)
+		preferences, err = normalizedUserPreferences(preferences.Language)
 		if err != nil {
 			return fmt.Errorf("Benutzerpraeferenzen fuer %q sind ungueltig: %w", userID, err)
 		}
@@ -113,7 +108,7 @@ func (s *UserPreferencesStore) Get(username string) (UserPreferences, bool) {
 	return preferences, true
 }
 
-func (s *UserPreferencesStore) Set(username, language, frontendVersion string) (UserPreferences, error) {
+func (s *UserPreferencesStore) Set(username, language string) (UserPreferences, error) {
 	if s == nil {
 		return UserPreferences{}, errors.New("Benutzerpraeferenzen sind nicht initialisiert")
 	}
@@ -121,7 +116,7 @@ func (s *UserPreferencesStore) Set(username, language, frontendVersion string) (
 	if userID == "" {
 		return UserPreferences{}, errors.New("Benutzerkennung ist erforderlich")
 	}
-	preferences, err := normalizedUserPreferences(language, frontendVersion)
+	preferences, err := normalizedUserPreferences(language)
 	if err != nil {
 		return UserPreferences{}, err
 	}
@@ -139,21 +134,16 @@ func (s *UserPreferencesStore) Set(username, language, frontendVersion string) (
 
 func defaultUserPreferences() UserPreferences {
 	return UserPreferences{
-		Language:        defaultUserLanguage,
-		FrontendVersion: defaultUserFrontendVersion,
+		Language: defaultUserLanguage,
 	}
 }
 
-func normalizedUserPreferences(language, frontendVersion string) (UserPreferences, error) {
+func normalizedUserPreferences(language string) (UserPreferences, error) {
 	language = strings.ToLower(strings.TrimSpace(language))
-	frontendVersion = strings.ToLower(strings.TrimSpace(frontendVersion))
 	if language != "de" && language != "en" {
 		return UserPreferences{}, errInvalidUserLanguage
 	}
-	if frontendVersion != "lite" && frontendVersion != "classic" {
-		return UserPreferences{}, errInvalidUserFrontendVersion
-	}
-	return UserPreferences{Language: language, FrontendVersion: frontendVersion}, nil
+	return UserPreferences{Language: language}, nil
 }
 
 func cloneUserPreferences(users map[string]UserPreferences) map[string]UserPreferences {

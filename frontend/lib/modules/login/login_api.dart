@@ -15,7 +15,30 @@ class LoginApi {
       return {
         'totp_configured': response.totpConfigured,
         'authenticator_app': response.authenticatorApp,
+        'guest_mode_active': response.guestModeActive,
       };
+    } catch (e) {
+      return {'error': _c.grpcErrorMessage(e)};
+    }
+  }
+
+  Future<Map<String, dynamic>> enableGuestMode() async {
+    try {
+      await _c.loginClient.enableGuestMode(
+        loginpb.EnableGuestModeRequest(),
+      );
+      return {'success': true};
+    } catch (e) {
+      return {'error': _c.grpcErrorMessage(e)};
+    }
+  }
+
+  Future<Map<String, dynamic>> disableGuestMode() async {
+    try {
+      await _c.loginClient.disableGuestMode(
+        loginpb.DisableGuestModeRequest(),
+      );
+      return {'success': true};
     } catch (e) {
       return {'error': _c.grpcErrorMessage(e)};
     }
@@ -133,14 +156,10 @@ class LoginApi {
 
   Future<Map<String, dynamic>> updateUserPreferences({
     required String language,
-    required String frontendVersion,
   }) async {
     try {
       final response = await _c.loginClient.updateUserPreferences(
-        loginpb.UpdateUserPreferencesRequest(
-          language: language,
-          frontendVersion: frontendVersion,
-        ),
+        loginpb.UpdateUserPreferencesRequest(language: language),
       );
       return _preferencesToMap(response.preferences);
     } catch (e) {
@@ -172,7 +191,6 @@ class LoginApi {
     return {
       'configured': preferences.configured,
       'language': preferences.language,
-      'frontend_version': preferences.frontendVersion,
     };
   }
 }

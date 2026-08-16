@@ -12,24 +12,16 @@ class _QueuedAnswer {
   const _QueuedAnswer.preferences({
     required this.configured,
     required this.language,
-    required this.frontendVersion,
   }) : error = null;
 
-  const _QueuedAnswer.failure(this.error)
-    : configured = false,
-      language = '',
-      frontendVersion = '';
+  const _QueuedAnswer.failure(this.error) : configured = false, language = '';
 
   final bool configured;
   final String language;
-  final String frontendVersion;
   final GrpcError? error;
 
-  loginpb.UserPreferences toProto() => loginpb.UserPreferences(
-    configured: configured,
-    language: language,
-    frontendVersion: frontendVersion,
-  );
+  loginpb.UserPreferences toProto() =>
+      loginpb.UserPreferences(configured: configured, language: language);
 }
 
 /// Answers the preference calls from a queue, recording which were made.
@@ -99,6 +91,18 @@ class _QueuedLoginService extends loginpb.LoginServiceBase {
     ServiceCall call,
     loginpb.ResetPasswordRequest r,
   ) async => throw UnimplementedError();
+
+  @override
+  Future<loginpb.EnableGuestModeResponse> enableGuestMode(
+    ServiceCall call,
+    loginpb.EnableGuestModeRequest r,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<loginpb.DisableGuestModeResponse> disableGuestMode(
+    ServiceCall call,
+    loginpb.DisableGuestModeRequest r,
+  ) async => throw UnimplementedError();
 }
 
 Future<(ApiService, _QueuedLoginService)> _startBackend(
@@ -130,11 +134,7 @@ void main() {
     'an unconfigured backend profile keeps first-login onboarding required',
     () async {
       final (api, service) = await _startBackend('new-user', [
-        const _QueuedAnswer.preferences(
-          configured: false,
-          language: 'de',
-          frontendVersion: 'classic',
-        ),
+        const _QueuedAnswer.preferences(configured: false, language: 'de'),
       ]);
       final state = AppState.test(api);
 
@@ -144,7 +144,6 @@ void main() {
       expect(state.userPreferencesLoaded, isTrue);
       expect(state.needsOnboarding, isTrue);
       expect(state.language, 'de');
-      expect(state.frontendVersion, 'classic');
       expect(service.calls, ['get']);
     },
   );
@@ -156,22 +155,14 @@ void main() {
         _QueuedAnswer.failure(
           GrpcError.internal('storage temporarily unavailable'),
         ),
-        const _QueuedAnswer.preferences(
-          configured: true,
-          language: 'en',
-          frontendVersion: 'lite',
-        ),
+        const _QueuedAnswer.preferences(configured: true, language: 'en'),
       ]);
       final state = AppState.test(api);
 
-      final saved = await state.saveUserPreferences(
-        language: 'en',
-        frontendVersion: 'lite',
-      );
+      final saved = await state.saveUserPreferences(language: 'en');
 
       expect(saved, isFalse);
       expect(state.language, 'de');
-      expect(state.frontendVersion, 'classic');
       expect(state.userPreferencesError, isNotNull);
       expect(state.canRetryUserPreferencesSave, isTrue);
 
@@ -179,7 +170,6 @@ void main() {
 
       expect(retried, isTrue);
       expect(state.language, 'en');
-      expect(state.frontendVersion, 'lite');
       expect(appLanguage, 'en');
       expect(state.needsOnboarding, isFalse);
       expect(state.canRetryUserPreferencesSave, isFalse);
@@ -192,11 +182,7 @@ void main() {
     () async {
       final (api, service) = await _startBackend('existing-user', [
         _QueuedAnswer.failure(GrpcError.unavailable('service unavailable')),
-        const _QueuedAnswer.preferences(
-          configured: true,
-          language: 'en',
-          frontendVersion: 'classic',
-        ),
+        const _QueuedAnswer.preferences(configured: true, language: 'en'),
       ]);
       final state = AppState.test(api);
 

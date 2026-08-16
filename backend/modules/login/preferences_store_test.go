@@ -57,20 +57,18 @@ func TestUserPreferencesAPIRequiresAuthenticationAndPersistsCompleteProfile(t *t
 		t.Fatalf("initial GET error = %v", err)
 	}
 	profile := initial.GetPreferences()
-	if profile.GetConfigured() || profile.GetLanguage() != "de" || profile.GetFrontendVersion() != "classic" {
-		t.Fatalf("initial profile = %+v, want unconfigured German Classic defaults", profile)
+	if profile.GetConfigured() || profile.GetLanguage() != "de" {
+		t.Fatalf("initial profile = %+v, want unconfigured German default", profile)
 	}
 
 	// An omitted field arrives as an empty string, which the store rejects the
 	// same way the handler used to reject a missing JSON key.
-	if _, err := service.UpdateUserPreferences(ctx, &loginv1.UpdateUserPreferencesRequest{
-		Language: "en",
-	}); status.Code(err) != codes.InvalidArgument {
+	if _, err := service.UpdateUserPreferences(ctx, &loginv1.UpdateUserPreferencesRequest{}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("missing field code = %v, want InvalidArgument", status.Code(err))
 	}
 
 	if _, err := service.UpdateUserPreferences(ctx, &loginv1.UpdateUserPreferencesRequest{
-		Language: "fr", FrontendVersion: "lite",
+		Language: "fr",
 	}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("invalid value code = %v, want InvalidArgument", status.Code(err))
 	}
@@ -84,14 +82,14 @@ func TestUserPreferencesAPIRequiresAuthenticationAndPersistsCompleteProfile(t *t
 	}
 
 	updated, err := service.UpdateUserPreferences(ctx, &loginv1.UpdateUserPreferencesRequest{
-		Language: " EN ", FrontendVersion: "LITE",
+		Language: " EN ",
 	})
 	if err != nil {
 		t.Fatalf("valid update error = %v", err)
 	}
 	updatedProfile := updated.GetPreferences()
-	if !updatedProfile.GetConfigured() || updatedProfile.GetLanguage() != "en" || updatedProfile.GetFrontendVersion() != "lite" {
-		t.Fatalf("updated profile = %+v, want configured English Lite", updatedProfile)
+	if !updatedProfile.GetConfigured() || updatedProfile.GetLanguage() != "en" {
+		t.Fatalf("updated profile = %+v, want configured English", updatedProfile)
 	}
 
 	info, err := os.Stat(preferencesPath)
@@ -107,7 +105,7 @@ func TestUserPreferencesAPIRequiresAuthenticationAndPersistsCompleteProfile(t *t
 		t.Fatal(err)
 	}
 	persisted, configured := reloaded.Get("alice!")
-	if !configured || persisted.Language != "en" || persisted.FrontendVersion != "lite" {
+	if !configured || persisted.Language != "en" {
 		t.Fatalf("reloaded preferences = %#v, configured=%v", persisted, configured)
 	}
 }
@@ -127,12 +125,10 @@ func TestUserPreferencesStoreSerializesConcurrentUpdates(t *testing.T) {
 		go func(index int) {
 			defer wait.Done()
 			language := "de"
-			version := "classic"
 			if index%2 == 1 {
 				language = "en"
-				version = "lite"
 			}
-			_, err := store.Set(fmt.Sprintf("User-%d", index), language, version)
+			_, err := store.Set(fmt.Sprintf("User-%d", index), language)
 			errors <- err
 		}(index)
 	}
@@ -153,18 +149,18 @@ func TestUserPreferencesStoreSerializesConcurrentUpdates(t *testing.T) {
 		if !configured {
 			t.Fatalf("user-%d was not persisted", index)
 		}
-		if index%2 == 1 && (preferences.Language != "en" || preferences.FrontendVersion != "lite") {
-			t.Fatalf("user-%d preferences = %#v, want English Lite", index, preferences)
+		if index%2 == 1 && preferences.Language != "en" {
+			t.Fatalf("user-%d preferences = %#v, want English", index, preferences)
 		}
-		if index%2 == 0 && (preferences.Language != "de" || preferences.FrontendVersion != "classic") {
-			t.Fatalf("user-%d preferences = %#v, want German Classic", index, preferences)
+		if index%2 == 0 && preferences.Language != "de" {
+			t.Fatalf("user-%d preferences = %#v, want German", index, preferences)
 		}
 	}
 }
 
 func TestUserPreferencesStoreDoesNotMutateMemoryWhenAtomicWriteFails(t *testing.T) {
 	store := NewUserPreferencesStore(t.TempDir())
-	if _, err := store.Set("alice", "en", "lite"); err == nil {
+	if _, err := store.Set("alice", "en"); err == nil {
 		t.Fatal("expected write into directory path to fail")
 	}
 	preferences, configured := store.Get("alice")

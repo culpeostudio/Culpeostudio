@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/design_tokens.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/widgets/custom_title_bar.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/app_state.dart';
@@ -49,12 +50,23 @@ class _LoginScreenState extends State<LoginScreen> {
     final restored = await _appState.restoreRememberedSession();
     if (!restored) {
       final loaded = await _appState.loadAuthStatus();
-      if (loaded && _appState.totpConfigured == false) {
-        await _appState.startAuthenticatorSetup();
+      if (loaded) {
+        if (_appState.guestModeActive) {
+          await _appState.login('guest', '', rememberSession: true, sessionDuration: 'permanent');
+        } else if (_appState.totpConfigured == false) {
+          await _appState.startAuthenticatorSetup();
+        }
       }
     }
     if (mounted) {
       setState(() => _bootstrapping = false);
+    }
+  }
+
+  Future<void> _handleSkipRegistration() async {
+    final success = await _appState.enableGuestMode();
+    if (success && mounted) {
+      await _appState.login('guest', '', rememberSession: true, sessionDuration: 'permanent');
     }
   }
 
@@ -331,6 +343,14 @@ class _LoginScreenState extends State<LoginScreen> {
               icon: const Icon(Icons.check_circle_outline),
               label: Text(tr('login.setup.confirm')),
             ),
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: _appState.isLoading ? null : _handleSkipRegistration,
+              child: const Text(
+                'Ohne Registrierung fortfahren (Gastmodus)',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ),
           ] else
             Text(
               _appState.authError ?? tr('login.setup.loadError'),
@@ -563,54 +583,61 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF030305),
-      body: Stack(
+      body: Column(
         children: [
-          const Positioned.fill(child: AppBackground()),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 40,
-                bottom: 85,
-              ),
-              child: AnimatedBuilder(
-                animation: _appState,
-                builder: (context, _) {
-                  final content = _bootstrapping
-                      ? _loadingContent()
-                      : _appState.totpConfigured == false
-                      ? _setupContent()
-                      : _loginContent();
-                  return _panel(content);
-                },
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 20,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          const CustomTitleBar(),
+          Expanded(
+            child: Stack(
               children: [
-                Text(
-                  tr('login.footer.copyright'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    fontSize: 11,
-                    letterSpacing: 0.5,
+                const Positioned.fill(child: AppBackground()),
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      top: 40,
+                      bottom: 85,
+                    ),
+                    child: AnimatedBuilder(
+                      animation: _appState,
+                      builder: (context, _) {
+                        final content = _bootstrapping
+                            ? _loadingContent()
+                            : _appState.totpConfigured == false
+                            ? _setupContent()
+                            : _loginContent();
+                        return _panel(content);
+                      },
+                    ),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  tr('login.footer.credits'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    fontSize: 9,
-                    letterSpacing: 0.2,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 20,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tr('login.footer.copyright'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        tr('login.footer.credits'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          fontSize: 9,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

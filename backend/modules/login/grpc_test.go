@@ -318,7 +318,7 @@ func TestUserPreferencesRequireAuthenticatedContext(t *testing.T) {
 	}
 
 	_, err = service.UpdateUserPreferences(context.Background(), &loginv1.UpdateUserPreferencesRequest{
-		Language: "de", FrontendVersion: "lite",
+		Language: "de",
 	})
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("update code = %v, want Unauthenticated", status.Code(err))
@@ -338,7 +338,7 @@ func TestUserPreferencesRoundTripForAuthenticatedUser(t *testing.T) {
 	}
 
 	updated, err := service.UpdateUserPreferences(ctx, &loginv1.UpdateUserPreferencesRequest{
-		Language: "de", FrontendVersion: "lite",
+		Language: "de",
 	})
 	if err != nil {
 		t.Fatalf("UpdateUserPreferences() error = %v", err)
@@ -351,7 +351,7 @@ func TestUserPreferencesRoundTripForAuthenticatedUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetUserPreferences() after update error = %v", err)
 	}
-	if after.GetPreferences().GetFrontendVersion() != "lite" {
-		t.Fatalf("frontend_version = %q, want lite", after.GetPreferences().GetFrontendVersion())
+	if after.GetPreferences().GetLanguage() != "de" {
+		t.Fatalf("language = %q, want de", after.GetPreferences().GetLanguage())
 	}
 }

@@ -30,6 +30,13 @@ type AuthConfig struct {
 	// Secret signs and verifies the JWTs.
 	Secret string
 
+	// OnlyAlternateAuth disables the application JWT path completely. It is
+	// for a deliberately small service such as a standalone Node, which has no
+	// user accounts and must accept only its own narrowly scoped credential.
+	// This is stronger than leaving Secret empty: an empty HMAC key must never
+	// become an implicit JWT signing key.
+	OnlyAlternateAuth bool
+
 	// IsActiveUser reports whether the account named in the token still
 	// exists. A nil value skips the check.
 	IsActiveUser func(string) bool
@@ -124,34 +131,43 @@ func authenticate(ctx context.Context, cfg AuthConfig, fullMethod string) (conte
 		return nil, err
 	}
 
-	parsed, err := jwt.Parse(token, func(*jwt.Token) (any, error) {
-		return []byte(cfg.Secret), nil
-	})
-	if err != nil || !parsed.Valid {
-		// Not a session token. It may still be a credential a module issued
-		// itself, which only that module's methods accept.
-		if cfg.AlternateAuth != nil {
-			if userID, ok := cfg.AlternateAuth(ctx, fullMethod, token); ok {
-				return context.WithValue(ctx, contextKeyUserID, userID), nil
+	// A missing secret is never a valid JWT configuration. In particular, do
+	// not let a token signed with an empty HMAC key authenticate a standalone
+	// Node merely because it has no Studio login secret.
+	if !cfg.OnlyAlternateAuth && strings.TrimSpace(cfg.Secret) != "" {
+		parsed, parseErr := jwt.Parse(token, func(parsedToken *jwt.Token) (any, error) {
+			if _, ok := parsedToken.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
 			}
+			return []byte(cfg.Secret), nil
+		})
+		if parseErr == nil && parsed.Valid {
+			claims, ok := parsed.Claims.(jwt.MapClaims)
+			if !ok {
+				return nil, status.Error(codes.Unauthenticated, "Ungueltige Claims")
+			}
+
+			username, _ := claims["username"].(string)
+			if cfg.IsActiveUser != nil && !cfg.IsActiveUser(username) {
+				return nil, status.Error(codes.Unauthenticated, "Account existiert nicht mehr")
+			}
+
+			userID, _ := claims["user_id"].(string)
+			ctx = context.WithValue(ctx, contextKeyUserID, userID)
+			ctx = context.WithValue(ctx, contextKeyUsername, username)
+			return ctx, nil
 		}
-		return nil, status.Error(codes.Unauthenticated, "Ungueltiger Token")
 	}
 
-	claims, ok := parsed.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "Ungueltige Claims")
+	// Not a session token, or JWT is intentionally disabled. It may still be a
+	// credential a module issued itself, which only that module's methods
+	// accept.
+	if cfg.AlternateAuth != nil {
+		if userID, ok := cfg.AlternateAuth(ctx, fullMethod, token); ok {
+			return context.WithValue(ctx, contextKeyUserID, userID), nil
+		}
 	}
-
-	username, _ := claims["username"].(string)
-	if cfg.IsActiveUser != nil && !cfg.IsActiveUser(username) {
-		return nil, status.Error(codes.Unauthenticated, "Account existiert nicht mehr")
-	}
-
-	userID, _ := claims["user_id"].(string)
-	ctx = context.WithValue(ctx, contextKeyUserID, userID)
-	ctx = context.WithValue(ctx, contextKeyUsername, username)
-	return ctx, nil
+	return nil, status.Error(codes.Unauthenticated, "Ungueltiger Token")
 }
 
 func bearerToken(ctx context.Context) (string, error) {
