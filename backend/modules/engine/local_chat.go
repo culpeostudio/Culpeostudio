@@ -15,7 +15,7 @@ import (
 
 	"github.com/culpeohq/backend/internal/engineruntime"
 	"github.com/culpeohq/backend/internal/localinference"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 var _ localinference.Provider = (*EngineModule)(nil)
@@ -36,7 +36,7 @@ func (m *EngineModule) ReadyLocalModels() []localinference.Model {
 
 func (m *EngineModule) ResolveLocalModel(instanceID string) (localinference.Model, error) {
 	instanceID = strings.TrimSpace(instanceID)
-	if nodeID, localID, remote := node.Split(instanceID); remote {
+	if nodeID, localID, remote := noderouting.Split(instanceID); remote {
 		_, model, err := m.resolveNodeModel(context.Background(), nodeID, localID)
 		return model, err
 	}
@@ -52,8 +52,10 @@ func (m *EngineModule) ResolveLocalModel(instanceID string) (localinference.Mode
 
 func localModelView(instance *EngineInstance) localinference.Model {
 	contextLimit := 0
+	modelContextLimit := 0
 	if instance.Plan != nil {
 		contextLimit = instance.Plan.EffectiveContextTokens
+		modelContextLimit = instance.Plan.ModelContextLimitTokens
 	}
 	displayName := strings.TrimSpace(instance.ServedModelName)
 	if displayName == "" {
@@ -65,28 +67,37 @@ func localModelView(instance *EngineInstance) localinference.Model {
 	return localinference.Model{
 		InstanceID: instance.ID, ModelID: instance.ModelID,
 		DisplayName: displayName, ContextLimit: contextLimit,
+		ModelContextLimit: modelContextLimit,
 	}
 }
 
 func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, request localinference.ChatRequest, emit func(string) error) (string, error) {
+	reply, _, err := m.StreamLocalChatWithReason(ctx, instanceID, request, emit)
+	return reply, err
+}
+
+// StreamLocalChatWithReason is StreamLocalChat plus the model's finish reason,
+// which is how the chat tells a reply that ended from one that hit its output
+// limit and is worth continuing.
+func (m *EngineModule) StreamLocalChatWithReason(ctx context.Context, instanceID string, request localinference.ChatRequest, emit func(string) error) (string, string, error) {
 	// An instance on a node is answered by that node's gateway. Everything
 	// below this line - the worker URL, the admission gate, the local
 	// statistics - describes a process on this machine.
-	if nodeID, localID, remote := node.Split(strings.TrimSpace(instanceID)); remote {
+	if nodeID, localID, remote := noderouting.Split(strings.TrimSpace(instanceID)); remote {
 		return m.streamNodeChat(ctx, nodeID, localID, request, emit)
 	}
 	instance, model, err := m.localChatTarget(instanceID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if len(request.Messages) == 0 {
-		return "", fmt.Errorf("%w: mindestens eine Chat-Nachricht ist erforderlich", localinference.ErrInvalidRequest)
+		return "", "", fmt.Errorf("%w: mindestens eine Chat-Nachricht ist erforderlich", localinference.ErrInvalidRequest)
 	}
 	messages := make([]interface{}, 0, len(request.Messages))
 	for _, message := range request.Messages {
 		role := strings.ToLower(strings.TrimSpace(message.Role))
 		if role != "system" && role != "user" && role != "assistant" {
-			return "", fmt.Errorf("%w: ungueltige Chat-Rolle %q", localinference.ErrInvalidRequest, message.Role)
+			return "", "", fmt.Errorf("%w: ungueltige Chat-Rolle %q", localinference.ErrInvalidRequest, message.Role)
 		}
 		messages = append(messages, map[string]interface{}{
 			"role": role, "content": message.Content,
@@ -105,29 +116,29 @@ func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, r
 	}
 	if request.MaxTokens != nil {
 		if *request.MaxTokens < 0 {
-			return "", fmt.Errorf("%w: max_tokens darf nicht negativ sein", localinference.ErrInvalidRequest)
+			return "", "", fmt.Errorf("%w: max_tokens darf nicht negativ sein", localinference.ErrInvalidRequest)
 		}
 		payload["max_tokens"] = *request.MaxTokens
 	}
 	if exceedsApproximateContext(payload, model.ContextLimit) {
-		return "", fmt.Errorf("%w: maximal %d Tokens", localinference.ErrContextLimit, model.ContextLimit)
+		return "", "", fmt.Errorf("%w: maximal %d Tokens", localinference.ErrContextLimit, model.ContextLimit)
 	}
 	release, err := m.acquireInference(ctx, instance.ID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer release()
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	upstreamURL, err := localWorkerURL(instance.BaseURL, "/v1/chat/completions")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, upstreamURL, bytes.NewReader(data))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 	httpRequest.Header.Set("Accept", "text/event-stream")
@@ -141,13 +152,13 @@ func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, r
 	response, err := client.Do(httpRequest)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return "", ctx.Err()
+			return "", "", ctx.Err()
 		}
-		return "", localinference.ErrWorkerUnavailable
+		return "", "", localinference.ErrWorkerUnavailable
 	}
 	defer response.Body.Close()
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return "", localWorkerError(response)
+		return "", "", localWorkerError(response)
 	}
 
 	var firstToken time.Time
@@ -159,15 +170,15 @@ func (m *EngineModule) StreamLocalChat(ctx context.Context, instanceID string, r
 		tokens++
 		return emit(chunk)
 	}
-	result, streamErr := localinference.ReadOpenAIStream(response.Body, measuredEmit)
+	result, finishReason, streamErr := localinference.ReadOpenAIStreamWithReason(response.Body, measuredEmit)
 	if streamErr == nil {
 		m.recordInferenceSample(instance.ID, requestStart, firstToken, tokens)
 	}
-	return result, streamErr
+	return result, finishReason, streamErr
 }
 
 func (m *EngineModule) EnsureLocalModelReady(ctx context.Context, instanceID string, emit func(localinference.WarmupProgress) error) (localinference.Model, error) {
-	if nodeID, localID, remote := node.Split(strings.TrimSpace(instanceID)); remote {
+	if nodeID, localID, remote := noderouting.Split(strings.TrimSpace(instanceID)); remote {
 		return m.ensureNodeModelReady(ctx, nodeID, localID, emit)
 	}
 	instance, operation, err := m.ensureReady(strings.TrimSpace(instanceID))
