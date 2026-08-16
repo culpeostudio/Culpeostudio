@@ -24,6 +24,10 @@ frontend/.flutter-plugins-dependencies
 quikinstall/releases/
 
 
+# Release-Archive aus scripts/build-node-release.sh
+dist/
+
+
 backend/.venv/
 **/__pycache__/
 *.pyc
