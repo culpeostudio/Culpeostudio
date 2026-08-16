@@ -70,9 +70,79 @@ func TestPlanRunnerProposeLegtPlanVor(t *testing.T) {
 	if len(steps) != 2 || steps[0] != "1. Lesen" {
 		t.Fatalf("Schritt-Titel im Event falsch: %v", planData["steps"])
 	}
+	detailed, _ := planData["plan_steps"].([]map[string]interface{})
+	if len(detailed) != 2 || detailed[1]["number"] != 2 || detailed[1]["title"] != "Schreiben" {
+		t.Fatalf("Schrittliste im Event falsch: %v", planData["plan_steps"])
+	}
 
 	if strings.Contains(visible.String(), "summary") {
 		t.Errorf("Plan-JSON sollte nicht sichtbar gestreamt werden: %q", visible.String())
+	}
+}
+
+func TestPlanRunnerProposeGibtDasGespraechMit(t *testing.T) {
+	model := &fakeModel{replies: []string{
+		`{"summary":"Eins","steps":[{"title":"Export bauen"}]}`,
+	}}
+	runner := &planRunner{
+		chatTurn: model.turn,
+		history: []Message{
+			{Role: "user", Content: "Das Projekt liegt in /tmp/demo"},
+			{Role: "assistant", Content: "Verstanden."},
+			{Role: "user", Content: "Bau den Export"},
+		},
+		projectPath: "/tmp/demo",
+		roots:       []string{"/tmp/demo"},
+		sessionID:   "s",
+	}
+
+	if _, err := runner.propose(context.Background(), "Bau den Export"); err != nil {
+		t.Fatalf("propose: %v", err)
+	}
+
+	convo := model.convos[0]
+	if len(convo) != 3 {
+		t.Fatalf("Planung braucht das Gespraech, bekam %d Nachrichten: %+v", len(convo), convo)
+	}
+	if convo[0].Content != "Das Projekt liegt in /tmp/demo" {
+		t.Errorf("frueherer Kontext fehlt: %+v", convo[0])
+	}
+	if last := convo[len(convo)-1]; last.Role != "user" || last.Content != "Bau den Export" {
+		t.Errorf("die Aufgabe muss das letzte Wort haben, war %+v", last)
+	}
+	if !strings.Contains(model.prompts[0], "/tmp/demo") {
+		t.Error("der gebundene Projekt-Ordner fehlt im Planungs-Prompt")
+	}
+}
+
+func TestPlanningConversationKuerztUndEntdoppelt(t *testing.T) {
+	var history []Message
+	for i := 0; i < 12; i++ {
+		history = append(history, Message{Role: "user", Content: strings.Repeat("x", 40)})
+	}
+	history = append(history,
+		Message{Role: "assistant", Content: strings.Repeat("y", maxPlanContextChars+200)},
+		Message{Role: "user", Content: "Letzte Aufgabe"},
+	)
+
+	convo := planningConversation(history, "Letzte Aufgabe")
+
+	if len(convo) != maxPlanContextMessages+1 {
+		t.Fatalf("erwartete %d Nachrichten, bekam %d", maxPlanContextMessages+1, len(convo))
+	}
+	if last := convo[len(convo)-1]; last.Content != "Letzte Aufgabe" {
+		t.Errorf("die Aufgabe darf nicht doppelt am Ende stehen: %+v", convo[len(convo)-2:])
+	}
+	long := convo[len(convo)-2]
+	if len([]rune(long.Content)) > maxPlanContextChars+1 {
+		t.Errorf("lange Nachricht wurde nicht gekuerzt: %d Zeichen", len([]rune(long.Content)))
+	}
+}
+
+func TestPlanningConversationOhneVerlauf(t *testing.T) {
+	convo := planningConversation(nil, "  Nur die Aufgabe  ")
+	if len(convo) != 1 || convo[0].Content != "Nur die Aufgabe" {
+		t.Fatalf("ohne Verlauf bleibt nur die Aufgabe, bekam %+v", convo)
 	}
 }
 
@@ -150,6 +220,182 @@ func TestPlanRunnerExecuteArbeitetSchritteAb(t *testing.T) {
 	}
 }
 
+func TestPlanRunnerExecuteRahmtDieAbarbeitungEin(t *testing.T) {
+	model := &fakeModel{replies: []string{"eins", "zwei", "Bericht"}}
+	var events []string
+	var started, finished map[string]interface{}
+
+	runner := &planRunner{
+		chatTurn: model.turn,
+		emitEvent: func(eventType string, data interface{}) error {
+			events = append(events, eventType)
+			payload, _ := data.(map[string]interface{})
+			switch eventType {
+			case "plan_started":
+				started = payload
+			case "plan_finished":
+				finished = payload
+			}
+			return nil
+		},
+		sessionID: "s",
+	}
+	plan := &agentplan.Plan{
+		Goal:    "Ziel",
+		Summary: "S",
+		Steps: []agentplan.Step{
+			{Number: 1, Title: "Erst", Detail: "Datei lesen", Status: agentplan.StatusPending},
+			{Number: 2, Title: "Dann", Status: agentplan.StatusPending},
+		},
+	}
+
+	if _, err := runner.execute(context.Background(), plan); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	if len(events) == 0 || events[0] != "plan_started" {
+		t.Fatalf("plan_started muss vor dem ersten Schritt kommen, bekam %v", events)
+	}
+	if events[len(events)-1] != "plan_finished" {
+		t.Fatalf("plan_finished muss die Abarbeitung abschliessen, bekam %v", events)
+	}
+
+	planning, _ := started["planning"].(map[string]interface{})
+	steps, _ := planning["plan_steps"].([]map[string]interface{})
+	if len(steps) != 2 {
+		t.Fatalf("plan_started ohne vollstaendige Liste: %v", planning["plan_steps"])
+	}
+	if steps[0]["detail"] != "Datei lesen" || steps[0]["status"] != agentplan.StatusPending {
+		t.Errorf("erster Schritt im Startereignis falsch: %v", steps[0])
+	}
+
+	if finished["done"] != 2 || finished["failed"] != 0 || finished["pending"] != 0 {
+		t.Errorf("Abschlusszaehlung falsch: %v", finished)
+	}
+}
+
+func TestPlanRunnerExecuteArbeitetNachEinemLimitWeiter(t *testing.T) {
+	var finished map[string]interface{}
+	var attempts int
+	runner := &planRunner{
+		chatTurn: func(convo []Message, prompt string, filterEmit func(string) error) (string, error) {
+			if strings.Contains(prompt, "Abschlussbericht") {
+				return "Bericht", nil
+			}
+			// The step's own task line, not the prompt: the prompt of step 2
+			// names step 1 as well, in the list of what is already done.
+			if len(convo) > 0 && strings.Contains(convo[0].Content, "Schritt 1") {
+				attempts++
+				return "halb fertig", errToolLoopExhausted
+			}
+			return "Schritt zwei erledigt", nil
+		},
+		emitEvent: func(eventType string, data interface{}) error {
+			if eventType == "plan_finished" {
+				finished, _ = data.(map[string]interface{})
+			}
+			return nil
+		},
+		sessionID: "s",
+	}
+	plan := &agentplan.Plan{
+		Goal: "Ziel",
+		Steps: []agentplan.Step{
+			{Number: 1, Title: "Erst", Status: agentplan.StatusPending},
+			{Number: 2, Title: "Dann", Status: agentplan.StatusPending},
+		},
+	}
+
+	if _, err := runner.execute(context.Background(), plan); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if attempts != maxPlanStepAttempts {
+		t.Errorf("ein Schritt am Limit braucht %d Anlaeufe, hatte %d", maxPlanStepAttempts, attempts)
+	}
+	if plan.Steps[0].Status != agentplan.StatusFailed {
+		t.Errorf("Schritt 1 sollte als offen markiert sein, ist %q", plan.Steps[0].Status)
+	}
+	if plan.Steps[1].Status != agentplan.StatusDone {
+		t.Errorf("Schritt 2 muss trotzdem laufen, ist %q", plan.Steps[1].Status)
+	}
+	if finished["failed"] != 1 || finished["done"] != 1 {
+		t.Errorf("Abschlusszaehlung falsch: %v", finished)
+	}
+}
+
+func TestPlanRunnerExecuteHaeltDenPlanNachHartemFehlerOffen(t *testing.T) {
+	var stored *agentplan.Plan
+	cleared := false
+	runner := &planRunner{
+		chatTurn: func(convo []Message, prompt string, filterEmit func(string) error) (string, error) {
+			return "", context.DeadlineExceeded
+		},
+		storeActive: func(plan *agentplan.Plan) { stored = plan },
+		clearActive: func() { cleared = true },
+		sessionID:   "s",
+	}
+	plan := &agentplan.Plan{
+		Goal: "Ziel",
+		Steps: []agentplan.Step{
+			{Number: 1, Title: "Erst", Status: agentplan.StatusPending},
+			{Number: 2, Title: "Dann", Status: agentplan.StatusPending},
+		},
+	}
+
+	if _, err := runner.execute(context.Background(), plan); err == nil {
+		t.Fatal("ein harter Fehler muss durchgereicht werden")
+	}
+	if plan.Steps[0].Status != agentplan.StatusPending {
+		t.Errorf("der abgebrochene Schritt muss wieder offen sein, ist %q", plan.Steps[0].Status)
+	}
+	if stored == nil || stored.Unfinished() != 2 {
+		t.Errorf("der angefangene Plan muss hinterlegt bleiben: %+v", stored)
+	}
+	if cleared {
+		t.Error("ein offener Plan darf nicht geloescht werden")
+	}
+}
+
+func TestPlanRunnerExecuteUeberspringtGrueneSchritte(t *testing.T) {
+	model := &fakeModel{replies: []string{"Schritt zwei erledigt", "Bericht"}}
+	cleared := false
+	var starts []int
+	runner := &planRunner{
+		chatTurn: model.turn,
+		emitEvent: func(eventType string, data interface{}) error {
+			if eventType == "plan_step_start" {
+				payload, _ := data.(map[string]interface{})
+				if number, ok := payload["step"].(int); ok {
+					starts = append(starts, number)
+				}
+			}
+			return nil
+		},
+		clearActive: func() { cleared = true },
+		sessionID:   "s",
+	}
+	plan := &agentplan.Plan{
+		Goal: "Ziel",
+		Steps: []agentplan.Step{
+			{Number: 1, Title: "Erst", Status: agentplan.StatusDone, Result: "war schon"},
+			{Number: 2, Title: "Dann", Status: agentplan.StatusPending},
+		},
+	}
+
+	if _, err := runner.execute(context.Background(), plan); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if len(starts) != 1 || starts[0] != 2 {
+		t.Errorf("nur der offene Schritt darf starten, gestartet wurden %v", starts)
+	}
+	if plan.Steps[0].Result != "war schon" {
+		t.Errorf("das Ergebnis des gruenen Schritts wurde ueberschrieben: %q", plan.Steps[0].Result)
+	}
+	if !cleared {
+		t.Error("ein vollstaendig gruener Plan muss aus der Sitzung verschwinden")
+	}
+}
+
 func TestPlanRunnerExecuteGibtErgebnisWeiter(t *testing.T) {
 	model := &fakeModel{replies: []string{
 		"Der Timeout steht auf 10 Sekunden",
@@ -186,34 +432,6 @@ func TestPlanRunnerExecuteLehntLeerenPlanAb(t *testing.T) {
 	}
 	if _, err := runner.execute(context.Background(), &agentplan.Plan{}); err == nil {
 		t.Error("leerer Plan sollte einen Fehler liefern")
-	}
-}
-
-func TestPlanRunnerExecuteBrichtNachFehlerAb(t *testing.T) {
-	runner := &planRunner{
-		chatTurn: func(convo []Message, prompt string, filterEmit func(string) error) (string, error) {
-			if strings.Contains(prompt, "Abschlussbericht") {
-				return "Bericht", nil
-			}
-			return "", context.DeadlineExceeded
-		},
-		sessionID: "s",
-	}
-	plan := &agentplan.Plan{
-		Goal: "Ziel",
-		Steps: []agentplan.Step{
-			{Number: 1, Title: "Erst", Status: agentplan.StatusPending},
-			{Number: 2, Title: "Dann", Status: agentplan.StatusPending},
-		},
-	}
-	if _, err := runner.execute(context.Background(), plan); err != nil {
-		t.Fatalf("execute sollte den Bericht trotzdem liefern: %v", err)
-	}
-	if plan.Steps[0].Status != agentplan.StatusFailed {
-		t.Errorf("Schritt 1 sollte als fehlgeschlagen markiert sein, ist %q", plan.Steps[0].Status)
-	}
-	if plan.Steps[1].Status != agentplan.StatusPending {
-		t.Errorf("Schritt 2 sollte nicht mehr ausgefuehrt werden, ist %q", plan.Steps[1].Status)
 	}
 }
 

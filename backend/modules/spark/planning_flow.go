@@ -17,6 +17,15 @@ func (m *Module) runPlanningFlow(ctx context.Context, req Request, turn ChatTurn
 	case req.ApprovePlan:
 		plan := m.takePendingPlan(req.UserID, req.SessionID)
 		if plan == nil {
+			// No fresh proposal waiting: this is the "keep going" case. A plan
+			// that stopped half way - crash, closed app, a step out of tool
+			// budget - is still on the session and gets picked up here.
+			if open := m.activePlan(req.UserID, req.SessionID); open != nil && open.Unfinished() > 0 {
+				log.Printf("[spark] Angefangener Plan wird fortgesetzt (%d von %d offen, session=%s)",
+					open.Unfinished(), len(open.Steps), req.SessionID)
+				reply, err = m.executePlan(ctx, req, turn, open)
+				return true, reply, err
+			}
 
 			log.Printf("[spark] Freigabe ohne hinterlegten Plan (session=%s)", req.SessionID)
 			return false, "", nil
@@ -111,7 +120,7 @@ func (m *Module) executePlan(ctx context.Context, req Request, turn ChatTurn, pl
 func (m *Module) newPlanRunner(ctx context.Context, req Request, turn ChatTurn) *planRunner {
 	var asker tools.Asker
 
-	roots := resolveToolRoots(req.ProjectPath, req.Message)
+	roots := resolveToolRoots(req.ProjectPath, req.Message, req.History)
 	if len(roots) > 0 {
 		broker := tools.NewBroker()
 		m.attachBroker(req.SessionID, broker)
@@ -122,12 +131,21 @@ func (m *Module) newPlanRunner(ctx context.Context, req Request, turn ChatTurn) 
 	}
 
 	return &planRunner{
-		chatTurn:  turn,
-		emitText:  req.EmitText,
-		emitEvent: req.EmitEvent,
-		roots:     roots,
-		asker:     asker,
-		sessionID: req.SessionID,
+		chatTurn:    turn,
+		emitText:    req.EmitText,
+		emitEvent:   req.EmitEvent,
+		roots:       roots,
+		projectPath: req.ProjectPath,
+		history:     req.History,
+		asker:       asker,
+		sessionID:   req.SessionID,
+		budget:      req.Budget,
+		storeActive: func(plan *agentplan.Plan) {
+			m.storeActivePlan(req.UserID, req.SessionID, plan)
+		},
+		clearActive: func() {
+			m.clearActivePlan(req.UserID, req.SessionID)
+		},
 	}
 }
 
@@ -143,4 +161,25 @@ func (m *Module) takePendingPlan(userID, sessionID string) *agentplan.Plan {
 		return nil
 	}
 	return m.plans.TakePendingPlan(userID, sessionID)
+}
+
+func (m *Module) storeActivePlan(userID, sessionID string, plan *agentplan.Plan) {
+	if m.plans == nil {
+		return
+	}
+	m.plans.StoreActivePlan(userID, sessionID, plan)
+}
+
+func (m *Module) activePlan(userID, sessionID string) *agentplan.Plan {
+	if m.plans == nil {
+		return nil
+	}
+	return m.plans.ActivePlan(userID, sessionID)
+}
+
+func (m *Module) clearActivePlan(userID, sessionID string) {
+	if m.plans == nil {
+		return
+	}
+	m.plans.ClearActivePlan(userID, sessionID)
 }

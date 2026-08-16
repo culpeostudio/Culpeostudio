@@ -6,7 +6,7 @@ import (
 )
 
 func TestDecomposePromptNenntAufgabeUndFormat(t *testing.T) {
-	prompt := DecomposePrompt("Timeout erhoehen", true)
+	prompt := DecomposePrompt("Timeout erhoehen", Context{HasFileTools: true})
 	for _, want := range []string{"Timeout erhoehen", "summary", "steps", "AUSSCHLIESSLICH"} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("Prompt enthaelt %q nicht", want)
@@ -15,8 +15,66 @@ func TestDecomposePromptNenntAufgabeUndFormat(t *testing.T) {
 	if !strings.Contains(prompt, "konkrete Dateien") {
 		t.Error("mit Datei-Werkzeugen sollte der Prompt Dateibezug erlauben")
 	}
-	if strings.Contains(DecomposePrompt("X", false), "Du darfst dich auf konkrete Dateien") {
+	if strings.Contains(DecomposePrompt("X", Context{}), "Du darfst dich auf konkrete Dateien") {
 		t.Error("ohne Datei-Werkzeuge darf der Prompt keinen Dateibezug anbieten")
+	}
+}
+
+func TestDecomposePromptVerbietetDiePfadfrageBeiGebundenemProjekt(t *testing.T) {
+	prompt := DecomposePrompt("Timeout erhoehen", Context{
+		HasFileTools: true,
+		ProjectPath:  "/home/david/projekt",
+		Roots:        []string{"/home/david/projekt", "/tmp/vergleich"},
+	})
+
+	if !strings.Contains(prompt, "/home/david/projekt") {
+		t.Error("der gebundene Projekt-Ordner muss im Prompt stehen")
+	}
+	if !strings.Contains(prompt, "/tmp/vergleich") {
+		t.Error("zusaetzlich freigegebene Ordner fehlen")
+	}
+	if !strings.Contains(prompt, "Frag nicht danach") {
+		t.Error("bei gebundenem Projekt muss die Pfadfrage ausdruecklich verboten sein")
+	}
+}
+
+func TestDecomposePromptLaesstPfadfrageNurAlsLetztesZu(t *testing.T) {
+	prompt := DecomposePrompt("Neues Projekt bauen", Context{})
+
+	if !strings.Contains(prompt, "keiner gebunden") {
+		t.Error("ohne Projekt muss der Prompt das benennen")
+	}
+	if !strings.Contains(prompt, "im Gespraech einen Ordner genannt") {
+		t.Error("der Prompt muss zuerst auf das Gespraech verweisen")
+	}
+	if !strings.Contains(prompt, "frag genau danach — einmal") {
+		t.Error("die Pfadfrage muss auf eine einzige Nachfrage begrenzt sein")
+	}
+}
+
+func TestDecomposePromptStelltPlanenVorFragen(t *testing.T) {
+	prompt := DecomposePrompt("Export bauen", Context{HasFileTools: true})
+
+	if !strings.Contains(prompt, "Er erwartet einen Plan, keine Befragung") {
+		t.Error("die Haltung 'erst planen' fehlt im Prompt")
+	}
+	if !strings.Contains(prompt, "Nur was danach uebrig bleibt") {
+		t.Error("Rueckfragen muessen als letzter Ausweg formuliert sein")
+	}
+	if !strings.Contains(prompt, "hoechstens 2") {
+		t.Errorf("die Fragen-Obergrenze (%d) steht nicht im Prompt", MaxQuestions)
+	}
+}
+
+func TestStepPromptTraegtDasAbgestimmteVorgehen(t *testing.T) {
+	plan := Plan{
+		Goal:    "Timeout erhoehen",
+		Summary: "Annahme: gemeint ist der HTTP-Client, nicht der Datenbank-Treiber",
+		Steps:   []Step{{Number: 1, Title: "Config lesen", Status: StatusRunning}},
+	}
+
+	if !strings.Contains(StepPrompt(plan, plan.Steps[0]), "nicht der Datenbank-Treiber") {
+		t.Error("die Annahme aus der Planung muss jeden Schritt begleiten")
 	}
 }
 

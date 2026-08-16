@@ -5,47 +5,111 @@ import (
 	"strings"
 )
 
-func DecomposePrompt(task string, hasFileTools bool) string {
+// Context is what the planner already knows before it asks the user anything:
+// the folder the session is bound to, every folder it may touch, and whether it
+// has file tools at all. It exists because the planner used to open with
+// questions whose answers were already on the table.
+type Context struct {
+	HasFileTools bool
+
+	// ProjectPath is the folder the session is bound to, empty when the chat
+	// runs without a project.
+	ProjectPath string
+
+	// Roots is everything the agent may touch, including folders the user named
+	// in the conversation.
+	Roots []string
+}
+
+func DecomposePrompt(task string, c Context) string {
 	var b strings.Builder
 	b.WriteString("## Auftrag: Plan erstellen\n")
 	b.WriteString("Zerlege die folgende Aufgabe in nachvollziehbare Arbeitsschritte. ")
 	b.WriteString("Fuehre nichts davon aus - in dieser Runde planst du nur.\n\n")
 	b.WriteString("Aufgabe des Nutzers:\n")
 	b.WriteString(strings.TrimSpace(task))
-	b.WriteString("\n\n### Regeln\n")
+
+	b.WriteString("\n\n### Was du bereits weisst\n")
+	b.WriteString("Ueber diesem Auftrag steht das bisherige Gespraech. Was dort schon gesagt wurde, ")
+	b.WriteString("ist gesagt — frag es nicht noch einmal ab.\n")
+	if strings.TrimSpace(c.ProjectPath) != "" {
+		b.WriteString("- Projekt-Ordner: " + strings.TrimSpace(c.ProjectPath) + "\n")
+	} else {
+		b.WriteString("- Projekt-Ordner: keiner gebunden\n")
+	}
+	if extra := otherRoots(c); len(extra) > 0 {
+		b.WriteString("- Zusaetzlich freigegeben: " + strings.Join(extra, ", ") + "\n")
+	}
+
+	b.WriteString("\n### Regeln\n")
 	b.WriteString(fmt.Sprintf("- Zwischen %d und %d Schritte. Lieber wenige grosse als viele winzige.\n", MinSteps, MaxSteps))
 	b.WriteString("- Jeder Schritt muss fuer sich allein verstaendlich sein: wer ihn abarbeitet, kennt weder dieses Gespraech noch die anderen Schritte.\n")
 	b.WriteString("- Schreibe, WAS zu tun ist und WORAN man erkennt, dass es fertig ist — nicht, wie du dich dabei fuehlst.\n")
 	b.WriteString("- Die Reihenfolge ist die Ausfuehrungsreihenfolge. Was aufeinander aufbaut, gehoert hintereinander.\n")
-	if hasFileTools {
+	if c.HasFileTools {
 		b.WriteString("- Du darfst dich auf konkrete Dateien und Pfade des Projekts beziehen, wenn du sie kennst.\n")
 	} else {
 		b.WriteString("- Es ist kein Projekt geoeffnet: plane ohne Bezug auf konkrete Dateien.\n")
 	}
 
-	b.WriteString("\n### Wenn dir Angaben fehlen\n")
-	b.WriteString("Rate nicht. Kannst du ohne weitere Angaben nur einen Plan erfinden, den der Nutzer ")
-	b.WriteString("hinterher muehsam korrigieren muesste, dann frag lieber nach — das kostet eine Runde ")
-	b.WriteString("und spart viel Arbeit.\n")
-	b.WriteString(fmt.Sprintf("Stelle hoechstens %d Fragen, und nur solche, deren Antwort den Plan wirklich veraendert. ", MaxQuestions))
-	b.WriteString("Was du dir selbst erarbeiten kannst, fragst du nicht.\n")
+	b.WriteString("\n### Bevor du fragst\n")
+	b.WriteString("Der Nutzer hat dir gesagt, was er will. Er erwartet einen Plan, keine Befragung. ")
+	b.WriteString("Geh alles, was dir zu fehlen scheint, erst diese Liste entlang:\n")
+	b.WriteString("1. " + pathRule(c))
+	b.WriteString("2. Steht die Angabe schon im Gespraech? Dann nimm sie.\n")
+	if c.HasFileTools {
+		b.WriteString("3. Kannst du sie dir mit deinen Werkzeugen selbst holen? Dann mach daraus einen ersten Schritt, statt zu fragen.\n")
+		b.WriteString("4. Aendert die Angabe den Plan gar nicht? Dann entscheide selbst und schreib die Annahme in den summary.\n")
+	} else {
+		b.WriteString("3. Aendert die Angabe den Plan gar nicht? Dann entscheide selbst und schreib die Annahme in den summary.\n")
+	}
+	b.WriteString(fmt.Sprintf(
+		"\nNur was danach uebrig bleibt und ohne das du keinen einzigen Schritt anfangen kannst, ist eine Frage wert — hoechstens %d.\n",
+		MaxQuestions))
 
 	b.WriteString("\n### Antwortformat\n")
 	b.WriteString("Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne Text davor oder danach.\n")
 	b.WriteString("Kannst du planen:\n")
 	b.WriteString(`{
-  "summary": "Ein Satz, der den Loesungsweg begruendet",
+  "summary": "Ein Satz, der den Loesungsweg begruendet, plus jede Annahme, die du getroffen hast",
   "steps": [
     {"title": "Kurzer Titel des Schritts", "detail": "Was konkret zu tun ist und woran man das Ergebnis erkennt"}
   ]
 }`)
-	b.WriteString("\n\nFehlen dir Angaben:\n")
+	b.WriteString("\n\nNur wenn ohne Antwort wirklich kein Schritt moeglich ist:\n")
 	b.WriteString(`{
   "reason": "Ein Satz, warum du noch nicht planen kannst",
-  "questions": ["Erste Frage?", "Zweite Frage?"]
+  "questions": ["Erste Frage?"]
 }`)
 	b.WriteString("\n\nBeides zusammen geht nicht — entweder du planst, oder du fragst.")
 	return b.String()
+}
+
+// pathRule is the first item of that list because the folder is what the
+// planner asked for most often, and least justified: a bound project already
+// answers it.
+func pathRule(c Context) string {
+	if strings.TrimSpace(c.ProjectPath) != "" {
+		return "Pfad: steht fest, der Projekt-Ordner oben ist gemeint. Frag nicht danach und schlag keinen anderen vor.\n"
+	}
+	if len(otherRoots(c)) > 0 {
+		return "Pfad: kein Projekt gebunden, aber die oben freigegebenen Ordner sind gemeint. Arbeite darin.\n"
+	}
+	return "Pfad: hat der Nutzer irgendwo im Gespraech einen Ordner genannt, ist das der Pfad. " +
+		"Nur wenn nirgends einer steht und die Aufgabe ohne Ordner nicht geht, frag genau danach — einmal.\n"
+}
+
+func otherRoots(c Context) []string {
+	project := strings.TrimSpace(c.ProjectPath)
+	var out []string
+	for _, root := range c.Roots {
+		root = strings.TrimSpace(root)
+		if root == "" || root == project {
+			continue
+		}
+		out = append(out, root)
+	}
+	return out
 }
 
 func StepPrompt(plan Plan, step Step) string {
@@ -55,6 +119,13 @@ func StepPrompt(plan Plan, step Step) string {
 
 	b.WriteString("Gesamtziel:\n")
 	b.WriteString(plan.Goal)
+	if summary := strings.TrimSpace(plan.Summary); summary != "" {
+		// The summary carries the agreed approach and every assumption the
+		// planner made instead of asking. Without it here, a step re-decides
+		// what was already settled.
+		b.WriteString("\n\nAbgestimmtes Vorgehen:\n")
+		b.WriteString(summary)
+	}
 	b.WriteString("\n\nDein Schritt: ")
 	b.WriteString(step.Title)
 	if step.Detail != "" {

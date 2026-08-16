@@ -26,7 +26,10 @@ const (
 
 var ErrNoPlan = errors.New("agentplan: kein Plan in der Antwort gefunden")
 
-const MaxQuestions = 4
+// MaxQuestions caps how much the planner may ask back before it plans. Two,
+// because the user starts a task with a concrete idea in mind: a round of
+// questions is a last resort, not the way in.
+const MaxQuestions = 2
 
 type Step struct {
 	Number int `json:"number"`
@@ -57,6 +60,19 @@ func (p Plan) StepTitles() []string {
 }
 
 func (p Plan) IsEmpty() bool { return len(p.Steps) == 0 }
+
+// Unfinished counts every step that is not done, failed ones included: a plan
+// counts as worked off when all of its points are green, and a step that broke
+// is a step to come back to, not one to write off.
+func (p Plan) Unfinished() int {
+	open := 0
+	for _, step := range p.Steps {
+		if step.Status != StatusDone {
+			open++
+		}
+	}
+	return open
+}
 
 func (p Plan) Pending() (Step, bool) {
 	for _, step := range p.Steps {
