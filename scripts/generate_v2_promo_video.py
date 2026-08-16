@@ -19,7 +19,8 @@ TEMP_FRAMES_DIR = "/tmp/culpeo_v2_video_frames"
 AUDIO_PATH = "/tmp/v2_promo_audio.wav"
 OUTPUT_MP4 = os.path.join(OUT_DIR, "culpeo_v2_promo_video.mp4")
 
-HERO_IMAGE_PATH = "/home/david/Dokumente/culpeo-studio/assets/promo-v2.0.0-option1.jpg"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERO_IMAGE_PATH = os.path.join(REPO_ROOT, "assets", "promo-v2.0.0-option1.jpg")
 
 # Colors
 COLOR_BG_DARK = (13, 13, 14)         # #0D0D0E

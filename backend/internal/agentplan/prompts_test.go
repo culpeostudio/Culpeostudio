@@ -23,11 +23,11 @@ func TestDecomposePromptNenntAufgabeUndFormat(t *testing.T) {
 func TestDecomposePromptVerbietetDiePfadfrageBeiGebundenemProjekt(t *testing.T) {
 	prompt := DecomposePrompt("Timeout erhoehen", Context{
 		HasFileTools: true,
-		ProjectPath:  "/home/david/projekt",
-		Roots:        []string{"/home/david/projekt", "/tmp/vergleich"},
+		ProjectPath:  "/home/nutzer/projekt",
+		Roots:        []string{"/home/nutzer/projekt", "/tmp/vergleich"},
 	})
 
-	if !strings.Contains(prompt, "/home/david/projekt") {
+	if !strings.Contains(prompt, "/home/nutzer/projekt") {
 		t.Error("der gebundene Projekt-Ordner muss im Prompt stehen")
 	}
 	if !strings.Contains(prompt, "/tmp/vergleich") {

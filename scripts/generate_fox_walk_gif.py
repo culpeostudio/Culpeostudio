@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 import os
 import subprocess
+import sys
 from PIL import Image
 
-SPRITESHEET_PATH = "/home/david/.gemini/antigravity/brain/727c4d10-669d-4dca-9f3e-5e5d8eb87668/culpeo_fox_walk_spritesheet_1786218260095.jpg"
-OUT_GIF = "/home/david/Dokumente/culpeo-studio/assets/culpeo_fox_walk.gif"
-OUT_MP4 = "/home/david/Dokumente/culpeo-studio/assets/culpeo_fox_walk.mp4"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSETS_DIR = os.path.join(REPO_ROOT, "assets")
+
+# The spritesheet is not part of the repository. Pass it as the first argument:
+#   ./scripts/generate_fox_walk_gif.py /pfad/zum/spritesheet.jpg
+SPRITESHEET_PATH = (
+    sys.argv[1]
+    if len(sys.argv) > 1
+    else os.path.join(ASSETS_DIR, "culpeo_fox_walk_spritesheet.jpg")
+)
+OUT_GIF = os.path.join(ASSETS_DIR, "culpeo_fox_walk.gif")
+OUT_MP4 = os.path.join(ASSETS_DIR, "culpeo_fox_walk.mp4")
 TEMP_DIR = "/tmp/fox_walk_frames"
 
 def extract_and_animate():
