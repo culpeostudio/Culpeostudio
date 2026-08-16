@@ -1,5 +1,13 @@
 # Culpeo Node
 
+> [!WARNING]
+> **Experimental — this is not a finished feature.** Culpeo Node is in the
+> repository because it is what is currently being built, not because it works
+> end to end. Pairing, remote downloads and remote inference are unfinished,
+> unstable and will change without notice. Do not plan around it, and do not
+> expose a Node to an untrusted network. Everything below describes the intended
+> shape of the feature, not a supported workflow.
+
 A **Culpeo Node** is a small backend that runs on the machine which owns the
 disk, CPU and GPU for remote models. It contains only:
 

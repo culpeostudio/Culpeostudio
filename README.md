@@ -49,6 +49,7 @@ The app is still in Phase 1 Beta. The main workflows are usable, while some modu
 | [Highlights](#what-makes-it-different) | Hardware engine, Scouts, memory, search, marketplace |
 | [Engine Demo](#see-the-engine-make-a-safer-choice) | Automated VRAM fallback demonstration |
 | [Features](docs/FEATURES.md) | Complete feature maturity matrix |
+| [Culpeo Node](docs/NODE.md) | **Experimental**, unfinished remote-node backend |
 | [Architecture](docs/ARCHITECTURE.md) | Component map and gRPC service overview |
 | [Privacy](docs/PRIVACY.md) | Network boundaries and security guarantees |
 | [Transparency](docs/TRANSPARENCY.md) | Open-source licensing and technology stack |
@@ -195,6 +196,7 @@ Source builds require Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3, and a C/C+
 | **News — Beta** | AI and technology feeds with search, filters, and saved articles |
 | **Benchmark — Beta** | LMArena text leaderboard with ranking, model details, and comparison views |
 | **Phase 1 — active development** | Improve existing functionality, fix bugs, refine frontend design and usability, strengthen verification, and expand documentation |
+| **Experimental — not a feature yet** | [Culpeo Node](docs/NODE.md): a separate backend that would run models on another machine. It is in the repository because it is what is being built right now, not because it works. Unfinished, unstable, and not part of the Beta |
 | **Phase 2 — planned** | Extend current features with remote gRPC server connections |
 | **Phase 3 — planned** | Guided LoRA/QLoRA fine-tuning and GGUF/EXL2 quantization workflows |
 | **Phase 4 — planned** | Local image and video generation plus game-development workspace |

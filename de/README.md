@@ -49,6 +49,7 @@ Das Projekt befindet sich noch in Phase 1 Beta. Die wichtigsten Abläufe funktio
 | [Highlights](#was-culpeo-studio-unterscheidet) | Engine, Scouts, Memory, Suche und Marktplatz |
 | [Engine-Demo](#siehe-wie-die-engine-eine-sicherere-wahl-trifft) | Automatische VRAM-Fallback Demonstration |
 | [Features](docs/FEATURES.md) | Vollständige Feature- und Reifegrad-Übersicht |
+| [Culpeo Node](../docs/NODE.md) | **Experimentell**, unfertiges Node-Backend (englisch) |
 | [Architektur](docs/ARCHITECTURE.md) | Komponenten, Schnittstellen und Datenflüsse |
 | [Datenschutz](docs/PRIVACY.md) | Lokaler Speicher und Netzwerkgrenzen |
 | [Transparenz](docs/TRANSPARENCY.md) | Anbieterentscheidungen und Open-Source-Lizenz |
@@ -131,6 +132,13 @@ cd Culpeostudio
 ```
 
 Voraussetzungen: Go 1.25+, Flutter 3.44+ / Dart 3.12+, Python 3 und C/C++-Buildtools.
+
+---
+
+## Culpeo Node (experimentell)
+
+> [!WARNING]
+> **Kein fertiges Feature.** [Culpeo Node](../docs/NODE.md) ist ein eigenes Backend, das Modelle auf einem anderen Rechner ausführen soll. Es liegt im Repository, weil aktuell daran entwickelt wird — nicht, weil es funktioniert. Kopplung, entfernte Downloads und entfernte Inferenz sind unfertig, instabil und ändern sich ohne Ankündigung. Node gehört nicht zur Beta.
 
 ---
 
