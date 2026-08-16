@@ -82,6 +82,11 @@ type scoutSession struct {
 	// models, and only so the UI can explain the difference.
 	ModelContextLimit int
 
+	// TitleAttempted records that the model was already asked to name this chat.
+	// Without it a provider that cannot write a label would be asked again on
+	// every following turn, for a session that will never get one.
+	TitleAttempted bool `json:"title_attempted,omitempty"`
+
 	// Summary retells everything before SummarizedThrough, so a chat that has
 	// outgrown its context window keeps its earlier turns as meaning instead of
 	// losing them to the sliding history window. Messages themselves are never

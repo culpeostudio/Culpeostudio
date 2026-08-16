@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/design_tokens.dart';
@@ -345,11 +347,17 @@ class _ScoutTabState extends State<ScoutTab> {
     _pendingSince = null;
   }
 
+  /// The gap between sending and the first word of the answer.
+  ///
+  /// The phase reads as a shimmer rather than as a spinner with counting dots:
+  /// the light crossing the words is the same signal the composer's outline is
+  /// showing at that moment, so the two say one thing. The spinner stays for a
+  /// warm-up, because that one has a real reading behind it - a percentage that
+  /// climbs - and a shimmer would hide that something is being measured.
   Widget _buildWorkingIndicator() {
     final elapsed = _pendingSince == null
         ? 0
         : DateTime.now().difference(_pendingSince!).inSeconds;
-    final dotCount = 1 + (elapsed % 3);
     String phase;
     if (_warmup.isActive) {
       final pct = (_warmup.displayProgress * 100).clamp(0, 100).round();
@@ -364,18 +372,20 @@ class _ScoutTabState extends State<ScoutTab> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(
-          width: 13,
-          height: 13,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: CulpeoColors.metric,
+        if (_warmup.isActive) ...[
+          const SizedBox(
+            width: 13,
+            height: 13,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: CulpeoColors.metric,
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
+          const SizedBox(width: 10),
+        ],
         Flexible(
-          child: Text(
-            '$phase${'.' * dotCount}$elapsedLabel',
+          child: ShimmerLabel(
+            text: '$phase$elapsedLabel',
             style: const TextStyle(
               color: Colors.white54,
               fontSize: 13,
@@ -1816,6 +1826,16 @@ class _ScoutTabState extends State<ScoutTab> {
               chatTabsText('scout.contextCompacted'),
             );
           }
+        } else if (event.type == 'session_title') {
+          // The backend names a fresh chat from its first exchange, after the
+          // answer. It arrives once per session, so the sidebar entry renames
+          // itself instead of carrying the opening message until a restart.
+          final title = event.data['title']?.toString() ?? '';
+          final titledSession =
+              event.data['session_id']?.toString() ?? requestSessionId;
+          if (title.isNotEmpty) {
+            _appState.applyGeneratedSessionTitle(titledSession, title);
+          }
         } else if (event.type == 'text_delta') {
           final chunk = event.data['chunk']?.toString() ?? '';
           if (chunk.isEmpty) continue;
@@ -3131,7 +3151,9 @@ class _ScoutTabState extends State<ScoutTab> {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       decoration: BoxDecoration(
         color: CulpeoColors.metric.withValues(alpha: 0.08),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        // Same radius as the composer it sits on, so the two read as one shape
+        // rather than as a lid that does not fit the box.
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
         border: Border(
           top: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
           left: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
@@ -3563,6 +3585,15 @@ class _ScoutTabState extends State<ScoutTab> {
         final composerBorder = AppColors.divider;
         final composerText = AppColors.textPrimary;
         final composerHint = AppColors.textSecondary;
+        // The input is the one surface in the chat the user works in, so it is
+        // the one that gets a fill: a panel raised off the page background,
+        // like every other card in the app. The transcript above it stays flat
+        // on the background, which is what keeps the two apart now that the
+        // composer no longer relies on an outline alone to be found.
+        final composerSurface = CulpeoColors.panel;
+        final composerRadius = _hasComposerHat
+            ? const BorderRadius.vertical(bottom: Radius.circular(17))
+            : BorderRadius.circular(17);
 
         final String modelId = _selectedChatModel?.modelId ?? '';
         final efforts = ThinkingLevels.optionsFor(_reasoningProfiles, modelId);
@@ -3620,25 +3651,24 @@ class _ScoutTabState extends State<ScoutTab> {
                 });
               },
               child: Container(
-                // Composer footprint is 15% wider and 10% taller than the
-                // original 420/310 (width) and 14/12 (vertical padding/gap)
-                // baseline. It's already bottom-anchored (Align+fixed bottom
-                // padding above), so the extra height only pushes the top
-                // edge up - the composer never grows toward the screen edge.
+                // Composer footprint is a quarter larger than the previous
+                // 483/357 (width), 14/15 (padding) and 13 (text) baseline,
+                // which was itself 15% over the original. It's bottom-anchored
+                // (Align+fixed bottom padding above), so the extra height only
+                // pushes the top edge up - the composer never grows toward the
+                // screen edge.
                 constraints: BoxConstraints(
-                  minWidth: isDesktop ? 483 : 357,
+                  // A pane in the multi-chat workspace can be dragged narrower
+                  // than the composer wants to be, so the floor follows the
+                  // room that is actually there rather than overflowing it.
+                  minWidth: math.min(
+                    isDesktop ? 604 : 446,
+                    math.max(width - 48, 0),
+                  ),
                   maxWidth: isDesktop
-                      ? (width * 0.2875 > 483 ? width * 0.2875 : 483)
-                      : (width * 0.95 > 575
-                            ? 575
-                            : (width * 0.95 > 357 ? width * 0.95 : 357)),
+                      ? math.max(width * 0.359, 604)
+                      : math.min(math.max(width * 0.95, 446), 719),
                 ),
-                // Outline only, no surface of its own: the composer sits in
-                // the page's own background instead of on a lighter panel
-                // laid over it, which is what made the input read as a
-                // second box inside the chat area. It's laid out in the
-                // column under the messages rather than floating over them,
-                // so there is nothing behind it that needs covering up.
                 // What belongs to the next message sits on the composer like a
                 // hat: the plan waiting for approval, and the worklist it turns
                 // into. Both share the input's width and its top edge, so they
@@ -3658,237 +3688,244 @@ class _ScoutTabState extends State<ScoutTab> {
                             : () => _sendMessage(approvePlan: true),
                         onDiscard: _interactionLocked ? null : _discardPlan,
                       ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 15,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: _hasComposerHat
-                            ? const BorderRadius.vertical(
-                                bottom: Radius.circular(14),
-                              )
-                            : BorderRadius.circular(14),
-                        border: Border.all(
-                          color: _isDragging ? themeColor : composerBorder,
-                          width: _isDragging ? 1.5 : 1.0,
+                    ComposerActivityGlow(
+                      active: _interactionLocked,
+                      borderRadius: composerRadius,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 19,
                         ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_uploadedFiles.isNotEmpty) ...[
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: _uploadedFiles.map((file) {
-                                    return FileChip(
-                                      file: file,
-                                      themeColor: themeColor,
-                                      onDelete: () {
-                                        setState(() {
-                                          _uploadedFiles.remove(file);
-                                        });
-                                      },
-                                      onOpen: (path) => _openFile(path),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ),
-                          ],
-                          TextField(
-                            key: _paneKey('chat-composer'),
-                            focusNode: _inputFocusNode,
-                            controller: _msgController,
-                            enabled: !_interactionLocked,
-                            onTap: widget.onPaneFocused,
-                            style: TextStyle(color: composerText, fontSize: 13),
-                            maxLines: 4,
-                            minLines: 1,
-                            decoration: InputDecoration(
-                              hintText: chatTabsText('scout.messageHint'),
-                              hintStyle: TextStyle(
-                                color: composerHint,
-                                fontSize: 13,
-                              ),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              filled: false,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            onChanged: (text) {
-                              setState(() {});
-                            },
-                            onSubmitted: (_) => _sendMessage(),
+                        decoration: BoxDecoration(
+                          color: composerSurface,
+                          borderRadius: composerRadius,
+                          border: Border.all(
+                            color: _isDragging ? themeColor : composerBorder,
+                            width: _isDragging ? 1.5 : 1.0,
                           ),
-                          const SizedBox(height: 13),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              CompositedTransformTarget(
-                                link: _plusMenuLink,
-                                child: IconButton(
-                                  key: _paneKey('chat-add-button'),
-                                  tooltip: chatTabsText('scout.addAction'),
-                                  onPressed: _interactionLocked
-                                      ? null
-                                      : _togglePlusMenu,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 44,
-                                    minHeight: 44,
-                                  ),
-                                  icon: Icon(
-                                    Icons.add,
-                                    color: composerHint,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                              if (_webSearchEnabled) ...[
-                                const SizedBox(width: 6),
-                                ChatBadge(
-                                  icon: Icons.language,
-                                  label: chatTabsText('common.web'),
-                                  themeColor: CulpeoColors.metric,
-                                  onTap: () =>
-                                      setState(() => _webSearchEnabled = false),
-                                ),
-                              ],
-                              // The trailing controls are all fixed width and a
-                              // pane can be dragged narrower than they add up to,
-                              // so the cluster shrinks to fit instead of
-                              // overflowing the row.
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerRight,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // A reading, so it stands ahead of the
-                                        // controls rather than among them.
-                                        if (_contextUsage.isKnown) ...[
-                                          ContextMeter(usage: _contextUsage),
-                                          const SizedBox(width: 10),
-                                        ],
-                                        SparkModeButton(
-                                          active: _sparkEnabled,
-                                          label: chatTabsText(
-                                            'common.modeSpark',
-                                          ),
-                                          tooltip: chatTabsText(
-                                            'common.modeSparkHint',
-                                          ),
-                                          themeColor: CulpeoColors.action,
-                                          compact: !isDesktop,
-                                          onChanged: (spark) {
-                                            setState(() {
-                                              _sparkEnabled = spark;
-                                            });
-                                          },
-                                        ),
-                                        const SizedBox(width: 8),
-                                        ThinkingModeSliderButton(
-                                          value: _thinkingLevel,
-                                          options: thinkingOptions,
-                                          // Not the composer's gold: the ring
-                                          // marks which mode is selected, and
-                                          // selection is rust
-                                          // (design_tokens.dart) - gold is for
-                                          // what the engine reported, not for a
-                                          // control.
-                                          themeColor: CulpeoColors.action,
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _thinkingLevel = val;
-                                            });
-                                          },
-                                        ),
-                                        const SizedBox(width: 8),
-                                        HoverIconButton(
-                                          icon: Icons.mic_none,
-                                          tooltip: chatTabsText(
-                                            'scout.voiceMessage',
-                                          ),
-                                          onPressed: () {},
-                                        ),
-                                        const SizedBox(width: 8),
-                                        IconButton(
-                                          key: _paneKey('chat-send-button'),
-                                          tooltip: _sessionId == null
-                                              ? chatTabsText(
-                                                  'scout.selectModelFirst',
-                                                )
-                                              : _isLoading
-                                              ? chatTabsText('scout.botWorking')
-                                              : _warmup.isActive
-                                              ? chatTabsText(
-                                                  'scout.waitForModel',
-                                                )
-                                              : chatTabsText(
-                                                  'scout.sendMessage',
-                                                ),
-                                          onPressed:
-                                              _interactionLocked ||
-                                                  _sessionId == null ||
-                                                  !hasText
-                                              ? null
-                                              : () => _sendMessage(),
-                                          constraints: const BoxConstraints(
-                                            minWidth: 44,
-                                            minHeight: 44,
-                                          ),
-                                          style: IconButton.styleFrom(
-                                            backgroundColor: hasText
-                                                ? themeColor
-                                                : composerHint.withValues(
-                                                    alpha: 0.15,
-                                                  ),
-                                            disabledBackgroundColor:
-                                                composerHint.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                          ),
-
-                                          icon: _interactionLocked
-                                              ? const SizedBox(
-                                                  width: 16,
-                                                  height: 16,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: Colors.white70,
-                                                      ),
-                                                )
-                                              : AnimatedRotation(
-                                                  turns: hasText ? 0.25 : 0.0,
-                                                  duration: const Duration(
-                                                    milliseconds: 220,
-                                                  ),
-                                                  curve: Curves.easeOut,
-                                                  child: Icon(
-                                                    Icons.arrow_upward,
-                                                    color: hasText
-                                                        ? Colors.white
-                                                        : composerHint,
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                        ),
-                                      ],
-                                    ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_uploadedFiles.isNotEmpty) ...[
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: _uploadedFiles.map((file) {
+                                      return FileChip(
+                                        file: file,
+                                        themeColor: themeColor,
+                                        onDelete: () {
+                                          setState(() {
+                                            _uploadedFiles.remove(file);
+                                          });
+                                        },
+                                        onOpen: (path) => _openFile(path),
+                                      );
+                                    }).toList(),
                                   ),
                                 ),
                               ),
                             ],
-                          ),
-                        ],
+                            TextField(
+                              key: _paneKey('chat-composer'),
+                              focusNode: _inputFocusNode,
+                              controller: _msgController,
+                              enabled: !_interactionLocked,
+                              onTap: widget.onPaneFocused,
+                              style: TextStyle(
+                                color: composerText,
+                                fontSize: 16,
+                              ),
+                              maxLines: 4,
+                              minLines: 1,
+                              decoration: InputDecoration(
+                                hintText: chatTabsText('scout.messageHint'),
+                                hintStyle: TextStyle(
+                                  color: composerHint,
+                                  fontSize: 16,
+                                ),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                filled: false,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                              onChanged: (text) {
+                                setState(() {});
+                              },
+                              onSubmitted: (_) => _sendMessage(),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                CompositedTransformTarget(
+                                  link: _plusMenuLink,
+                                  child: IconButton(
+                                    key: _paneKey('chat-add-button'),
+                                    tooltip: chatTabsText('scout.addAction'),
+                                    onPressed: _interactionLocked
+                                        ? null
+                                        : _togglePlusMenu,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 52,
+                                      minHeight: 52,
+                                    ),
+                                    icon: Icon(
+                                      Icons.add,
+                                      color: composerHint,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                                if (_webSearchEnabled) ...[
+                                  const SizedBox(width: 6),
+                                  ChatBadge(
+                                    icon: Icons.language,
+                                    label: chatTabsText('common.web'),
+                                    themeColor: CulpeoColors.metric,
+                                    onTap: () => setState(
+                                      () => _webSearchEnabled = false,
+                                    ),
+                                  ),
+                                ],
+                                // The trailing controls are all fixed width and a
+                                // pane can be dragged narrower than they add up to,
+                                // so the cluster shrinks to fit instead of
+                                // overflowing the row.
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // A reading, so it stands ahead of the
+                                          // controls rather than among them.
+                                          if (_contextUsage.isKnown) ...[
+                                            ContextMeter(usage: _contextUsage),
+                                            const SizedBox(width: 10),
+                                          ],
+                                          SparkModeButton(
+                                            active: _sparkEnabled,
+                                            label: chatTabsText(
+                                              'common.modeSpark',
+                                            ),
+                                            tooltip: chatTabsText(
+                                              'common.modeSparkHint',
+                                            ),
+                                            themeColor: CulpeoColors.action,
+                                            compact: !isDesktop,
+                                            onChanged: (spark) {
+                                              setState(() {
+                                                _sparkEnabled = spark;
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ThinkingModeSliderButton(
+                                            value: _thinkingLevel,
+                                            options: thinkingOptions,
+                                            // Not the composer's gold: the ring
+                                            // marks which mode is selected, and
+                                            // selection is rust
+                                            // (design_tokens.dart) - gold is for
+                                            // what the engine reported, not for a
+                                            // control.
+                                            themeColor: CulpeoColors.action,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _thinkingLevel = val;
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 8),
+                                          HoverIconButton(
+                                            icon: Icons.mic_none,
+                                            tooltip: chatTabsText(
+                                              'scout.voiceMessage',
+                                            ),
+                                            onPressed: () {},
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            key: _paneKey('chat-send-button'),
+                                            tooltip: _sessionId == null
+                                                ? chatTabsText(
+                                                    'scout.selectModelFirst',
+                                                  )
+                                                : _isLoading
+                                                ? chatTabsText(
+                                                    'scout.botWorking',
+                                                  )
+                                                : _warmup.isActive
+                                                ? chatTabsText(
+                                                    'scout.waitForModel',
+                                                  )
+                                                : chatTabsText(
+                                                    'scout.sendMessage',
+                                                  ),
+                                            onPressed:
+                                                _interactionLocked ||
+                                                    _sessionId == null ||
+                                                    !hasText
+                                                ? null
+                                                : () => _sendMessage(),
+                                            constraints: const BoxConstraints(
+                                              minWidth: 52,
+                                              minHeight: 52,
+                                            ),
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: hasText
+                                                  ? themeColor
+                                                  : composerHint.withValues(
+                                                      alpha: 0.15,
+                                                    ),
+                                              disabledBackgroundColor:
+                                                  composerHint.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                            ),
+
+                                            icon: _interactionLocked
+                                                ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.white70,
+                                                        ),
+                                                  )
+                                                : AnimatedRotation(
+                                                    turns: hasText ? 0.25 : 0.0,
+                                                    duration: const Duration(
+                                                      milliseconds: 220,
+                                                    ),
+                                                    curve: Curves.easeOut,
+                                                    child: Icon(
+                                                      Icons.arrow_upward,
+                                                      color: hasText
+                                                          ? Colors.white
+                                                          : composerHint,
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

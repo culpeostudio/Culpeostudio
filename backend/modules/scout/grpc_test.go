@@ -371,7 +371,10 @@ func TestScoutStreamActiveOpenRouterModel(t *testing.T) {
 			t.Errorf("unerwarteter Authorization-Header %q", r.Header.Get("Authorization"))
 		}
 		body, _ := io.ReadAll(r.Body)
-		if !strings.Contains(string(body), "Thinking: Dual") || !strings.Contains(string(body), "Stil: Kritisch") {
+		// The turn, and after it the request that names the chat. Only the turn
+		// carries the bot's instructions.
+		naming := strings.Contains(string(body), "Du benennst einen Chat")
+		if !naming && (!strings.Contains(string(body), "Thinking: Dual") || !strings.Contains(string(body), "Stil: Kritisch")) {
 			t.Errorf("Thinking-/Stil-Anweisungen fehlen im Provider-Payload: %s", body)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")

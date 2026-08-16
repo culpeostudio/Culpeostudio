@@ -614,6 +614,7 @@ func (s *grpcService) StreamMessage(
 		if err != nil {
 			return emitter.emitError(err)
 		}
+		s.nameSessionAfterReply(ctx, userID, sessionID, emitter)
 		return nil
 	}
 
@@ -648,11 +649,29 @@ func (s *grpcService) StreamMessage(
 			return sendErr
 		}
 	}
-	return emitter.done(&scoutv1.StreamDone{
+	if err := emitter.done(&scoutv1.StreamDone{
 		SessionId:     sessionID,
 		ThinkingLevel: normalizeThinkingLevel(req.GetOptions().GetThinkingLevel()),
 		ResponseStyle: s.module.responseStyleForBot(userID, botID, req.GetOptions().GetResponseStyle()),
-	})
+	}); err != nil {
+		return err
+	}
+	s.nameSessionAfterReply(ctx, userID, sessionID, emitter)
+	return nil
+}
+
+// nameSessionAfterReply lets a chat that still has no name earn one from the
+// exchange that just finished.
+//
+// It happens after the done event on purpose. Done is what releases the input
+// in the client, and naming the chat takes a second round trip to the provider
+// that the user has no reason to wait behind - the client keeps reading until
+// the stream ends, so the new name still arrives on the same call. For the same
+// reason the session is unlocked first: someone typing the next message the
+// moment the answer lands must not be told the session is busy.
+func (s *grpcService) nameSessionAfterReply(ctx context.Context, userID, sessionID string, emitter *streamEmitter) {
+	s.module.releaseSessionMutation(sessionID, userID)
+	s.module.titleSessionAfterReply(ctx, userID, sessionID, emitter.emitAgentEvent)
 }
 
 // streamEmitter wraps the response stream so each event reads as one line at

@@ -77,7 +77,9 @@ class _PlanChecklistState extends State<PlanChecklist> {
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
       decoration: BoxDecoration(
         color: CulpeoColors.metric.withValues(alpha: 0.08),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        // Same radius as the composer this sits on, so the two read as one
+        // shape rather than as a lid that does not fit the box.
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
         border: Border(
           top: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
           left: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),

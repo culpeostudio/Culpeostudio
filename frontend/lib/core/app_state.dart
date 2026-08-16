@@ -847,6 +847,19 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  /// Takes the name the backend wrote for a chat after its first exchange.
+  ///
+  /// Unlike [renameSession] this does not send the title back: it came from the
+  /// server, which has already stored it. A chat the user has renamed keeps its
+  /// name, because the backend only ever names an unnamed one.
+  void applyGeneratedSessionTitle(String sId, String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty || !chatSessions.contains(sId)) return;
+    if (sessionTitles[sId] == trimmed) return;
+    sessionTitles[sId] = trimmed;
+    notifyListeners();
+  }
+
   void renameSession(String sId, String newTitle) {
     if (chatSessions.contains(sId)) {
       final trimmed = newTitle.trim();

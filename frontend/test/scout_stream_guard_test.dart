@@ -183,6 +183,43 @@ void main() {
     expect(find.byType(PlanChecklist), findsNothing);
   });
 
+  testWidgets('the name the backend wrote replaces the chat title at once', (
+    tester,
+  ) async {
+    final api = _FakeChatApi(
+      firstStreamEvents: const [
+        ScoutStreamEvent(type: 'text_delta', data: {'chunk': 'Kurze Antwort'}),
+        ScoutStreamEvent(type: 'done', data: {}),
+        // Named after the answer, so it arrives behind done - the composer is
+        // already free again when the sidebar entry renames itself.
+        ScoutStreamEvent(
+          type: 'session_title',
+          data: {'session_id': 'session-1', 'title': 'Postgres in Docker'},
+        ),
+      ],
+    );
+    final appState = AppState.test(api);
+    await _pumpChat(tester, api, appState);
+    final sessionId = appState.currentChatSessionId!;
+
+    await tester.enterText(
+      find.byType(TextField).last,
+      'Wie richte ich Postgres ein?',
+    );
+    await tester.pump();
+    _pressIconButton(tester, const Key('chat-send-button'));
+    await _pumpUntil(
+      tester,
+      () => appState.getSessionTitle(sessionId) == 'Postgres in Docker',
+    );
+    await _pumpFrames(tester);
+
+    expect(appState.getSessionTitle(sessionId), 'Postgres in Docker');
+    // The name came from the server, so it is not sent straight back to it.
+    expect(api.renamedSessions, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a fast double retry starts only one additional SSE request', (
     tester,
   ) async {
@@ -428,6 +465,7 @@ class _FakeChatApi extends ApiService {
   int ensureCalls = 0;
   int cancelCalls = 0;
   String? lastCreatedBotId;
+  final List<String> renamedSessions = [];
 
   @override
   Future<List<EngineInstance>> getEngineInstances() async => engineInstances;
@@ -488,7 +526,7 @@ class _FakeScoutApi extends ScoutApi {
   }) async {
     _fake.createdSessions++;
     _fake.lastCreatedBotId = botId;
-    final sessionId = 'session-$_fake.createdSessions';
+    final sessionId = 'session-${_fake.createdSessions}';
     _fake.lockedBotBySession[sessionId] = botId;
     return {
       'session_id': sessionId,
@@ -499,6 +537,15 @@ class _FakeScoutApi extends ScoutApi {
       'instance_id': ?instanceId,
       'locked_bot_id': ?botId,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> renameSession(
+    String sessionId,
+    String title,
+  ) async {
+    _fake.renamedSessions.add(sessionId);
+    return {'status': 'ok'};
   }
 
   @override

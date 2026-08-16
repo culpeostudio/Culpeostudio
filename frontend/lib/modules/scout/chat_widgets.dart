@@ -609,6 +609,229 @@ class _ThinkingSegmentState extends State<_ThinkingSegment> {
   }
 }
 
+/// The light that runs around the composer while an answer is being written.
+///
+/// Sending used to change nothing at the input beyond a spinner inside the send
+/// button, which is the one place the eye has just left. The border the user is
+/// already looking at lights up instead: rust into ember into gold, once around
+/// the outline every two seconds, so "it went out and something is happening"
+/// is answered without reading a word.
+///
+/// Painted over the composer's own border rather than around it, so the box
+/// keeps its size and nothing in the layout moves when a turn starts.
+class ComposerActivityGlow extends StatefulWidget {
+  const ComposerActivityGlow({
+    super.key,
+    required this.active,
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final bool active;
+
+  /// The composer's own radius, which loses its top corners while a plan sits
+  /// on the input like a hat.
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  State<ComposerActivityGlow> createState() => _ComposerActivityGlowState();
+}
+
+class _ComposerActivityGlowState extends State<ComposerActivityGlow>
+    with TickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  );
+
+  // Separate from the sweep so the light arrives and leaves instead of
+  // appearing mid-lap: a hard cut on a moving highlight reads as a glitch.
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _fade.addStatusListener((status) {
+      if (status == AnimationStatus.dismissed) _sweep.stop();
+    });
+    if (widget.active) _start();
+  }
+
+  @override
+  void didUpdateWidget(ComposerActivityGlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active == oldWidget.active) return;
+    if (widget.active) {
+      _start();
+    } else {
+      _fade.reverse();
+    }
+  }
+
+  void _start() {
+    if (!_sweep.isAnimating) _sweep.repeat();
+    _fade.forward();
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    _fade.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_sweep, _fade]),
+      builder: (context, child) {
+        final opacity = _fade.value;
+        return CustomPaint(
+          foregroundPainter: opacity <= 0
+              ? null
+              : _ComposerSweepPainter(
+                  progress: _sweep.value,
+                  opacity: opacity,
+                  borderRadius: widget.borderRadius,
+                ),
+          // The light moves every frame, the input under it does not: without
+          // the boundary the whole composer would be repainted with it.
+          child: RepaintBoundary(child: child),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _ComposerSweepPainter extends CustomPainter {
+  const _ComposerSweepPainter({
+    required this.progress,
+    required this.opacity,
+    required this.borderRadius,
+  });
+
+  final double progress;
+  final double opacity;
+  final BorderRadius borderRadius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final outline = borderRadius.toRRect(rect).deflate(0.5);
+
+    Color lit(Color color, double alpha) =>
+        color.withValues(alpha: alpha * opacity);
+
+    // Most of the outline stays dark: a band of light travelling around it says
+    // "working" where an evenly glowing box would just say "selected".
+    final shader = SweepGradient(
+      transform: GradientRotation(progress * 2 * math.pi),
+      colors: [
+        lit(CulpeoColors.action, 0),
+        lit(CulpeoColors.action, 0.35),
+        lit(CulpeoColors.actionHover, 0.95),
+        lit(CulpeoColors.metricBright, 1),
+        lit(CulpeoColors.actionHover, 0.55),
+        lit(CulpeoColors.action, 0),
+        lit(CulpeoColors.action, 0),
+      ],
+      stops: const [0.0, 0.12, 0.2, 0.26, 0.34, 0.48, 1.0],
+    ).createShader(rect);
+
+    // Blurred pass first, crisp line on top: alone the first is a smudge and
+    // the second a hard wire, together they read as light on an edge.
+    canvas.drawRRect(
+      outline,
+      Paint()
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.6
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+    canvas.drawRRect(
+      outline,
+      Paint()
+        ..shader = shader
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ComposerSweepPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.opacity != opacity ||
+        oldDelegate.borderRadius != borderRadius;
+  }
+}
+
+/// A line of text with a highlight running across it, for the moment between
+/// sending and the first word of the answer.
+///
+/// It is the composer's sweep said in text: the same travelling light, so the
+/// wait reads as one state rather than two unrelated indicators.
+class ShimmerLabel extends StatefulWidget {
+  const ShimmerLabel({
+    super.key,
+    required this.text,
+    required this.style,
+    this.highlight,
+  });
+
+  final String text;
+  final TextStyle style;
+  final Color? highlight;
+
+  @override
+  State<ShimmerLabel> createState() => _ShimmerLabelState();
+}
+
+class _ShimmerLabelState extends State<ShimmerLabel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = widget.style.color ?? Colors.white54;
+    final highlight = widget.highlight ?? CulpeoColors.metricSoft;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Runs in from before the first letter and out past the last, so the
+        // pause between passes is a pause and not a highlight parked on the
+        // final word.
+        final head = _controller.value * 1.6 - 0.3;
+        final start = (head - 0.22).clamp(0.0, 1.0);
+        final middle = head.clamp(0.0, 1.0);
+        final end = (head + 0.22).clamp(0.0, 1.0);
+        return ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [base, highlight, base],
+            stops: [start, middle, end],
+          ).createShader(bounds),
+          child: child,
+        );
+      },
+      child: Text(widget.text, style: widget.style),
+    );
+  }
+}
+
 class FileChip extends StatefulWidget {
   final Map<String, String> file;
   final Color themeColor;

@@ -147,9 +147,12 @@ type scoutSessionSummary struct {
 func summarizeSession(session *scoutSession) scoutSessionSummary {
 	title := strings.TrimSpace(session.Title)
 	if title == "" {
+		// Only until the model has written one: [titleSessionAfterReply] names a
+		// chat after its first exchange, and this is what a session shows until
+		// then, or if that never succeeded.
 		for _, message := range session.Messages {
 			if message.Role == "user" && strings.TrimSpace(message.Content) != "" {
-				title = chatSessionTitle(message.Content, 60)
+				title = fallbackSessionTitle(message.Content)
 				break
 			}
 		}
@@ -189,4 +192,33 @@ func chatSessionTitle(text string, max int) string {
 		return line
 	}
 	return strings.TrimSpace(string(runes[:max])) + "…"
+}
+
+// fallbackSessionTitle names a chat from its opening message. It is the poorer
+// of the two answers - the first line of a question is not what the chat turns
+// out to be about - so it skips what says nothing at all: a pasted code fence,
+// a markdown bullet, a quoted line.
+func fallbackSessionTitle(text string) string {
+	line := ""
+	fenced := false
+	for _, raw := range strings.Split(text, "\n") {
+		candidate := collapseWhitespace(raw)
+		if strings.HasPrefix(candidate, "```") {
+			fenced = !fenced
+			continue
+		}
+		if candidate == "" || fenced {
+			continue
+		}
+		trimmed := strings.TrimLeft(candidate, "#>*-•+ \t")
+		if trimmed == "" {
+			continue
+		}
+		line = trimmed
+		break
+	}
+	if line == "" {
+		line = collapseWhitespace(text)
+	}
+	return truncateTitle(line, 60)
 }

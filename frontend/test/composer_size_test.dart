@@ -7,9 +7,9 @@ import 'package:culpeo_studio/modules/marketplace/marketplace_api.dart';
 import 'package:culpeo_studio/modules/scout/scout_api.dart';
 import 'package:culpeo_studio/modules/scout/scout_tab.dart';
 
-/// The composer is 15% wider and 10% taller than its previous 420/310px
-/// (width) and 14px/12px (vertical padding/gap) baseline, and - since it's
-/// already bottom-anchored - the extra height only pushes its top edge up.
+/// The composer is a quarter larger than its previous 483/357px (width) and
+/// 14/15px (padding) baseline, and - since it's already bottom-anchored - the
+/// extra height only pushes its top edge up.
 void main() {
   Future<void> pumpComposer(WidgetTester tester, Size viewport) async {
     tester.view.physicalSize = viewport;
@@ -30,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the desktop composer is 15% wider than its old 420px floor', (
+  testWidgets('the desktop composer is a quarter wider than its 483px floor', (
     tester,
   ) async {
     await pumpComposer(tester, const Size(1400, 900));
@@ -38,13 +38,13 @@ void main() {
     final container = tester
         .widgetList<Container>(find.byType(Container))
         .firstWhere(
-          (c) => c.constraints?.minWidth == 483,
+          (c) => c.constraints?.minWidth == 604,
           orElse: () => throw StateError('composer container not found'),
         );
-    expect(container.constraints!.minWidth, 483);
+    expect(container.constraints!.minWidth, 604);
   });
 
-  testWidgets('the narrow composer is 15% wider than its old 310px floor', (
+  testWidgets('the narrow composer is a quarter wider than its 357px floor', (
     tester,
   ) async {
     await pumpComposer(tester, const Size(700, 900));
@@ -52,10 +52,21 @@ void main() {
     final container = tester
         .widgetList<Container>(find.byType(Container))
         .firstWhere(
-          (c) => c.constraints?.minWidth == 357,
+          (c) => c.constraints?.minWidth == 446,
           orElse: () => throw StateError('composer container not found'),
         );
-    expect(container.constraints!.minWidth, 357);
+    expect(container.constraints!.minWidth, 446);
+  });
+
+  testWidgets('the composer text is a quarter larger than its 13px baseline', (
+    tester,
+  ) async {
+    await pumpComposer(tester, const Size(1400, 900));
+
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('chat-composer')),
+    );
+    expect(field.style?.fontSize, 16);
   });
 
   testWidgets('growing the composer only moves its top edge, not its bottom', (
@@ -63,15 +74,16 @@ void main() {
   ) async {
     await pumpComposer(tester, const Size(1400, 900));
 
-    final composer = find.byType(TextField).last;
-    final composerBottom = tester.getBottomLeft(composer).dy;
+    final sendBottom = tester
+        .getBottomLeft(find.byKey(const Key('chat-send-button')))
+        .dy;
     final screenHeight =
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
 
-    // Bottom padding is a fixed 24px below the composer's own content, so
-    // the gap to the screen edge stays small and constant regardless of how
-    // tall the composer itself grows - it never creeps toward the bottom.
-    expect(screenHeight - composerBottom, lessThan(120));
+    // Below the last control there is only the composer's own 19px padding,
+    // the fixed 24px inset and the 10px under it. The gap to the screen edge
+    // is that sum and nothing else, however tall the composer itself grows.
+    expect(screenHeight - sendBottom, closeTo(19 + 24 + 10, 1));
   });
 }
 

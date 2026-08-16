@@ -114,6 +114,17 @@ func (f *fakeWarmupLocalModels) StreamLocalChat(_ context.Context, instanceID st
 	if instanceID != f.model.InstanceID {
 		return "", localinference.ErrNotFound
 	}
+	// Naming the chat reaches the same model right after the reply, but it is
+	// not a turn: counted here it would look like the message went out twice.
+	if systemPromptOf(request) == sessionTitleSystemPrompt {
+		const title = "Warmes Thema"
+		if emit != nil {
+			if err := emit(title); err != nil {
+				return "", err
+			}
+		}
+		return title, nil
+	}
 	f.mu.Lock()
 	f.streamCalls++
 	for _, message := range request.Messages {
