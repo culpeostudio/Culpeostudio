@@ -145,6 +145,7 @@ void main() {
   ) async {
     final appState = await _pumpDashboard(tester);
     expect(appState.currentScreen, 'chat');
+    final targetSelectionRequests = appState.chatModelTargetSelectionRequest;
 
     // All three sidebar panels stay mounted (just translated off to the
     // side) so switching between them never remounts anything - the model
@@ -162,6 +163,10 @@ void main() {
 
     expect(appState.currentScreen, 'chat');
     expect(tester.getTopLeft(models).dx, lessThan(offscreenLeft));
+    expect(
+      appState.chatModelTargetSelectionRequest,
+      targetSelectionRequests + 1,
+    );
   });
 
   testWidgets('the module drag grip is nine dots pinned to the row edge', (

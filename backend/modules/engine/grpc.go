@@ -29,7 +29,7 @@ import (
 	"github.com/culpeohq/backend/internal/grpcmw"
 	"github.com/culpeohq/backend/internal/localinference"
 	"github.com/culpeohq/backend/internal/modelcatalog"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 type grpcService struct {
@@ -275,7 +275,7 @@ func (s *grpcService) CreateInstance(ctx context.Context, req *enginev1.CreateIn
 	// The node can be named outright or be implied by a model id that came
 	// from a node's catalog. Both mean the same thing, and a model id that
 	// already names a node wins: it is the entry the user actually picked.
-	if nodeID, localModelID, remote := node.Split(modelID); remote {
+	if nodeID, localModelID, remote := noderouting.Split(modelID); remote {
 		return m.createInstanceOnNode(ctx, nodeID, req, localModelID)
 	}
 	if nodeID := strings.TrimSpace(req.GetNodeId()); nodeID != "" {
@@ -551,7 +551,7 @@ func (s *grpcService) ListQuantizationTypes(ctx context.Context, _ *enginev1.Lis
 func (s *grpcService) PreflightQuantization(ctx context.Context, req *enginev1.PreflightQuantizationRequest) (*enginev1.PreflightQuantizationResponse, error) {
 	// Quantising reads one file and writes another beside it, both on the
 	// machine that holds them. There is nothing sensible to forward.
-	if node.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
+	if noderouting.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
 		return nil, errNodeOnlyLocal("Quantisieren")
 	}
 	report, err := s.module.preflightQuantization(ctx, quantizeRequestFromProto(req.GetRequest()))
@@ -562,7 +562,7 @@ func (s *grpcService) PreflightQuantization(ctx context.Context, req *enginev1.P
 }
 
 func (s *grpcService) StartQuantization(ctx context.Context, req *enginev1.StartQuantizationRequest) (*enginev1.StartQuantizationResponse, error) {
-	if node.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
+	if noderouting.IsRemote(strings.TrimSpace(req.GetRequest().GetSourceModelId())) {
 		return nil, errNodeOnlyLocal("Quantisieren")
 	}
 	operation, report, err := s.module.startQuantization(ctx, quantizeRequestFromProto(req.GetRequest()))

@@ -18,7 +18,7 @@ func newTestService(t *testing.T) (*grpcService, string) {
 	if err := module.Initialize(); err != nil {
 		t.Fatalf("Initialisierung fehlgeschlagen: %v", err)
 	}
-	return &grpcService{store: module.store}, settingsPath
+	return &grpcService{module: module, store: module.store}, settingsPath
 }
 
 func TestGetSettingsReportsNoStoredTokens(t *testing.T) {

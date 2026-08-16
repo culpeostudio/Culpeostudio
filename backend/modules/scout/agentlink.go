@@ -65,6 +65,44 @@ func (m *ScoutModule) TakePendingPlan(userID, sessionID string) *agentplan.Plan 
 	return plan
 }
 
+// StoreActivePlan records the plan Spark is working off. It is written after
+// every step, so a crash or a closed app leaves the worklist on disk exactly as
+// far as it got.
+func (m *ScoutModule) StoreActivePlan(userID, sessionID string, plan *agentplan.Plan) {
+	m.mu.Lock()
+	session := m.sessions[sessionID]
+	if session != nil && session.UserID == userID {
+		session.ActivePlan = plan
+	}
+	m.mu.Unlock()
+	m.persistSession(sessionID)
+}
+
+// ActivePlan returns the half-worked plan of a session, if there is one.
+func (m *ScoutModule) ActivePlan(userID, sessionID string) *agentplan.Plan {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	session := m.sessions[sessionID]
+	if session == nil || session.UserID != userID {
+		return nil
+	}
+	return session.ActivePlan
+}
+
+// ClearActivePlan drops the worklist once every step is green.
+func (m *ScoutModule) ClearActivePlan(userID, sessionID string) {
+	m.mu.Lock()
+	session := m.sessions[sessionID]
+	cleared := session != nil && session.UserID == userID && session.ActivePlan != nil
+	if cleared {
+		session.ActivePlan = nil
+	}
+	m.mu.Unlock()
+	if cleared {
+		m.persistSession(sessionID)
+	}
+}
+
 // DetachProject releases every session bound to a project Spark just deleted.
 func (m *ScoutModule) DetachProject(userID, projectID string) {
 	m.mu.Lock()

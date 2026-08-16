@@ -177,27 +177,8 @@ class _SidebarModelPanelState extends State<SidebarModelPanel> {
           ),
           const SizedBox(height: 4),
           Divider(height: 1, color: CulpeoColors.hairline),
-          for (final folder in folders)
-            _FolderSection(
-              key: ValueKey('sidebar-model-folder-${folder.id}'),
-              folder: folder,
-              entries: [
-                for (final modelId in folder.modelIds)
-                  if (byRef[modelId] != null) byRef[modelId]!,
-              ],
-              collapsed: widget.collapsedFolders.contains(folder.id),
-              selectedKey: state.selectedKey,
-              folders: folders,
-              onToggle: () => _toggleFolder(folder.id),
-              onEdit: () => _showFolderDialog(existing: folder),
-              onDelete: folder.id == 'general'
-                  ? null
-                  : () => _confirmDeleteFolder(folder),
-              onSelect: state.onSelect,
-              onMove: _appState.moveModelToFolder,
-              onReorder: (oldIndex, newIndex) =>
-                  _appState.reorderModelInFolder(folder.id, oldIndex, newIndex),
-            ),
+          for (final folder in folders.where((f) => f.parentId == null))
+            _buildFolderTree(folder, folders, byRef, state),
           if (local.isNotEmpty) ...[
             const SizedBox(height: 6),
             Padding(
@@ -229,6 +210,54 @@ class _SidebarModelPanelState extends State<SidebarModelPanel> {
               ),
           ],
         ],
+      ],
+    );
+  }
+
+  Widget _buildFolderTree(
+    ModelFolder folder,
+    List<ModelFolder> allFolders,
+    Map<String, ChatModelPickerEntry> byRef,
+    ChatModelPickerState state,
+  ) {
+    final subfolders = allFolders.where((f) => f.parentId == folder.id).toList();
+    final isRootApi = folder.id == 'general';
+
+    final folderEntries = [
+      for (final modelId in folder.modelIds)
+        if (byRef[modelId] != null) byRef[modelId]!,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FolderSection(
+          key: ValueKey('sidebar-model-folder-${folder.id}'),
+          folder: folder,
+          entries: folderEntries,
+          collapsed: widget.collapsedFolders.contains(folder.id),
+          selectedKey: state.selectedKey,
+          folders: allFolders,
+          onToggle: () => _toggleFolder(folder.id),
+          onEdit: () => _showFolderDialog(existing: folder),
+          onDelete: isRootApi ? null : () => _confirmDeleteFolder(folder),
+          onSelect: state.onSelect,
+          onMove: _appState.moveModelToFolder,
+          onReorder: (oldIndex, newIndex) =>
+              _appState.reorderModelInFolder(folder.id, oldIndex, newIndex),
+          onDeleteModel: (ref) => _appState.deleteActiveApiModel(ref),
+        ),
+        if (!widget.collapsedFolders.contains(folder.id) && subfolders.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final sub in subfolders)
+                  _buildFolderTree(sub, allFolders, byRef, state),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -402,6 +431,7 @@ class _ModelRow extends StatefulWidget {
     required this.entry,
     required this.selected,
     this.onTap,
+    this.onDelete,
     this.dragRef,
     this.trailing,
   });
@@ -409,6 +439,7 @@ class _ModelRow extends StatefulWidget {
   final ChatModelPickerEntry entry;
   final bool selected;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   /// The model ref folders key by. Set on rows that live in a folder, which
   /// makes the row's label area draggable onto another folder; local models
@@ -522,6 +553,22 @@ class _ModelRowState extends State<_ModelRow> {
               ),
               if (widget.selected)
                 Icon(Icons.check, size: 15, color: CulpeoColors.action),
+              if (widget.onDelete != null && (_hovered || widget.selected))
+                Tooltip(
+                  message: 'Modell entfernen',
+                  child: InkWell(
+                    onTap: widget.onDelete,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 14,
+                        color: CulpeoColors.danger,
+                      ),
+                    ),
+                  ),
+                ),
               if (widget.trailing != null) widget.trailing!,
             ],
           ),
@@ -610,6 +657,7 @@ class _FolderSection extends StatelessWidget {
     required this.onSelect,
     required this.onMove,
     required this.onReorder,
+    this.onDeleteModel,
   });
 
   final ModelFolder folder;
@@ -621,6 +669,7 @@ class _FolderSection extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback? onDelete;
   final ValueChanged<String> onSelect;
+  final ValueChanged<String>? onDeleteModel;
 
   /// `(modelRef, targetFolderId)` - AppState.moveModelToFolder itself.
   final void Function(String modelRef, String targetFolderId) onMove;
@@ -659,46 +708,66 @@ class _FolderSection extends StatelessWidget {
                       ),
                     ),
                   )
-                : ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(left: 20),
-                    buildDefaultDragHandles: false,
-                    itemCount: entries.length,
-                    onReorderItem: onReorder,
-                    itemBuilder: (context, index) {
-                      final entry = entries[index];
-                      return _ModelRow(
-                        key: ValueKey('sidebar-model-row-${entry.stableKey}'),
-                        entry: entry,
-                        selected: entry.stableKey == selectedKey,
-                        onTap: entry.selectable
-                            ? () => onSelect(entry.stableKey)
-                            : null,
-                        dragRef: _folderRef(entry),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _ReorderHandle(
-                              key: Key(
-                                'sidebar-model-drag-handle-${entry.stableKey}',
-                              ),
-                              index: index,
-                            ),
-                            _MoveMenu(
-                              entry: entry,
-                              folders: folders,
-                              currentFolderId: folder.id,
-                              onMove: onMove,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                : _buildModelList(context),
         ],
       ),
     );
+  }
+
+  Widget _buildModelList(BuildContext context) {
+    final list = ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: entries.length > 4
+          ? const BouncingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(left: 20),
+      buildDefaultDragHandles: false,
+      itemCount: entries.length,
+      onReorderItem: onReorder,
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        return _ModelRow(
+          key: ValueKey('sidebar-model-row-${entry.stableKey}'),
+          entry: entry,
+          selected: entry.stableKey == selectedKey,
+          onTap: entry.selectable
+              ? () => onSelect(entry.stableKey)
+              : null,
+          onDelete: onDeleteModel != null
+              ? () => onDeleteModel!(_folderRef(entry))
+              : null,
+          dragRef: _folderRef(entry),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ReorderHandle(
+                key: Key(
+                  'sidebar-model-drag-handle-${entry.stableKey}',
+                ),
+                index: index,
+              ),
+              _MoveMenu(
+                entry: entry,
+                folders: folders,
+                currentFolderId: folder.id,
+                onMove: onMove,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (entries.length > 4) {
+      return Container(
+        constraints: const BoxConstraints(maxHeight: 210),
+        child: Scrollbar(
+          thumbVisibility: true,
+          child: list,
+        ),
+      );
+    }
+    return list;
   }
 }
 

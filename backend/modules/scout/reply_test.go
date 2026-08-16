@@ -174,7 +174,7 @@ func TestReadOpenAIStreamBuffersSplitUTF8Chunks(t *testing.T) {
 		bytes.NewReader(stream[splitIndex+1:]),
 	)
 
-	reply, err := readOpenAIStream(reader, nil, nil)
+	reply, _, err := readOpenAIStream(reader, nil, nil)
 	if err != nil {
 		t.Fatalf("readOpenAIStream failed: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestReadOpenAIStreamParsesMultilineSSEDataBlocks(t *testing.T) {
 			"data: [DONE]\n\n",
 	)
 
-	reply, err := readOpenAIStream(stream, nil, nil)
+	reply, _, err := readOpenAIStream(stream, nil, nil)
 	if err != nil {
 		t.Fatalf("readOpenAIStream failed: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestReadOpenAIStreamRoutesNativeReasoningSeparately(t *testing.T) {
 			"data: [DONE]\n\n",
 	)
 	var reasoning strings.Builder
-	reply, err := readOpenAIStream(stream, nil, func(chunk string) error {
+	reply, _, err := readOpenAIStream(stream, nil, func(chunk string) error {
 		reasoning.WriteString(chunk)
 		return nil
 	})

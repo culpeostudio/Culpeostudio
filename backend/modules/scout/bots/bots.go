@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/culpeohq/backend/internal/apimodels"
+	"github.com/culpeohq/backend/internal/providerconn"
 )
 
 const StoreSchemaVersion = 2
@@ -23,12 +24,13 @@ var (
 )
 
 type ModelBinding struct {
-	Kind        string `json:"kind"`
-	ModelRef    string `json:"model_ref,omitempty"`
-	Provider    string `json:"provider,omitempty"`
-	ModelID     string `json:"model_id,omitempty"`
-	InstanceID  string `json:"instance_id,omitempty"`
-	DisplayName string `json:"display_name,omitempty"`
+	Kind         string `json:"kind"`
+	ModelRef     string `json:"model_ref,omitempty"`
+	Provider     string `json:"provider,omitempty"`
+	ModelID      string `json:"model_id,omitempty"`
+	InstanceID   string `json:"instance_id,omitempty"`
+	DisplayName  string `json:"display_name,omitempty"`
+	ConnectionID string `json:"connection_id,omitempty"`
 }
 
 type Config struct {
@@ -472,6 +474,7 @@ func NormalizeModelBinding(input *ModelBinding) (*ModelBinding, error) {
 	binding.ModelID = strings.TrimSpace(binding.ModelID)
 	binding.InstanceID = strings.TrimSpace(binding.InstanceID)
 	binding.DisplayName = strings.TrimSpace(binding.DisplayName)
+	binding.ConnectionID = strings.TrimSpace(binding.ConnectionID)
 	if binding.Kind == "" {
 		if binding.Provider == "local" || binding.InstanceID != "" || strings.HasPrefix(strings.ToLower(binding.ModelRef), "local:") {
 			binding.Kind = "local"
@@ -491,11 +494,20 @@ func NormalizeModelBinding(input *ModelBinding) (*ModelBinding, error) {
 			return nil, fmt.Errorf("%w: instance_id ist fuer lokale Modelle erforderlich", ErrInvalidModelBinding)
 		}
 		binding.Provider = "local"
+		binding.ConnectionID = ""
 		binding.ModelRef = "local:" + binding.InstanceID
 		if binding.ModelID == "" {
 			binding.ModelID = binding.InstanceID
 		}
 	case "api":
+		if binding.ConnectionID != "" {
+			if binding.ModelID == "" {
+				return nil, fmt.Errorf("%w: model_id ist fuer verbundene API-Modelle erforderlich", ErrInvalidModelBinding)
+			}
+			binding.InstanceID = ""
+			binding.ModelRef = providerconn.ModelRef(binding.ConnectionID, binding.ModelID)
+			break
+		}
 		if (binding.Provider == "" || binding.ModelID == "") && binding.ModelRef != "" {
 			provider, modelID := decodeAPIModelRef(binding.ModelRef)
 			if binding.Provider == "" {

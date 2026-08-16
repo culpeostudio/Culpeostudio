@@ -32,6 +32,7 @@ import (
 	modMemory "github.com/culpeohq/backend/modules/memory"
 	modNews "github.com/culpeohq/backend/modules/news"
 	modNode "github.com/culpeohq/backend/modules/node"
+	modProviders "github.com/culpeohq/backend/modules/providers"
 	modScout "github.com/culpeohq/backend/modules/scout"
 	modSettings "github.com/culpeohq/backend/modules/settings"
 	modSkills "github.com/culpeohq/backend/modules/skills"
@@ -105,8 +106,10 @@ func main() {
 	)
 
 	scoutModule := modScout.New(cfg.SettingsFile)
+	providerModule := modProviders.New(cfg.SettingsFile, cfg.ProviderEncryptionSecret)
 	sparkModule := modSpark.New(cfg.SettingsFile)
 
+	scoutModule.SetProviderConnections(providerModule.Manager())
 	scoutModule.SetAgent(sparkModule)
 	sparkModule.SetMemory(memoryModule)
 	sparkModule.SetPlanStore(scoutModule)
@@ -162,7 +165,9 @@ func main() {
 	modules := []modModule.Module{
 		memoryModule,
 		loginModule,
+		// Als Variable, weil der Node-Teil sie noch verdrahtet.
 		marketplaceModule,
+		providerModule,
 		scoutModule,
 		sparkModule,
 		modSettings.New(cfg.SettingsFile),
@@ -211,6 +216,17 @@ func main() {
 		})
 	})
 
+	api.Post("/shutdown", func(c *fiber.Ctx) error {
+		log.Println("[API] Shutdown requested via HTTP")
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			if p, err := os.FindProcess(os.Getpid()); err == nil {
+				_ = p.Signal(syscall.SIGINT)
+			}
+		}()
+		return c.JSON(fiber.Map{"status": "shutting down"})
+	})
+
 	// A node's control plane belongs on the tunnel: loopback would put it out
 	// of the Studio's reach, and every interface would offer it to whatever
 	// network the machine happens to sit on.
@@ -242,6 +258,14 @@ func main() {
 		TLSKey:  cfg.TLSKey,
 		RateLimits: []grpcmw.RateLimit{
 			{
+				// Provider discovery can fan out to third-party catalogues. Keep
+				// it bounded per authenticated caller without slowing local chat.
+				Limiter: providerModule.Limiter(),
+				Applies: func(fullMethod string) bool {
+					return strings.HasPrefix(fullMethod, "/culpeostudio.providers.v1.ProviderService/")
+				},
+			},
+			{
 				// CulpeoSearch fans every call out to public engines, so an
 				// unbounded caller would hammer them on our behalf.
 				Limiter: searchModule.Limiter(),
@@ -271,14 +295,16 @@ func main() {
 		if err == nil {
 			return
 		}
-		// On a node the control plane is the only way in, and it listens on
-		// the tunnel. A listener that never came up leaves a process that is
-		// running and unreachable, which is worse than one that stopped: this
-		// way the service manager restarts it once the tunnel is back.
-		if nodeModule.InNodeMode() {
-			log.Fatalf("[gRPC] Der Node ist ohne Steuerungsebene nutzlos: %v", err)
-		}
-		log.Printf("[gRPC] Fehler: %v", err)
+		// Every client talks to this process exclusively over gRPC, so a
+		// listener that never came up (e.g. the port is already held by
+		// another process, such as a node running locally) leaves a backend
+		// that looks alive on /health but answers nothing. Logging and
+		// carrying on used to hide that: the frontend would dial the port,
+		// reach whatever else is squatting on it, and hang until its own
+		// per-call deadline before surfacing a timeout with no clue why.
+		// Failing loudly here turns that into an immediate, diagnosable
+		// crash instead.
+		log.Fatalf("[gRPC] Start fehlgeschlagen: %v", err)
 	}()
 
 	go func() {

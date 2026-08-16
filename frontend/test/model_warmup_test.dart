@@ -176,39 +176,29 @@ void main() {
     );
   });
 
-  testWidgets('failed warmup exposes retry and binding recovery actions', (
-    tester,
-  ) async {
+  // The panel is the live progress of a start, not the place a failure is
+  // reported: a failed start is announced as a top notification instead, so
+  // the stretched-out panel disappears entirely once it fails.
+  testWidgets('failed warmup collapses the inline panel', (tester) async {
     final progress = ModelWarmupProgress();
     addTearDown(progress.dispose);
     progress.begin(instanceId: 'local-1', modelName: 'Lokales Modell');
-    progress.fail(
-      message: 'Ressourcenschutz hat den Start abgelehnt.',
-      code: 'resource_guard_rejected',
-    );
-    var retried = false;
-    var changedBinding = false;
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
-        home: Scaffold(
-          body: ModelWarmupPanel(
-            progress: progress,
-            onRetry: () => retried = true,
-            onChangeBinding: () => changedBinding = true,
-            onChooseAnother: () {},
-          ),
-        ),
+        home: Scaffold(body: ModelWarmupPanel(progress: progress)),
       ),
     );
+    expect(find.byKey(const Key('model-warmup-panel')), findsOneWidget);
 
-    expect(find.text('Erneut versuchen'), findsOneWidget);
-    expect(find.text('Bindung ändern'), findsOneWidget);
-    expect(find.text('Anderes Modell wählen'), findsOneWidget);
-    await tester.tap(find.text('Erneut versuchen'));
-    await tester.tap(find.text('Bindung ändern'));
-    expect(retried, isTrue);
-    expect(changedBinding, isTrue);
+    progress.fail(
+      message: 'Ressourcenschutz hat den Start abgelehnt.',
+      code: 'resource_guard_rejected',
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('model-warmup-panel')), findsNothing);
+    expect(find.byKey(const Key('model-warmup-progress')), findsNothing);
   });
 }

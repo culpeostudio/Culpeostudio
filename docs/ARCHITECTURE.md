@@ -52,7 +52,7 @@ The backend exposes module interfaces as gRPC services registered under package 
 | `culpeostudio.benchmark.v1` | `BenchmarkService` | Leaderboard status, ranking, model comparison, snapshot refresh |
 | `culpeostudio.settings.v1` | `SettingsService` | Local application settings and provider connectivity tests |
 | `culpeostudio.skills.v1` | `SkillsService` | Skill discovery, import, update, deletion |
-| `culpeostudio.node.v1` | `NodeService` / `NodeAgentService` | Remote nodes: registry and WireGuard tunnel (Studio side), status and gateway key (node side) |
+| `culpeostudio.node.v1` | `NodeService` / `NodeAgentService` | Remote-node registry in Studio; direct TLS pairing, status and gateway keys on a Node |
 
 ## What happens when a local model starts
 
@@ -65,53 +65,41 @@ The backend exposes module interfaces as gRPC services registered under package 
 
 ## Running models on another machine
 
-A node is not a second program. It is this same backend started with
-`CULPEO_NODE_MODE=1` on another machine, reached over a WireGuard tunnel. The
-Studio calls the node's own `EngineService` and `MarketplaceService`,
-authenticated with the node's pairing token, so downloading and starting a
-model on a node runs the code the node already runs for itself.
+A Culpeo Node is a separate, small process (`cmd/node`), not Studio started in
+a special mode. It assembles only `NodeAgentService`, `EngineService`, and
+`MarketplaceService`. Login, Memory, Scout, Skills, providers and Studio's
+node registry never run on the server.
+
+The Node generates one explicit `culpeo-node://pair/...` link. Studio pins the
+Node's TLS certificate before sending the pairing token, then uses the Node's
+own Engine and Marketplace APIs. There is no automatic VPN, WireGuard setup,
+or host-network manipulation in this flow.
 
 ```mermaid
 flowchart LR
     UI["Flutter client"] --> API["Studio backend"]
-    API -->|"gRPC over WireGuard<br/>pairing token"| NODE["Node backend<br/>(CULPEO_NODE_MODE=1)"]
-    API -->|"OpenAI stream over WireGuard<br/>engine key"| GW["Node engine gateway"]
-    NODE --> NWORKERS["llama-server on the node"]
-    NODE -.->|"downloads the model itself"| HOST["Model host"]
+    API -->|"pinned TLS gRPC<br/>pairing token"| NODE["Culpeo Node"]
+    API -->|"pinned TLS HTTPS<br/>short-lived engine key"| GW["Node inference gateway"]
+    NODE --> NWORKERS["llama-server on the Node"]
+    NODE -.->|"downloads models itself"| HOST["Model host"]
     GW --> NWORKERS
 ```
 
 Two properties follow, and both are the point:
 
-- A download aimed at a node is fetched **by the node**, straight from the
-  model host. The weights never cross the tunnel.
-- A model started on a node is listed beside the local ones in the engine and
-  in the chat model picker. Only its process is elsewhere; its output is
-  streamed back through the node's OpenAI gateway.
+- A download aimed at a Node is fetched **by that Node**, directly from the
+  model host. The weights never pass through Studio.
+- A model started on a Node uses that machine's CPU/GPU and is listed beside
+  local models. Its output streams through the Node's pinned HTTPS gateway.
 
-Identifiers coming from a node are qualified with it (`n:<node-id>:<id>`), so
-every later call routes itself without a lookup table.
+Identifiers coming from a Node are qualified with it (`n:<node-id>:<id>`), so
+every later Engine or Marketplace action routes to the correct machine without
+a separate client-side lookup table.
 
-| Setting on the node | Meaning |
-|---|---|
-| `CULPEO_NODE_MODE=1` | Makes this backend a node: it generates an identity, prints a join code, and accepts a Studio's pairing token |
-| `CULPEO_NODE_WG_ENDPOINT` | The public `host:port` a Studio dials. It cannot be detected, so without it no join code is printed and the node has to be added by hand |
-| `CULPEO_NODE_NAME` | The name the Studio shows. Defaults to the hostname |
-| `CULPEO_NODE_WG_NETWORK` | The tunnel network. Defaults to `10.77.0.0/24` |
-| `CULPEO_NODE_WG_PORT` | The UDP port WireGuard listens on. Defaults to `51820` |
-
-The join code carries the pairing token and the complete client tunnel config,
-including its private key — the node generates both key pairs, because a
-Studio cannot announce a public key over a tunnel that does not exist yet.
-Treat a join code exactly like a WireGuard config file.
-
-Bringing the interface up needs root on both sides. The Studio writes the
-config and offers the `wg-quick` call behind a privilege prompt (`pkexec`);
-where there is none, it reports the command to run.
-
-A pairing token is not a login. It reaches the engine and marketplace calls
-and nothing else — memory, scouts, chats, accounts and the node's own gateway
-keys stay out of its range.
+The Node needs a reachable route from Studio: direct TCP ports, an existing
+VPN, port forwarding, or a reverse proxy. Its pairing token is not a Studio
+login: it is limited to NodeAgent, Engine and Marketplace RPCs; a gateway key
+is issued only over that authenticated connection.
 
 ## Local data and trust boundaries
 

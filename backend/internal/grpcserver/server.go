@@ -100,3 +100,12 @@ func (s *Server) Stop() {
 	log.Println("[gRPC] Server wird gestoppt...")
 	s.grpcServer.GracefulStop()
 }
+
+// ForceStop immediately terminates open RPCs. Callers should first use Stop
+// so ordinary requests can finish, then use ForceStop only after a bounded
+// grace period. This matters for a Node because Engine event streams can stay
+// open indefinitely while a model is generating.
+func (s *Server) ForceStop() {
+	log.Println("[gRPC] Server wird sofort gestoppt...")
+	s.grpcServer.Stop()
+}

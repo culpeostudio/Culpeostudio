@@ -18,6 +18,8 @@ import (
 	"github.com/culpeohq/backend/internal/apimodels"
 	"github.com/culpeohq/backend/internal/appsettings"
 	"github.com/culpeohq/backend/internal/localinference"
+	"github.com/culpeohq/backend/internal/providerconn"
+	"github.com/culpeohq/backend/internal/reasoningcatalog"
 	"github.com/culpeohq/backend/modules/spark"
 )
 
@@ -55,6 +57,7 @@ type scoutSession struct {
 	ID                   string
 	UserID               string
 	ModelRef             string
+	ConnectionID         string
 	Provider             string
 	ModelID              string
 	DisplayName          string
@@ -64,6 +67,7 @@ type scoutSession struct {
 	LockedBotID          string
 	ProjectID            string
 	SelectedModelRef     string
+	SelectedConnectionID string
 	SelectedProvider     string
 	SelectedModelID      string
 	SelectedDisplayName  string
@@ -73,10 +77,29 @@ type scoutSession struct {
 	AgenticMode          string
 	AllowedRoots         []string
 	ContextLimit         int
+	// ModelContextLimit is what a local model could do, where ContextLimit is
+	// what the engine actually started the instance with. Only set for local
+	// models, and only so the UI can explain the difference.
+	ModelContextLimit int
+
+	// Summary retells everything before SummarizedThrough, so a chat that has
+	// outgrown its context window keeps its earlier turns as meaning instead of
+	// losing them to the sliding history window. Messages themselves are never
+	// dropped - the user still sees the full transcript, only the model gets
+	// the folded one.
+	Summary string `json:"summary,omitempty"`
+	// SummarizedThrough is how many leading messages Summary already covers.
+	SummarizedThrough int `json:"summarized_through,omitempty"`
+	// Compactions counts how often this session was folded, so the UI can
+	// explain a context meter that suddenly dropped.
+	Compactions int `json:"compactions,omitempty"`
 
 	PendingPlan *agentplan.Plan `json:"pending_plan,omitempty"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// ActivePlan is the approved plan being worked off. It stays on the session
+	// until every step is done, so an interrupted run can pick it up again.
+	ActivePlan *agentplan.Plan `json:"active_plan,omitempty"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 
 	MutationInFlight bool `json:"-"`
 }
@@ -89,8 +112,13 @@ type chatOptions struct {
 	AllowedRoots     []string
 	ApprovePlan      bool
 
-	Planning       bool
-	PreselectedBot *bots.Config
+	Planning        bool
+	PreselectedBot  *bots.Config
+	ReasoningEffort string
+	// OutputLevel is how long the answer may get: short, normal or max. It is
+	// resolved into a token ceiling per turn, because that also depends on how
+	// much of the context window the prompt already takes.
+	OutputLevel string
 }
 
 type providerChatHTTPError struct {
@@ -117,13 +145,18 @@ type ScoutModule struct {
 	sessions      map[string]*scoutSession
 	settingsStore *appsettings.Store
 	activeModels  *apimodels.Store
-	botStore      *bots.Store
-	httpClient    *http.Client
-	orAPIBase     string
-	flAPIBase     string
-	localModels   localinference.Provider
-	agent         Agent
-	storage       *sessionStorage
+	// providerConnections owns user-configured endpoints and keeps their API
+	// keys encrypted at rest. Scout only receives a Connection at the moment it
+	// has to make a request; it never persists or logs the key itself.
+	providerConnections *providerconn.Manager
+	botStore            *bots.Store
+	httpClient          *http.Client
+	orAPIBase           string
+	flAPIBase           string
+	localModels         localinference.Provider
+	agent               Agent
+	storage             *sessionStorage
+	reasoningCatalog    *reasoningcatalog.Catalog
 }
 
 func New(settingsFile ...string) *ScoutModule {
@@ -133,19 +166,23 @@ func New(settingsFile ...string) *ScoutModule {
 	}
 	botStorePath := "data/bots.json"
 	sessionsDir := "data/scout_sessions"
+	reasoningPath := "data/openrouter_reasoning.json"
 	if settingsPath != appsettings.DefaultSettingsFile {
 		botStorePath = filepath.Join(filepath.Dir(settingsPath), "bots.json")
 		sessionsDir = filepath.Join(filepath.Dir(settingsPath), "scout_sessions")
+		reasoningPath = filepath.Join(filepath.Dir(settingsPath), "openrouter_reasoning.json")
 	}
+	httpClient := newProviderHTTPClient()
 	return &ScoutModule{
-		sessions:      make(map[string]*scoutSession),
-		settingsStore: appsettings.NewStore(settingsPath),
-		activeModels:  apimodels.NewStoreForSettings(settingsPath),
-		botStore:      bots.NewStore(botStorePath),
-		httpClient:    newProviderHTTPClient(),
-		orAPIBase:     "https://openrouter.ai",
-		flAPIBase:     "https://api.featherless.ai",
-		storage:       newScoutStorage(sessionsDir),
+		sessions:         make(map[string]*scoutSession),
+		settingsStore:    appsettings.NewStore(settingsPath),
+		activeModels:     apimodels.NewStoreForSettings(settingsPath),
+		botStore:         bots.NewStore(botStorePath),
+		httpClient:       httpClient,
+		orAPIBase:        "https://openrouter.ai",
+		flAPIBase:        "https://api.featherless.ai",
+		storage:          newScoutStorage(sessionsDir),
+		reasoningCatalog: reasoningcatalog.New(reasoningPath, httpClient),
 	}
 }
 
@@ -153,6 +190,13 @@ func (m *ScoutModule) Name() string { return "scout" }
 
 func (m *ScoutModule) SetLocalModels(provider localinference.Provider) {
 	m.localModels = provider
+}
+
+// SetProviderConnections attaches the user-scoped ProviderService storage to
+// Scout. It is intentionally a setter so the server can construct the shared
+// manager once and inject it into both modules during startup.
+func (m *ScoutModule) SetProviderConnections(manager *providerconn.Manager) {
+	m.providerConnections = manager
 }
 
 // SetAgent connects the chat module to Spark, which runs the agent and owns the
@@ -176,6 +220,12 @@ func (m *ScoutModule) Initialize() error {
 	if err := m.botStore.Load(); err != nil {
 		return err
 	}
+	m.reasoningCatalog.Load()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		m.reasoningCatalog.Refresh(ctx)
+	}()
 	m.adoptLegacySessionDir()
 	m.loadPersistedSessions()
 	return nil

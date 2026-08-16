@@ -11,12 +11,10 @@ const Map<String, String> appStringsDe = {
   'onboarding.languageTitle': 'Sprache',
   'onboarding.languageGerman': 'Deutsch',
   'onboarding.languageEnglish': 'English',
-  'onboarding.versionTitle': 'Frontend-Version',
-  'onboarding.versionClassic': 'Classic',
-  'onboarding.versionClassicDesc': 'Alle Module werden angezeigt.',
-  'onboarding.versionLite': 'Lite',
-  'onboarding.versionLiteDesc':
-      'Nur Chat, Engine, Marktplatz, News und Benchmark werden angezeigt.',
+  'onboarding.providerTitle': 'Anbieter verbinden',
+  'onboarding.providerDescription':
+      'Zum Chatten braucht es einen verbundenen KI-Anbieter. Jetzt verbinden oder später unter Einstellungen › Server / API nachholen.',
+  'onboarding.providerButton': 'Anbieter-Einstellungen öffnen',
   'onboarding.start': 'Los geht\'s',
 
   'sidebar.chat': 'Chat',
@@ -30,10 +28,6 @@ const Map<String, String> appStringsDe = {
 
   'settings.appearance': 'Darstellung',
   'settings.language': 'Sprache',
-  'settings.frontendVersion': 'Frontend-Version',
-  'settings.frontendVersionClassic': 'Classic (alle Module)',
-  'settings.frontendVersionLite':
-      'Lite (Chat, Engine, Marktplatz, News, Benchmark)',
 
   'dashboard.logoutTitle': 'Abmelden',
   'dashboard.logoutConfirm': 'Möchtest du dich wirklich ausloggen?',
@@ -181,6 +175,9 @@ const Map<String, String> appStringsDe = {
   'settings.chatBot.defaultLabel': 'STANDARD FÜR NEUE CHATS',
   'settings.chatBot.note':
       'Laufende Chats behalten ihren bisher verwendeten Bot.',
+  'settings.chatBot.empty':
+      'Keine Bots verfügbar. Erstelle zuerst einen Bot in der Bot-Verwaltung.',
+  'settings.chatBot.openManagement': 'Bot-Verwaltung öffnen',
 
   'settings.skills.title': 'Agent Skills',
   'settings.skills.description':
@@ -257,6 +254,8 @@ const Map<String, String> appStringsDe = {
   'chatHistory.deleteProject.body':
       '„{name}" wird gelöscht. Die enthaltenen Chats bleiben erhalten und wandern zurück in die allgemeine Liste.',
   'chatHistory.deleteProject.cancel': 'Abbrechen',
+  'chatHistory.deleteProject.withChats':
+      'Die {count} enthaltenen Chats mitlöschen',
   'chatHistory.deleteProject.confirm': 'Löschen',
 
   'chatHistory.newFolder': 'Neuer Ordner',

@@ -9,6 +9,8 @@ import '../generated/culpeostudio/marketplace/v1/marketplace.pbgrpc.dart'
     as marketpb;
 import '../generated/culpeostudio/news/v1/news.pbgrpc.dart' as newspb;
 import '../generated/culpeostudio/node/v1/node.pbgrpc.dart' as nodepb;
+import '../generated/culpeostudio/providers/v1/providers.pbgrpc.dart'
+    as providerspb;
 import '../generated/culpeostudio/scout/v1/scout.pbgrpc.dart' as scoutpb;
 import '../generated/culpeostudio/settings/v1/settings.pbgrpc.dart'
     as settingspb;
@@ -57,6 +59,9 @@ class ApiClient {
   marketpb.MarketplaceServiceClient? _marketplaceClient;
   benchpb.BenchmarkServiceClient? _benchmarkClient;
   scoutpb.ScoutServiceClient? _scoutClient;
+  scoutpb.ScoutServiceClient? _scoutStreamClient;
+  enginepb.EngineServiceClient? _engineStreamClient;
+  providerspb.ProviderServiceClient? _providersClient;
 
   void handleUnauthorized() {
     if (token == null) return;
@@ -96,6 +101,9 @@ class ApiClient {
       _marketplaceClient = null;
       _benchmarkClient = null;
       _scoutClient = null;
+      _scoutStreamClient = null;
+      _engineStreamClient = null;
+      _providersClient = null;
     }
     return _channel!;
   }
@@ -111,6 +119,22 @@ class ApiClient {
   /// as request metadata and give a call the same budget the HTTP client had.
   CallOptions get callOptions =>
       CallOptions(providers: [_attachAuthorization], timeout: callDeadline);
+
+  /// Options for calls that stay open while work happens on the other end: a
+  /// planned agent run, a model warming up. They carry no deadline at all,
+  /// because [callDeadline] is the budget for an answer - not for a job. With
+  /// it, the client hung up after a minute and the backend saw the run as
+  /// cancelled mid-step, which is exactly what a worklist must survive.
+  ///
+  /// These have to be the *client's* own options. Handing them to a single call
+  /// does nothing: `CallOptions.mergedWith` resolves the timeout as
+  /// `other.timeout ?? timeout`, so an option set without a deadline inherits
+  /// the client's instead of clearing it. Hence the separate clients below.
+  ///
+  /// Cancellation still works: the caller cancels its subscription and the
+  /// stream is torn down with it.
+  CallOptions get streamCallOptions =>
+      CallOptions(providers: [_attachAuthorization]);
 
   Future<void> _attachAuthorization(
     Map<String, String> metadata,
@@ -146,6 +170,16 @@ class ApiClient {
     return _engineClient ??= enginepb.EngineServiceClient(
       activeChannel,
       options: callOptions,
+      interceptors: [_SessionInterceptor(reportGrpcError)],
+    );
+  }
+
+  /// The engine feed, which stays open for as long as the app does.
+  enginepb.EngineServiceClient get engineStreamClient {
+    final activeChannel = channel;
+    return _engineStreamClient ??= enginepb.EngineServiceClient(
+      activeChannel,
+      options: streamCallOptions,
       interceptors: [_SessionInterceptor(reportGrpcError)],
     );
   }
@@ -189,6 +223,26 @@ class ApiClient {
   scoutpb.ScoutServiceClient get scoutClient {
     final activeChannel = channel;
     return _scoutClient ??= scoutpb.ScoutServiceClient(
+      activeChannel,
+      options: callOptions,
+      interceptors: [_SessionInterceptor(reportGrpcError)],
+    );
+  }
+
+  /// The same service without a deadline, for StreamMessage. A planned agent
+  /// run works for minutes; on [scoutClient] it was cut off after one.
+  scoutpb.ScoutServiceClient get scoutStreamClient {
+    final activeChannel = channel;
+    return _scoutStreamClient ??= scoutpb.ScoutServiceClient(
+      activeChannel,
+      options: streamCallOptions,
+      interceptors: [_SessionInterceptor(reportGrpcError)],
+    );
+  }
+
+  providerspb.ProviderServiceClient get providersClient {
+    final activeChannel = channel;
+    return _providersClient ??= providerspb.ProviderServiceClient(
       activeChannel,
       options: callOptions,
       interceptors: [_SessionInterceptor(reportGrpcError)],

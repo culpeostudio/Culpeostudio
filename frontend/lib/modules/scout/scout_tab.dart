@@ -12,11 +12,14 @@ import '../../core/api_service.dart';
 import '../../core/app_state.dart';
 import '../engine/models.dart';
 import './chat_tabs_strings.dart';
+import './chat_aux_strings.dart' show tr;
 import '../../core/app_theme.dart';
 import '../../core/top_notification.dart';
 import './chat_history_panel.dart';
 import './chat_markdown_helpers.dart';
 import './chat_model_picker.dart';
+import './context_meter.dart';
+import './output_levels.dart';
 import '../spark/file_change_card.dart';
 import './interactive_code_block.dart';
 import './reasoning_dropdown.dart';
@@ -24,13 +27,41 @@ import './chat_widgets.dart';
 import './model_management_dialog.dart';
 import './model_warmup.dart';
 import './chat_action_widgets.dart';
+import './thinking_levels.dart';
 import '../spark/permission_panel.dart';
+import '../spark/plan_checklist.dart';
 
 class ScoutTab extends StatefulWidget {
-  const ScoutTab({super.key, this.api, this.appState});
+  const ScoutTab({
+    super.key,
+    this.api,
+    this.appState,
+    this.sessionId,
+    this.isActivePane = true,
+    this.onPaneFocused,
+    this.onSessionCreated,
+    this.onClosePane,
+    this.headerAction,
+  });
 
   final ApiService? api;
   final AppState? appState;
+
+  /// Pins this instance to one session when it is rendered inside the
+  /// multi-chat workspace. Leaving it null preserves the historic
+  /// single-chat behaviour, which follows [AppState.currentChatSessionId].
+  final String? sessionId;
+
+  /// Only the focused pane may handle global chat actions or publish the
+  /// sidebar model picker, which is intentionally a single shared control.
+  final bool isActivePane;
+  final VoidCallback? onPaneFocused;
+  final ValueChanged<String>? onSessionCreated;
+  final VoidCallback? onClosePane;
+
+  /// Optional workspace control rendered in the existing chat title bar.
+  /// This keeps the classic single-chat surface free of an extra header.
+  final Widget? headerAction;
 
   @override
   State<ScoutTab> createState() => _ScoutTabState();
@@ -89,12 +120,25 @@ class _ScoutTabState extends State<ScoutTab> {
   Timer? _pendingTicker;
   bool _isInitializingChat = true;
   String _thinkingLevel = 'medium';
+  // Spark is a mode, not a level: it decides that the agent loop answers,
+  // while [_thinkingLevel] still decides how hard it thinks. It holds its own
+  // flag instead of occupying a slot in the level that every model-change
+  // check then had to step around.
+  // How long an answer may get. Persists across turns in this pane, because it
+  // is a preference about the model, not a decision about one message.
+  String _outputLevel = OutputLevels.normal;
+  bool _sparkEnabled = false;
   bool _webSearchEnabled = false;
 
   bool _planningEnabled = false;
   final String _agenticMode = 'execute';
   bool _showPlanningApproval = false;
   Map<String, dynamic>? _pendingPlanningData;
+  // The approved plan while it is being worked off: every step with its own
+  // status, filled from plan_started and ticked over by the per-step events.
+  List<Map<String, dynamic>> _planSteps = const [];
+  String _planSummary = '';
+  bool _planRunning = false;
   String? _pendingAgenticMessage;
 
   Map<String, dynamic>? _pendingPermission;
@@ -108,6 +152,11 @@ class _ScoutTabState extends State<ScoutTab> {
   ChatModelChoice? _selectedChatModel;
   List<EngineInstance> _engineInstances = const [];
   List<ScoutChoice> _botChoices = const [];
+  List<ReasoningProfile> _reasoningProfiles = [];
+  // How full this chat's context window is. The backend measures it, both when
+  // the history is loaded and again around every turn, so the ring on the
+  // composer never has to guess from what this pane happens to hold.
+  ContextUsage _contextUsage = ContextUsage.unknown;
   String? _selectedBotId;
   String? _responseBotId;
   final ModelWarmupProgress _warmup = ModelWarmupProgress();
@@ -115,6 +164,7 @@ class _ScoutTabState extends State<ScoutTab> {
   ChatModelChoice? _pendingWarmupChoice;
   String? _pendingWarmupMessage;
   bool _warmupCancelled = false;
+  bool _warmupFailureAnnounced = false;
   bool _isLoadingLocalModels = true;
   String? _localModelsError;
   bool _isDragging = false;
@@ -123,6 +173,11 @@ class _ScoutTabState extends State<ScoutTab> {
   int? _editingMessageIndex;
   final Map<int, GlobalKey> _messageKeys = {};
   final List<Map<String, String>> _uploadedFiles = [];
+
+  bool get _hasPinnedSession => widget.sessionId != null;
+
+  Key _paneKey(String base) =>
+      _hasPinnedSession ? Key('$base-${widget.sessionId}') : Key(base);
 
   ScoutChoice? get _selectedBot {
     for (final bot in _botChoices) {
@@ -191,6 +246,7 @@ class _ScoutTabState extends State<ScoutTab> {
             modelRef: choice.modelRef,
             provider: choice.provider,
             modelId: choice.modelId,
+            connectionId: choice.connectionId,
             instanceId: choice.instanceId,
             label: choice.label,
             subtitle: chatTabsText('scout.localReady'),
@@ -420,7 +476,7 @@ class _ScoutTabState extends State<ScoutTab> {
           ),
           if ((currentProject?.path ?? '').isNotEmpty)
             IconButton(
-              key: const Key('file-tree-toggle'),
+              key: _paneKey('file-tree-toggle'),
               tooltip: chatTabsText('scout.showFileTree'),
               splashRadius: 16,
               onPressed: () {
@@ -433,6 +489,19 @@ class _ScoutTabState extends State<ScoutTab> {
                 Icons.account_tree_outlined,
                 size: 16,
                 color: _showFileTree ? CulpeoColors.metric : Colors.white38,
+              ),
+            ),
+          if (widget.headerAction != null) widget.headerAction!,
+          if (widget.onClosePane != null)
+            IconButton(
+              key: _paneKey('chat-pane-close'),
+              tooltip: chatTabsText('scout.multiChat.close'),
+              splashRadius: 16,
+              onPressed: widget.onClosePane,
+              icon: const Icon(
+                Icons.close_rounded,
+                size: 17,
+                color: Colors.white54,
               ),
             ),
         ],
@@ -514,14 +583,19 @@ class _ScoutTabState extends State<ScoutTab> {
             ),
           ),
 
+          // Spark always plans, so with Spark on the row reports that instead
+          // of offering a choice: turning planning off here would not turn it
+          // off for the agent.
           InkWell(
-            key: const Key('chat-planning-toggle'),
-            onTap: () {
-              setState(() {
-                _planningEnabled = !_planningEnabled;
-              });
-              _plusMenuEntry?.markNeedsBuild();
-            },
+            key: _paneKey('chat-planning-toggle'),
+            onTap: _sparkEnabled
+                ? null
+                : () {
+                    setState(() {
+                      _planningEnabled = !_planningEnabled;
+                    });
+                    _plusMenuEntry?.markNeedsBuild();
+                  },
             borderRadius: BorderRadius.circular(8),
             hoverColor: themeColor.withValues(alpha: 0.09),
             splashColor: themeColor.withValues(alpha: 0.12),
@@ -531,7 +605,9 @@ class _ScoutTabState extends State<ScoutTab> {
                 children: [
                   Icon(
                     Icons.fact_check_outlined,
-                    color: _planningEnabled ? themeColor : Colors.white70,
+                    color: _planningEnabled || _sparkEnabled
+                        ? themeColor
+                        : Colors.white70,
                     size: 14,
                   ),
                   const SizedBox(width: 10),
@@ -541,15 +617,19 @@ class _ScoutTabState extends State<ScoutTab> {
                       children: [
                         Text(
                           chatTabsText('common.planningMode'),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: _sparkEnabled
+                                ? Colors.white70
+                                : Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 1),
                         Text(
-                          chatTabsText('common.planningModeHint'),
+                          _sparkEnabled
+                              ? chatTabsText('common.planningModeWithSpark')
+                              : chatTabsText('common.planningModeHint'),
                           style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 12,
@@ -559,14 +639,76 @@ class _ScoutTabState extends State<ScoutTab> {
                     ),
                   ),
                   Icon(
-                    _planningEnabled
+                    _sparkEnabled
+                        ? Icons.lock_outline
+                        : _planningEnabled
                         ? Icons.check_circle
                         : Icons.radio_button_unchecked,
-                    color: _planningEnabled ? themeColor : Colors.white24,
+                    color: _planningEnabled || _sparkEnabled
+                        ? themeColor
+                        : Colors.white24,
                     size: 14,
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // How long the answer may get. Not a toggle like the two above, so it
+          // carries the same segmented pill the thinking modes use rather than
+          // a checkmark - and it lives here instead of on the composer row,
+          // which has no width left and is for per-turn decisions anyway.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                Icon(
+                  OutputLevels.iconDataFor(_outputLevel),
+                  color: Colors.white70,
+                  size: 14,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr('chatAux.output.title'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        OutputLevels.hintFor(_outputLevel),
+                        style: const TextStyle(
+                          color: Colors.white30,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ThinkingModeSliderButton(
+                  key: _paneKey('chat-output-level'),
+                  value: _outputLevel,
+                  options: [
+                    for (final level in OutputLevels.all)
+                      ThinkingModeOption(
+                        value: level,
+                        label: OutputLevels.labelFor(level),
+                        icon: OutputLevels.iconDataFor(level),
+                      ),
+                  ],
+                  themeColor: CulpeoColors.action,
+                  onChanged: (level) {
+                    setState(() => _outputLevel = level);
+                    _plusMenuEntry?.markNeedsBuild();
+                  },
+                ),
+              ],
             ),
           ),
 
@@ -619,11 +761,12 @@ class _ScoutTabState extends State<ScoutTab> {
     // The progress bar ticks on its own timer, outside any setState here,
     // so the sidebar mirror needs its own listener to stay live.
     _warmup.addListener(_syncModelPickerToAppState);
+    _warmup.addListener(_announceWarmupFailure);
     _actionSubscription = _appState.actionStream.listen((action) {
       if (!mounted) return;
-      if (action == 'focus_chat_input') {
+      if (action == 'focus_chat_input' && widget.isActivePane) {
         _inputFocusNode.requestFocus();
-      } else if (action.startsWith('new_chat_session')) {
+      } else if (action.startsWith('new_chat_session') && widget.isActivePane) {
         if (!_interactionLocked) {
           final parts = action.split(':');
           final projectId = parts.length > 1 && parts[1].isNotEmpty
@@ -636,7 +779,11 @@ class _ScoutTabState extends State<ScoutTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await _refreshChatModels();
-        if (_appState.currentChatSessionId == null) {
+        final pinnedSessionId = widget.sessionId;
+        if (pinnedSessionId != null) {
+          _sessionId = pinnedSessionId;
+          await _fetchHistory();
+        } else if (_appState.currentChatSessionId == null) {
           await _startSession(choice: _selectedChatModel);
         } else {
           _sessionId = _appState.currentChatSessionId;
@@ -668,6 +815,39 @@ class _ScoutTabState extends State<ScoutTab> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant ScoutTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActivePane && !oldWidget.isActivePane) {
+      // Equality for the sidebar snapshot deliberately excludes its callback
+      // fields, so two panes using the same visible model could otherwise
+      // look equal here. Force a fresh publication when focus changes: the
+      // callback must always control the newly focused session, not the pane
+      // that happened to publish an identical snapshot before it.
+      _lastPublishedModelPicker = null;
+      // AppState notifies its listeners. During didUpdateWidget the
+      // workspace is still building, so publishing synchronously would ask
+      // ancestors to rebuild mid-frame. The active pane has settled by the
+      // next frame and its callback can then be safely mirrored.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.isActivePane) return;
+        _lastPublishedModelPicker = null;
+        _syncModelPickerToAppState();
+      });
+    }
+    if (widget.sessionId == oldWidget.sessionId) return;
+
+    final nextSessionId = widget.sessionId;
+    _invalidateActiveMessageStream();
+    setState(() {
+      _sessionId = nextSessionId;
+      _messages.clear();
+      _contextUsage = ContextUsage.unknown;
+      _isLoading = false;
+    });
+    if (nextSessionId != null) unawaited(_fetchHistory());
+  }
+
   ChatModelPickerState? _lastPublishedModelPicker;
 
   /// Mirrors the fields the sidebar's model panel needs into [AppState].
@@ -678,7 +858,7 @@ class _ScoutTabState extends State<ScoutTab> {
   /// [AppState.notifyListeners] - only a real change to the model list,
   /// selection, or warmup does.
   void _syncModelPickerToAppState() {
-    if (!mounted) return;
+    if (!mounted || !widget.isActivePane) return;
     final next = ChatModelPickerState(
       entries: [
         for (final choice in _chatModelChoices)
@@ -725,17 +905,25 @@ class _ScoutTabState extends State<ScoutTab> {
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
-    _syncModelPickerToAppState();
+    if (widget.isActivePane) _syncModelPickerToAppState();
   }
 
   void _onAppStateChanged() {
     if (!mounted) return;
+    if (_hasPinnedSession) {
+      // This pane has its own immutable session binding. AppState still
+      // supplies titles, projects and model metadata, but its global focused
+      // session must not replace this pane or cancel its stream.
+      setState(() {});
+      return;
+    }
     final nextSessionId = _appState.currentChatSessionId;
     if (nextSessionId != _sessionId) {
       _invalidateActiveMessageStream();
       setState(() {
         _sessionId = nextSessionId;
         _messages.clear();
+        _contextUsage = ContextUsage.unknown;
         _isLoading = false;
       });
       if (nextSessionId != null) unawaited(_fetchHistory());
@@ -793,6 +981,17 @@ class _ScoutTabState extends State<ScoutTab> {
         .map((bot) => ScoutChoice.fromJson(Map<String, dynamic>.from(bot)))
         .where((bot) => bot.id.isNotEmpty)
         .toList();
+
+    List<ReasoningProfile> profiles = [];
+    try {
+      final res = await _api.scout.listReasoningProfiles();
+      if (res['profiles'] != null) {
+        profiles = (res['profiles'] as List)
+            .map((p) => ReasoningProfile.fromMap(Map<String, dynamic>.from(p)))
+            .toList();
+      }
+    } catch (_) {}
+
     if (!mounted) return;
     final previousKey = _selectedChatModel?.stableKey;
     ChatModelChoice? nextSelection;
@@ -802,11 +1001,12 @@ class _ScoutTabState extends State<ScoutTab> {
         break;
       }
     }
-    final hasActiveSession =
-        _sessionId != null || _appState.currentChatSessionId != null;
-    if (nextSelection == null &&
-        hasActiveSession &&
-        _selectedChatModel != null) {
+    // The model the user picked stays picked even once it drops out of the
+    // list - a local model whose node went offline, an engine that is not
+    // ready yet. Falling through to [choices.first] instead would silently
+    // move the chat onto a paid cloud provider, and the next failure would
+    // then name that provider rather than the model the user actually chose.
+    if (nextSelection == null && _selectedChatModel != null) {
       final previous = _selectedChatModel!;
       nextSelection = previous.isLocal
           ? ChatModelChoice.unavailableSession(
@@ -814,6 +1014,7 @@ class _ScoutTabState extends State<ScoutTab> {
               provider: previous.provider,
               modelId: previous.modelId,
               instanceId: previous.instanceId,
+              connectionId: previous.connectionId,
               displayName: previous.label,
             )
           : previous;
@@ -861,12 +1062,26 @@ class _ScoutTabState extends State<ScoutTab> {
     }
     setState(() {
       _chatModelChoices = choices;
-      _selectedChatModel = nextSelection;
       _engineInstances = instances;
       _botChoices = bots;
       _selectedBotId = selectedBot?.id;
+      _reasoningProfiles = profiles;
       _isLoadingLocalModels = false;
       _localModelsError = engineError;
+      if (nextSelection != null) {
+        _selectedChatModel = nextSelection;
+        final validOptions = ThinkingLevels.optionsFor(
+          profiles,
+          nextSelection.modelId,
+        );
+        if (!validOptions.contains(_thinkingLevel) &&
+            _thinkingLevel != 'dual') {
+          _thinkingLevel = ThinkingLevels.defaultLevelFor(
+            profiles,
+            nextSelection.modelId,
+          );
+        }
+      }
     });
   }
 
@@ -889,7 +1104,20 @@ class _ScoutTabState extends State<ScoutTab> {
     if (_sessionId != null) {
       final switched = await _switchSessionModel(target);
       if (switched && mounted) {
-        setState(() => _selectedChatModel = target);
+        setState(() {
+          _selectedChatModel = target;
+          final validOptions = ThinkingLevels.optionsFor(
+            _reasoningProfiles,
+            target.modelId,
+          );
+          if (!validOptions.contains(_thinkingLevel) &&
+              _thinkingLevel != 'dual') {
+            _thinkingLevel = ThinkingLevels.defaultLevelFor(
+              _reasoningProfiles,
+              target.modelId,
+            );
+          }
+        });
         if (!target.isLocal) {
           _appState.setSelectedModelId(target.modelRef);
         }
@@ -920,6 +1148,7 @@ class _ScoutTabState extends State<ScoutTab> {
           : target.modelId,
       modelRef: target.modelRef,
       displayName: target.label,
+      connectionId: target.connectionId,
     );
     if (result['status'] == 'ok') return true;
     if (mounted) {
@@ -958,13 +1187,43 @@ class _ScoutTabState extends State<ScoutTab> {
       instanceId: target.instanceId,
       botId: botId ?? _selectedBotId,
       projectId: projectId,
+      connectionId: target.connectionId,
     );
     if (mounted) {
       setState(() {
-        if (sId != null) {
+        // A pane inside [ChatWorkspace] remains bound to its existing
+        // session. Starting a new chat from the focused pane hands the new
+        // session to the workspace instead of silently replacing this pane's
+        // transcript and stream state.
+        if (sId != null && !_hasPinnedSession) {
           _sessionId = sId;
           _selectedChatModel = target;
+          final validOptions = ThinkingLevels.optionsFor(
+            _reasoningProfiles,
+            target.modelId,
+          );
+          if (!validOptions.contains(_thinkingLevel) &&
+              _thinkingLevel != 'dual') {
+            _thinkingLevel = ThinkingLevels.defaultLevelFor(
+              _reasoningProfiles,
+              target.modelId,
+            );
+          }
           _messages.clear();
+          _contextUsage = ContextUsage.unknown;
+        } else if (sId != null) {
+          _selectedChatModel = target;
+          final validOptions = ThinkingLevels.optionsFor(
+            _reasoningProfiles,
+            target.modelId,
+          );
+          if (!validOptions.contains(_thinkingLevel) &&
+              _thinkingLevel != 'dual') {
+            _thinkingLevel = ThinkingLevels.defaultLevelFor(
+              _reasoningProfiles,
+              target.modelId,
+            );
+          }
         }
         _isLoading = false;
       });
@@ -981,6 +1240,7 @@ class _ScoutTabState extends State<ScoutTab> {
       );
       return false;
     }
+    if (sId != null) widget.onSessionCreated?.call(sId);
     if (announce && mounted) {
       showTopNotification(
         context,
@@ -1239,7 +1499,7 @@ class _ScoutTabState extends State<ScoutTab> {
   void _chooseAnotherModel() {
     _invalidateActiveMessageStream();
     setState(() {
-      _sessionId = null;
+      _sessionId = _hasPinnedSession ? widget.sessionId : null;
       _selectedBotId = null;
       _responseBotId = null;
       _selectedChatModel = null;
@@ -1247,8 +1507,60 @@ class _ScoutTabState extends State<ScoutTab> {
       _pendingWarmupMessage = null;
       _warmup.reset();
     });
-    _appState.clearCurrentChatSessionSelection();
+    if (_hasPinnedSession) {
+      _appState.selectChatSession(widget.sessionId!);
+    } else {
+      _appState.clearCurrentChatSessionSelection();
+    }
     showTopNotification(context, chatTabsText('scout.chooseAnotherModel'));
+  }
+
+  /// Announces a failed model start where every other message appears.
+  ///
+  /// Listening on [_warmup] rather than announcing at each `fail()` call site
+  /// keeps the one notification per failure no matter which of them - warm-up,
+  /// send, retry - reported it. The flag resets as soon as the warm-up leaves
+  /// the failed state, so the next attempt is announced again.
+  void _announceWarmupFailure() {
+    if (!_warmup.hasFailed) {
+      _warmupFailureAnnounced = false;
+      return;
+    }
+    if (_warmupFailureAnnounced) return;
+    _warmupFailureAnnounced = true;
+
+    final message = _warmup.message.trim().isEmpty
+        ? tr('chatAux.warmup.startFailed')
+        : _warmup.message.trim();
+    final canChangeBinding = _warmupBot?.modelBinding != null;
+
+    // fail() can land inside a build or a stream callback, and an overlay
+    // cannot be inserted while a frame is being built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_warmup.hasFailed) return;
+      showTopNotification(
+        context,
+        message,
+        color: Colors.redAccent,
+        duration: const Duration(seconds: 9),
+        actions: [
+          TopNotificationAction(
+            label: tr('common.retry'),
+            onPressed: _retryModelWarmup,
+            primary: true,
+          ),
+          TopNotificationAction(
+            label: tr('chatAux.warmup.chooseAnother'),
+            onPressed: _chooseAnotherModel,
+          ),
+          if (canChangeBinding)
+            TopNotificationAction(
+              label: tr('chatAux.warmup.changeBinding'),
+              onPressed: () => _appState.setScreen('bot_management'),
+            ),
+        ],
+      );
+    });
   }
 
   void _showChatError(String message) {
@@ -1288,7 +1600,11 @@ class _ScoutTabState extends State<ScoutTab> {
           ? Map<String, dynamic>.from(rawSession)
           : res;
       final lockedBotId = sessionMetadata['locked_bot_id']?.toString().trim();
+      final rawUsage = res['context_usage'];
       setState(() {
+        _contextUsage = rawUsage is Map
+            ? ContextUsage.fromMap(Map<String, dynamic>.from(rawUsage))
+            : ContextUsage.unknown;
         _messages.clear();
         for (var m in res['messages']) {
           _messages.add({
@@ -1361,6 +1677,13 @@ class _ScoutTabState extends State<ScoutTab> {
       _pendingPermission = null;
       _editingMessageIndex = null;
       _hoveredMessageIndex = null;
+      // An approval keeps the list it just approved on screen until
+      // plan_started replaces it; a fresh message ends the old run.
+      if (approvePlan == null) {
+        _planSteps = const [];
+        _planSummary = '';
+        _planRunning = false;
+      }
     });
     _beginPending();
     _scrollToBottom();
@@ -1369,13 +1692,27 @@ class _ScoutTabState extends State<ScoutTab> {
       _api.scout.streamMessage(
         requestSessionId,
         text,
-        thinkingLevel: _thinkingLevel,
+        thinkingLevel: _sparkEnabled
+            ? 'spark'
+            : _thinkingLevel == 'dual'
+            ? 'dual'
+            : ThinkingLevels.legacyTierFor(_thinkingLevel),
+        // Spark no longer swallows the level: the backend hands the effort
+        // to every provider turn the agent loop takes, so a Spark run thinks
+        // as hard as the bar says.
+        reasoningEffort: _thinkingLevel == 'dual' ? null : _thinkingLevel,
+        outputLevel: _outputLevel,
         editMessageIndex: editIndex,
-        mode: _thinkingLevel == 'spark' ? _agenticMode : null,
-        allowedRoots: _thinkingLevel == 'spark' ? _allowedRoots() : null,
+        mode: _sparkEnabled ? _agenticMode : null,
+        allowedRoots: _sparkEnabled ? _allowedRoots() : null,
         approvePlan: approvePlan,
 
-        planning: approvePlan == true ? null : (_planningEnabled ? true : null),
+        // Spark plans by default: an agent that may touch files should say
+        // what it intends to do before it does it, so the toggle only decides
+        // planning for plain chat turns.
+        planning: approvePlan == true
+            ? null
+            : ((_planningEnabled || _sparkEnabled) ? true : null),
       ),
     );
     _activeMessageStream = streamIterator;
@@ -1459,6 +1796,26 @@ class _ScoutTabState extends State<ScoutTab> {
               color: Colors.green,
             );
           }
+        } else if (event.type == 'context_compacted') {
+          // Spark shortened its own tool results to stay inside the window.
+          // A different thing from folding the chat history, so it says so.
+          if (mounted) {
+            showTopNotification(
+              context,
+              chatTabsText('scout.toolResultsShortened'),
+            );
+          }
+        } else if (event.type == 'context_usage') {
+          final usage = ContextUsage.fromMap(event.data);
+          if (usage != _contextUsage) {
+            setState(() => _contextUsage = usage);
+          }
+          if (usage.compacted && mounted) {
+            showTopNotification(
+              context,
+              chatTabsText('scout.contextCompacted'),
+            );
+          }
         } else if (event.type == 'text_delta') {
           final chunk = event.data['chunk']?.toString() ?? '';
           if (chunk.isEmpty) continue;
@@ -1477,6 +1834,11 @@ class _ScoutTabState extends State<ScoutTab> {
             event.type == 'tool_result' ||
             event.type == 'planning_questions' ||
             event.type == 'plan_ready' ||
+            event.type == 'plan_started' ||
+            event.type == 'plan_step_start' ||
+            event.type == 'plan_step_result' ||
+            event.type == 'plan_finished' ||
+            event.type == 'plan_skipped' ||
             event.type == 'approval_needed' ||
             event.type == 'permission_request' ||
             event.type == 'permission_result' ||
@@ -1519,6 +1881,9 @@ class _ScoutTabState extends State<ScoutTab> {
             }
             _isLoading = false;
             _pendingPermission = null;
+            // The list stays up so the user can see how far the run got, but
+            // nothing is running any more.
+            _planRunning = false;
             if (!warmupCodes.contains(code)) {
               _pendingWarmupMessage = null;
               _pendingWarmupChoice = null;
@@ -1534,7 +1899,10 @@ class _ScoutTabState extends State<ScoutTab> {
           _pendingWarmupChoice = null;
           _responseBotId = null;
           _pendingPermission = null;
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _planRunning = false;
+          });
         }
       }
     } catch (e) {
@@ -1551,6 +1919,7 @@ class _ScoutTabState extends State<ScoutTab> {
         }
         _isLoading = false;
         _pendingPermission = null;
+        _planRunning = false;
         _pendingWarmupMessage = null;
         _pendingWarmupChoice = null;
         _responseBotId = null;
@@ -1603,6 +1972,33 @@ class _ScoutTabState extends State<ScoutTab> {
         _showPlanningApproval =
             event.type == 'plan_ready' || event.type == 'approval_needed';
       }
+      if (event.type == 'plan_started') {
+        // The approval is spent the moment the run starts; from here the list
+        // itself is the status display.
+        _showPlanningApproval = false;
+        _planSummary = _planningSummaryOf(event.data);
+        _planSteps = _planStepsOf(event.data);
+        _planRunning = _planSteps.isNotEmpty;
+      } else if (event.type == 'plan_step_start' ||
+          event.type == 'plan_step_result') {
+        _applyPlanStepEvent(event);
+      } else if (event.type == 'plan_finished') {
+        final steps = _planStepsOf(event.data);
+        if (steps.isNotEmpty) _planSteps = steps;
+        _planRunning = false;
+        // A worklist with every point green has nothing left to report: it
+        // makes room for the answer instead of parking on the composer. Only a
+        // run with something still open stays, because that one can be picked
+        // up again.
+        if (_planSteps.every((step) => step['status'] == 'done')) {
+          _planSteps = const [];
+          _planSummary = '';
+        }
+      } else if (event.type == 'plan_skipped') {
+        _planSteps = const [];
+        _planSummary = '';
+        _planRunning = false;
+      }
       if (event.type == 'permission_request') {
         _pendingPermission = Map<String, dynamic>.from(event.data);
       } else if (event.type == 'permission_result') {
@@ -1619,6 +2015,60 @@ class _ScoutTabState extends State<ScoutTab> {
       showTopNotification(context, chatTabsText('scout.memoryCompressed'));
     }
     _scrollToBottom();
+  }
+
+  Map<String, dynamic> _planningPayloadOf(Map<String, dynamic> data) {
+    final planning = data['planning'];
+    return planning is Map
+        ? Map<String, dynamic>.from(planning)
+        : <String, dynamic>{};
+  }
+
+  String _planningSummaryOf(Map<String, dynamic> data) {
+    return _planningPayloadOf(data)['plan_summary']?.toString() ?? '';
+  }
+
+  List<Map<String, dynamic>> _planStepsOf(Map<String, dynamic> data) {
+    final raw = _planningPayloadOf(data)['plan_steps'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((step) => Map<String, dynamic>.from(step))
+        .toList();
+  }
+
+  /// Moves one row of the worklist. The step events carry their own number
+  /// rather than an index, and a run that somehow started without its list
+  /// still gets one built here - the checklist is worth more than the
+  /// guarantee that it was announced first.
+  void _applyPlanStepEvent(ScoutStreamEvent event) {
+    final number = (event.data['step'] as num?)?.toInt() ?? 0;
+    if (number <= 0) return;
+    final total = (event.data['total'] as num?)?.toInt() ?? 0;
+    final title = event.data['title']?.toString() ?? '';
+    final result = event.data['result']?.toString() ?? '';
+    final status =
+        event.data['status']?.toString() ??
+        (event.type == 'plan_step_start' ? 'running' : 'done');
+
+    final steps = List<Map<String, dynamic>>.from(_planSteps);
+    while (steps.length < (total > number ? total : number)) {
+      steps.add({'number': steps.length + 1, 'title': '', 'status': 'pending'});
+    }
+
+    final index = steps.indexWhere(
+      (step) => (step['number'] as num?)?.toInt() == number,
+    );
+    if (index < 0) return;
+
+    final step = Map<String, dynamic>.from(steps[index]);
+    step['status'] = status;
+    if (title.isNotEmpty) step['title'] = title;
+    if (result.isNotEmpty) step['result'] = result;
+    steps[index] = step;
+
+    _planSteps = steps;
+    _planRunning = true;
   }
 
   void _queueAssistantDelta(String chunk) {
@@ -2294,16 +2744,7 @@ class _ScoutTabState extends State<ScoutTab> {
             pending: _pendingPermission!,
             onRespond: _respondPermission,
           ),
-        if (_showPlanningApproval) _buildPlanningApprovalPanel(),
-        ModelWarmupPanel(
-          progress: _warmup,
-          onCancel: _cancelModelWarmup,
-          onRetry: _retryModelWarmup,
-          onChooseAnother: _chooseAnotherModel,
-          onChangeBinding: _warmupBot?.modelBinding == null
-              ? null
-              : () => _appState.setScreen('bot_management'),
-        ),
+        ModelWarmupPanel(progress: _warmup, onCancel: _cancelModelWarmup),
 
         _buildFloatingInputBar(),
         const SizedBox(height: 10),
@@ -2311,8 +2752,18 @@ class _ScoutTabState extends State<ScoutTab> {
     );
   }
 
+  /// Counters arrive as JSON numbers, so they reach here as doubles and would
+  /// otherwise read "3.0 Schritte".
+  String _countOf(dynamic value) {
+    return ((value as num?)?.toInt() ?? 0).toString();
+  }
+
   Widget _buildAgenticEvents(List<dynamic> events) {
-    final visible = events.take(8).toList();
+    // The last eight, not the first: a planned run reports a step at a time,
+    // and what happened most recently is what tells the user where it stands.
+    final visible = events.length > 8
+        ? events.sublist(events.length - 8)
+        : events.toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: visible.map((raw) {
@@ -2349,6 +2800,25 @@ class _ScoutTabState extends State<ScoutTab> {
             summary.isEmpty
                 ? chatTabsText('scout.agentEvent.planReady')
                 : summary,
+          'plan_started' => chatTabsText('scout.agentEvent.planStarted', {
+            'total': _countOf(data['total']),
+          }),
+          'plan_step_start' => chatTabsText('scout.agentEvent.planStep', {
+            'step': _countOf(data['step']),
+            'total': _countOf(data['total']),
+            'title': data['title']?.toString() ?? '',
+          }),
+          'plan_step_result' => chatTabsText(
+            data['status']?.toString() == 'failed'
+                ? 'scout.agentEvent.planStepFailed'
+                : 'scout.agentEvent.planStepDone',
+            {'step': _countOf(data['step']), 'total': _countOf(data['total'])},
+          ),
+          'plan_finished' => chatTabsText('scout.agentEvent.planFinished', {
+            'done': _countOf(data['done']),
+            'total': _countOf(data['total']),
+          }),
+          'plan_skipped' => chatTabsText('scout.agentEvent.planSkipped'),
           'approval_needed' =>
             summary.isEmpty
                 ? chatTabsText('scout.agentEvent.approvalRequired')
@@ -2377,6 +2847,14 @@ class _ScoutTabState extends State<ScoutTab> {
           'tool_result' => Icons.check_circle_outline,
           'planning_questions' => Icons.help_outline,
           'plan_ready' => Icons.fact_check_outlined,
+          'plan_started' => Icons.playlist_add_check,
+          'plan_step_start' => Icons.radio_button_checked,
+          'plan_step_result' =>
+            data['status']?.toString() == 'failed'
+                ? Icons.error_outline
+                : Icons.check_circle_outline,
+          'plan_finished' => Icons.checklist_rtl,
+          'plan_skipped' => Icons.fast_forward,
           'approval_needed' => Icons.verified_outlined,
           'permission_request' => Icons.privacy_tip_outlined,
           'permission_result' =>
@@ -2625,6 +3103,21 @@ class _ScoutTabState extends State<ScoutTab> {
     );
   }
 
+  /// True while something sits on the composer's top edge. The input drops its
+  /// upper corners then, so the two read as one block.
+  bool get _hasComposerHat => _showPlanningApproval || _planSteps.isNotEmpty;
+
+  /// Drops the worklist. The backend keeps its copy until the next approved
+  /// plan replaces it, so nothing resumes behind the user's back once the list
+  /// is gone from the composer.
+  void _discardPlan() {
+    setState(() {
+      _planSteps = const [];
+      _planSummary = '';
+      _planRunning = false;
+    });
+  }
+
   Widget _buildPlanningApprovalPanel() {
     final planning = _pendingPlanningData ?? {};
     final summary =
@@ -2635,12 +3128,15 @@ class _ScoutTabState extends State<ScoutTab> {
         : <dynamic>[];
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       decoration: BoxDecoration(
         color: CulpeoColors.metric.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: CulpeoColors.metric.withValues(alpha: 0.35)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        border: Border(
+          top: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
+          left: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
+          right: BorderSide(color: CulpeoColors.metric.withValues(alpha: 0.35)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3068,34 +3564,28 @@ class _ScoutTabState extends State<ScoutTab> {
         final composerText = AppColors.textPrimary;
         final composerHint = AppColors.textSecondary;
 
-        final thinkingOptions = [
-          ThinkingModeOption(
-            value: 'none',
-            label: chatTabsText('common.thinkingFast'),
-            icon: Icons.speed,
-          ),
-          ThinkingModeOption(
-            value: 'medium',
-            label: chatTabsText('common.thinkingFastThinking'),
-            icon: Icons.bolt,
-          ),
-          ThinkingModeOption(
-            value: 'max',
-            label: chatTabsText('common.thinkingExtra'),
-            icon: Icons.auto_awesome,
-          ),
+        final String modelId = _selectedChatModel?.modelId ?? '';
+        final efforts = ThinkingLevels.optionsFor(_reasoningProfiles, modelId);
+
+        final List<ThinkingModeOption> thinkingOptions = efforts.map((e) {
+          final String key = e == 'xhigh'
+              ? 'XHigh'
+              : e[0].toUpperCase() + e.substring(1);
+          return ThinkingModeOption(
+            value: e,
+            label: chatTabsText('common.thinking$key'),
+            icon: ThinkingLevels.iconDataFor(e),
+          );
+        }).toList();
+
+        thinkingOptions.add(
           ThinkingModeOption(
             value: 'dual',
             label: chatTabsText('common.thinkingDual'),
-            icon: Icons.psychology,
+            icon: ThinkingLevels.iconDataFor('dual'),
             enabled: false,
           ),
-          ThinkingModeOption(
-            value: 'spark',
-            label: chatTabsText('common.thinkingSpark'),
-            icon: Icons.smart_toy_outlined,
-          ),
-        ];
+        );
 
         return Align(
           alignment: Alignment.bottomCenter,
@@ -3149,177 +3639,259 @@ class _ScoutTabState extends State<ScoutTab> {
                 // second box inside the chat area. It's laid out in the
                 // column under the messages rather than floating over them,
                 // so there is nothing behind it that needs covering up.
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _isDragging ? themeColor : composerBorder,
-                      width: _isDragging ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_uploadedFiles.isNotEmpty) ...[
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: _uploadedFiles.map((file) {
-                                return FileChip(
-                                  file: file,
-                                  themeColor: themeColor,
-                                  onDelete: () {
-                                    setState(() {
-                                      _uploadedFiles.remove(file);
-                                    });
-                                  },
-                                  onOpen: (path) => _openFile(path),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                      ],
-                      TextField(
-                        focusNode: _inputFocusNode,
-                        controller: _msgController,
-                        enabled: !_interactionLocked,
-                        style: TextStyle(color: composerText, fontSize: 13),
-                        maxLines: 4,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          hintText: chatTabsText('scout.messageHint'),
-                          hintStyle: TextStyle(
-                            color: composerHint,
-                            fontSize: 13,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        onChanged: (text) {
-                          setState(() {});
-                        },
-                        onSubmitted: (_) => _sendMessage(),
+                // What belongs to the next message sits on the composer like a
+                // hat: the plan waiting for approval, and the worklist it turns
+                // into. Both share the input's width and its top edge, so they
+                // read as part of the same thing instead of floating cards.
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_showPlanningApproval)
+                      _buildPlanningApprovalPanel()
+                    else if (_planSteps.isNotEmpty)
+                      PlanChecklist(
+                        summary: _planSummary,
+                        steps: _planSteps,
+                        running: _planRunning,
+                        onResume: _interactionLocked
+                            ? null
+                            : () => _sendMessage(approvePlan: true),
+                        onDiscard: _interactionLocked ? null : _discardPlan,
                       ),
-                      const SizedBox(height: 13),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 15,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: _hasComposerHat
+                            ? const BorderRadius.vertical(
+                                bottom: Radius.circular(14),
+                              )
+                            : BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _isDragging ? themeColor : composerBorder,
+                          width: _isDragging ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          CompositedTransformTarget(
-                            link: _plusMenuLink,
-                            child: IconButton(
-                              key: const Key('chat-add-button'),
-                              tooltip: chatTabsText('scout.addAction'),
-                              onPressed: _interactionLocked
-                                  ? null
-                                  : _togglePlusMenu,
-                              constraints: const BoxConstraints(
-                                minWidth: 44,
-                                minHeight: 44,
+                          if (_uploadedFiles.isNotEmpty) ...[
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: _uploadedFiles.map((file) {
+                                    return FileChip(
+                                      file: file,
+                                      themeColor: themeColor,
+                                      onDelete: () {
+                                        setState(() {
+                                          _uploadedFiles.remove(file);
+                                        });
+                                      },
+                                      onOpen: (path) => _openFile(path),
+                                    );
+                                  }).toList(),
+                                ),
                               ),
-                              icon: Icon(
-                                Icons.add,
-                                color: composerHint,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          if (_webSearchEnabled) ...[
-                            const SizedBox(width: 6),
-                            ChatBadge(
-                              icon: Icons.language,
-                              label: chatTabsText('common.web'),
-                              themeColor: CulpeoColors.metric,
-                              onTap: () =>
-                                  setState(() => _webSearchEnabled = false),
                             ),
                           ],
-                          const Spacer(),
-                          ThinkingModeSliderButton(
-                            value: _thinkingLevel,
-                            options: thinkingOptions,
-                            // Not the composer's gold: the ring marks
-                            // which mode is selected, and selection is
-                            // rust (design_tokens.dart) - gold is for
-                            // what the engine reported, not for a
-                            // control.
-                            themeColor: CulpeoColors.action,
-                            onChanged: (val) {
-                              setState(() {
-                                _thinkingLevel = val;
-                              });
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          HoverIconButton(
-                            icon: Icons.mic_none,
-                            tooltip: chatTabsText('scout.voiceMessage'),
-                            onPressed: () {},
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            key: const Key('chat-send-button'),
-                            tooltip: _sessionId == null
-                                ? chatTabsText('scout.selectModelFirst')
-                                : _isLoading
-                                ? chatTabsText('scout.botWorking')
-                                : _warmup.isActive
-                                ? chatTabsText('scout.waitForModel')
-                                : chatTabsText('scout.sendMessage'),
-                            onPressed:
-                                _interactionLocked ||
-                                    _sessionId == null ||
-                                    !hasText
-                                ? null
-                                : () => _sendMessage(),
-                            constraints: const BoxConstraints(
-                              minWidth: 44,
-                              minHeight: 44,
-                            ),
-                            style: IconButton.styleFrom(
-                              backgroundColor: hasText
-                                  ? themeColor
-                                  : composerHint.withValues(alpha: 0.15),
-                              disabledBackgroundColor: composerHint.withValues(
-                                alpha: 0.15,
+                          TextField(
+                            key: _paneKey('chat-composer'),
+                            focusNode: _inputFocusNode,
+                            controller: _msgController,
+                            enabled: !_interactionLocked,
+                            onTap: widget.onPaneFocused,
+                            style: TextStyle(color: composerText, fontSize: 13),
+                            maxLines: 4,
+                            minLines: 1,
+                            decoration: InputDecoration(
+                              hintText: chatTabsText('scout.messageHint'),
+                              hintStyle: TextStyle(
+                                color: composerHint,
+                                fontSize: 13,
                               ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              contentPadding: EdgeInsets.zero,
                             ),
+                            onChanged: (text) {
+                              setState(() {});
+                            },
+                            onSubmitted: (_) => _sendMessage(),
+                          ),
+                          const SizedBox(height: 13),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              CompositedTransformTarget(
+                                link: _plusMenuLink,
+                                child: IconButton(
+                                  key: _paneKey('chat-add-button'),
+                                  tooltip: chatTabsText('scout.addAction'),
+                                  onPressed: _interactionLocked
+                                      ? null
+                                      : _togglePlusMenu,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 44,
+                                    minHeight: 44,
+                                  ),
+                                  icon: Icon(
+                                    Icons.add,
+                                    color: composerHint,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              if (_webSearchEnabled) ...[
+                                const SizedBox(width: 6),
+                                ChatBadge(
+                                  icon: Icons.language,
+                                  label: chatTabsText('common.web'),
+                                  themeColor: CulpeoColors.metric,
+                                  onTap: () =>
+                                      setState(() => _webSearchEnabled = false),
+                                ),
+                              ],
+                              // The trailing controls are all fixed width and a
+                              // pane can be dragged narrower than they add up to,
+                              // so the cluster shrinks to fit instead of
+                              // overflowing the row.
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // A reading, so it stands ahead of the
+                                        // controls rather than among them.
+                                        if (_contextUsage.isKnown) ...[
+                                          ContextMeter(usage: _contextUsage),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        SparkModeButton(
+                                          active: _sparkEnabled,
+                                          label: chatTabsText(
+                                            'common.modeSpark',
+                                          ),
+                                          tooltip: chatTabsText(
+                                            'common.modeSparkHint',
+                                          ),
+                                          themeColor: CulpeoColors.action,
+                                          compact: !isDesktop,
+                                          onChanged: (spark) {
+                                            setState(() {
+                                              _sparkEnabled = spark;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ThinkingModeSliderButton(
+                                          value: _thinkingLevel,
+                                          options: thinkingOptions,
+                                          // Not the composer's gold: the ring
+                                          // marks which mode is selected, and
+                                          // selection is rust
+                                          // (design_tokens.dart) - gold is for
+                                          // what the engine reported, not for a
+                                          // control.
+                                          themeColor: CulpeoColors.action,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              _thinkingLevel = val;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(width: 8),
+                                        HoverIconButton(
+                                          icon: Icons.mic_none,
+                                          tooltip: chatTabsText(
+                                            'scout.voiceMessage',
+                                          ),
+                                          onPressed: () {},
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          key: _paneKey('chat-send-button'),
+                                          tooltip: _sessionId == null
+                                              ? chatTabsText(
+                                                  'scout.selectModelFirst',
+                                                )
+                                              : _isLoading
+                                              ? chatTabsText('scout.botWorking')
+                                              : _warmup.isActive
+                                              ? chatTabsText(
+                                                  'scout.waitForModel',
+                                                )
+                                              : chatTabsText(
+                                                  'scout.sendMessage',
+                                                ),
+                                          onPressed:
+                                              _interactionLocked ||
+                                                  _sessionId == null ||
+                                                  !hasText
+                                              ? null
+                                              : () => _sendMessage(),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 44,
+                                            minHeight: 44,
+                                          ),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: hasText
+                                                ? themeColor
+                                                : composerHint.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                            disabledBackgroundColor:
+                                                composerHint.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                          ),
 
-                            icon: _interactionLocked
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white70,
-                                    ),
-                                  )
-                                : AnimatedRotation(
-                                    turns: hasText ? 0.25 : 0.0,
-                                    duration: const Duration(milliseconds: 220),
-                                    curve: Curves.easeOut,
-                                    child: Icon(
-                                      Icons.arrow_upward,
-                                      color: hasText
-                                          ? Colors.white
-                                          : composerHint,
-                                      size: 18,
+                                          icon: _interactionLocked
+                                              ? const SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white70,
+                                                      ),
+                                                )
+                                              : AnimatedRotation(
+                                                  turns: hasText ? 0.25 : 0.0,
+                                                  duration: const Duration(
+                                                    milliseconds: 220,
+                                                  ),
+                                                  curve: Curves.easeOut,
+                                                  child: Icon(
+                                                    Icons.arrow_upward,
+                                                    color: hasText
+                                                        ? Colors.white
+                                                        : composerHint,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

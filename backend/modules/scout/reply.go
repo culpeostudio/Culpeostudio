@@ -13,6 +13,7 @@ import (
 	"github.com/culpeohq/backend/internal/apimodels"
 	"github.com/culpeohq/backend/internal/bus"
 	"github.com/culpeohq/backend/internal/localinference"
+	"github.com/culpeohq/backend/internal/providerconn"
 	"github.com/culpeohq/backend/modules/spark"
 )
 
@@ -54,12 +55,15 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 		}
 	}
 	provider := session.SelectedProvider
+	connectionID := session.SelectedConnectionID
 	modelID := session.SelectedModelID
 	modelRef := session.SelectedModelRef
 	displayName := session.SelectedDisplayName
 	contextLimit := session.SelectedContextLimit
+	modelContextLimit := session.ModelContextLimit
 	if provider == "" && modelID == "" {
 		provider = session.Provider
+		connectionID = session.ConnectionID
 		modelID = session.ModelID
 		modelRef = session.ModelRef
 		displayName = session.DisplayName
@@ -71,7 +75,6 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 	project := session.ProjectID
 
 	projectPath := m.projectPathForSessionLocked(userID, session)
-	history := windowMessages(session.Messages, maxModelHistoryMessages)
 	m.mu.Unlock()
 
 	if onBotSelected != nil {
@@ -85,6 +88,7 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 		}
 		boundModel = true
 		provider = binding.Provider
+		connectionID = binding.ConnectionID
 		modelRef = binding.ModelRef
 		displayName = binding.DisplayName
 		contextLimit = 0
@@ -100,6 +104,10 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 
 	var reply string
 	var createdBot *bots.Config
+	var budget contextBudget
+	// Set by the turn closure below when the model was still cut off after its
+	// last continuation, so the finished reply can say so.
+	truncatedTurn := false
 	providerEmit := emit
 	systemPrompt := buildBotRuntimeSystemPrompt(finalBot, thinking, style)
 	var botBuilderFilter *botBuilderStreamFilter
@@ -111,16 +119,29 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 		}
 	}
 	systemPrompt = m.appendMemoryRecall(userID, project, message, systemPrompt)
-	if provider == "" || modelID == "" {
+	if connectionID != "" && modelID != "" {
+		connection, active, connectionErr := m.configuredConnectionForChat(userID, connectionID, modelID)
+		if connectionErr != nil {
+			if boundModel && (errors.Is(connectionErr, providerconn.ErrNotFound) || errors.Is(connectionErr, providerconn.ErrActiveModelMissing)) {
+				return "", "", "", nil, fmt.Errorf("%w: %v", errModelBindingMissing, connectionErr)
+			}
+			return "", "", "", nil, connectionErr
+		}
+		provider = configuredProviderDisplayName(connection)
+		modelRef = active.ModelRef
+		displayName = active.DisplayName
+	}
+	if (provider == "" && connectionID == "") || modelID == "" {
 		reply = "Scout Stub-Antwort auf: " + message
 		if providerEmit != nil {
 			if err := providerEmit(reply); err != nil {
 				return "", "", "", nil, err
 			}
 		}
-		m.updateSessionEffectiveModel(userID, sessionID, provider, modelID, modelRef, displayName, contextLimit)
+		m.updateSessionEffectiveModel(userID, sessionID, provider, connectionID, modelID, modelRef, displayName, contextLimit, modelContextLimit)
 	} else {
 		if apimodels.NormalizeProvider(provider) == localinference.ProviderLocal {
+			connectionID = ""
 			localModel, err := m.ensureLocalModelReady(ctx, modelID, boundModel, emitWarmup)
 			if err != nil {
 				return "", "", "", nil, err
@@ -129,8 +150,18 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 			modelRef = localinference.ProviderLocal + ":" + localModel.InstanceID
 			displayName = localModel.DisplayName
 			contextLimit = localModel.ContextLimit
-			m.updateSessionEffectiveModel(userID, sessionID, provider, modelID, modelRef, displayName, contextLimit)
+			modelContextLimit = localModel.ModelContextLimit
+			m.updateSessionEffectiveModel(userID, sessionID, provider, connectionID, modelID, modelRef, displayName, contextLimit, modelContextLimit)
 		}
+
+		// Everything the model is asked with has to fit its window, so the
+		// window is resolved first and the older turns are folded into a
+		// summary when they no longer do.
+		budget = m.resolveContextBudget(userID, provider, connectionID, modelID, contextLimit)
+		compacted := m.compactSessionIfNeeded(ctx, userID, sessionID, budget, provider, connectionID, modelID)
+		summary, history := m.modelHistory(userID, sessionID)
+		systemPrompt = appendConversationSummary(systemPrompt, summary)
+		emitContextUsage(emitEvent, m.contextUsageForSession(userID, sessionID, budget, compacted))
 
 		history = append(history, chatMessage{Role: "user", Content: message})
 		modelStart := time.Now()
@@ -144,13 +175,37 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 			}
 			return emitEvent("reasoning_delta", map[string]interface{}{"chunk": chunk})
 		}
+		// How long the answer may get is decided per turn, because it depends on
+		// how much of the window the prompt already occupies. Each agent step
+		// re-resolves it against its own conversation for the same reason.
 		turn := func(convo []spark.Message, prompt string, filterEmit func(string) error) (string, error) {
+			convoMessages := fromAgentMessages(convo)
+			promptTokens := estimateTokens(prompt) + estimateMessageTokens(convoMessages)
+			output := m.resolveOutputBudget(userID, provider, connectionID, modelID,
+				options.OutputLevel, budget, promptTokens)
+
 			thinkFilter := newThinkTagFilter(filterEmit, emitReasoning)
-			out, streamErr := m.streamProviderChat(ctx, provider, modelID, fromAgentMessages(convo), prompt,
-				thinking, thinkFilter.Emit, emitReasoning)
+			out, cutOff, streamErr := m.streamTurnWithContinuation(ctx, providerTurn{
+				UserID:          userID,
+				Provider:        provider,
+				ConnectionID:    connectionID,
+				ModelID:         modelID,
+				Messages:        convoMessages,
+				SystemPrompt:    prompt,
+				ThinkingLevel:   thinking,
+				ReasoningEffort: options.ReasoningEffort,
+				MaxOutputTokens: output.MaxTokens,
+				Emit:            thinkFilter.Emit,
+				EmitReasoning:   emitReasoning,
+			})
 			if streamErr == nil {
 				streamErr = thinkFilter.Flush()
 			}
+			// Assigned rather than latched: an agent run takes several turns and
+			// only the last one produces the answer the user reads, so an early
+			// step that had to be continued must not put a truncation notice on
+			// a reply that finished cleanly.
+			truncatedTurn = cutOff
 			return out, streamErr
 		}
 
@@ -165,11 +220,21 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 			ApprovePlan:  options.ApprovePlan,
 			EmitText:     providerEmit,
 			EmitEvent:    emitEvent,
+			// Without this the agent loop cannot know how much room it has, and
+			// its tool results grow until the provider refuses the request.
+			Budget: spark.ContextBudget{
+				LimitTokens: budget.LimitTokens,
+				Source:      budget.Source,
+				Compactions: m.sessionCompactions(userID, sessionID),
+			},
 		}, turn)
 
 		log.Printf("[scout] Modell-Antwort in %s (provider=%s, model=%s, projekt-tools=%t)", time.Since(modelStart).Round(time.Millisecond), apimodels.NormalizeProvider(provider), modelID, projectPath != "")
 		if err != nil {
 			if boundModel && errors.Is(err, localinference.ErrNotFound) {
+				return "", "", "", nil, fmt.Errorf("%w: %v", errModelBindingMissing, err)
+			}
+			if boundModel && (errors.Is(err, providerconn.ErrNotFound) || errors.Is(err, providerconn.ErrActiveModelMissing)) {
 				return "", "", "", nil, fmt.Errorf("%w: %v", errModelBindingMissing, err)
 			}
 			var providerErr *providerChatHTTPError
@@ -179,7 +244,7 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 			return "", "", "", nil, err
 		}
 		if apimodels.NormalizeProvider(provider) != localinference.ProviderLocal {
-			m.updateSessionEffectiveModel(userID, sessionID, provider, modelID, modelRef, displayName, contextLimit)
+			m.updateSessionEffectiveModel(userID, sessionID, provider, connectionID, modelID, modelRef, displayName, contextLimit, modelContextLimit)
 		}
 	}
 	if botBuilderFilter != nil {
@@ -191,6 +256,9 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 	reply = stripThinkBlocks(reply)
 	if finalBot.ID == "botbuilder" {
 		reply, createdBot = m.applyBotBuilderAutomation(userID, reply)
+	}
+	if truncatedTurn {
+		reply = truncationNotice(reply)
 	}
 
 	m.mu.Lock()
@@ -206,18 +274,25 @@ func (m *ScoutModule) generateReply(ctx context.Context, userID, sessionID, mess
 	m.mu.Unlock()
 	m.persistSession(sessionID)
 
+	// The answer counts against the window too, so the meter is corrected once
+	// the turn is stored rather than left showing the pre-reply reading.
+	if budget.LimitTokens > 0 {
+		emitContextUsage(emitEvent, m.contextUsageForSession(userID, sessionID, budget, false))
+	}
+
 	bus.Get().Emit("scout", bus.EventScoutMessageSent, map[string]interface{}{
-		"session_id": sessionID,
-		"user_id":    userID,
-		"project":    project,
-		"message":    message,
-		"reply":      reply,
-		"provider":   provider,
-		"model_id":   modelID,
-		"bot_id":     finalBot.ID,
-		"bot_name":   finalBot.Name,
-		"thinking":   thinking,
-		"style":      style,
+		"session_id":    sessionID,
+		"user_id":       userID,
+		"project":       project,
+		"message":       message,
+		"reply":         reply,
+		"provider":      provider,
+		"connection_id": connectionID,
+		"model_id":      modelID,
+		"bot_id":        finalBot.ID,
+		"bot_name":      finalBot.Name,
+		"thinking":      thinking,
+		"style":         style,
 	})
 	return reply, finalBot.ID, finalBot.Name, createdBot, nil
 }
@@ -342,7 +417,7 @@ func (m *ScoutModule) ensureLocalModelReady(ctx context.Context, instanceID stri
 	return model, err
 }
 
-func (m *ScoutModule) updateSessionEffectiveModel(userID, sessionID, provider, modelID, modelRef, displayName string, contextLimit int) {
+func (m *ScoutModule) updateSessionEffectiveModel(userID, sessionID, provider, connectionID, modelID, modelRef, displayName string, contextLimit, modelContextLimit int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	session := m.sessions[sessionID]
@@ -350,8 +425,10 @@ func (m *ScoutModule) updateSessionEffectiveModel(userID, sessionID, provider, m
 		return
 	}
 	session.Provider = provider
+	session.ConnectionID = connectionID
 	session.ModelID = modelID
 	session.ModelRef = modelRef
 	session.DisplayName = displayName
 	session.ContextLimit = contextLimit
+	session.ModelContextLimit = modelContextLimit
 }

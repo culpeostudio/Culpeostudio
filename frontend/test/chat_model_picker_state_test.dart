@@ -102,4 +102,22 @@ void main() {
     appState.publishChatModelPicker(state());
     expect(notifications, 2);
   });
+
+  test('model-target selection requests are observable one-shot events', () {
+    final api = ApiService();
+    api.baseUrl = 'http://127.0.0.1:1/api';
+    final appState = AppState.test(api);
+
+    var notifications = 0;
+    appState.addListener(() => notifications++);
+
+    expect(appState.chatModelTargetSelectionRequest, 0);
+    appState.requestChatModelTargetSelection();
+    expect(appState.chatModelTargetSelectionRequest, 1);
+    expect(notifications, 1);
+
+    appState.requestChatModelTargetSelection();
+    expect(appState.chatModelTargetSelectionRequest, 2);
+    expect(notifications, 2);
+  });
 }

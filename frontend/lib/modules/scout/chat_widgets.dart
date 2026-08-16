@@ -100,6 +100,112 @@ class ChatBadge extends StatelessWidget {
   }
 }
 
+/// Spark on its own switch, sitting left of the thinking pill. It used to be
+/// the sixth segment of [ThinkingModeSliderButton], which read as "think this
+/// hard" when what it actually changes is who answers: the agent loop, with
+/// tools and file access. The thinking bar stays live next to it, because
+/// Spark drives the same model and how hard that model thinks is still the
+/// user's call.
+///
+/// On is rust like every other engaged control; off is the same quiet outline
+/// the thinking bar wears, so the two read as one row of controls rather than
+/// a switch bolted onto a bar.
+class SparkModeButton extends StatefulWidget {
+  const SparkModeButton({
+    super.key,
+    required this.active,
+    required this.label,
+    required this.tooltip,
+    required this.themeColor,
+    required this.onChanged,
+    this.compact = false,
+  });
+
+  final bool active;
+  final String label;
+  final String tooltip;
+  final Color themeColor;
+  final ValueChanged<bool> onChanged;
+
+  /// Icon-only, for panes too narrow to carry the label as well.
+  final bool compact;
+
+  static const double height = ThinkingModeSliderButton.barHeight;
+
+  @override
+  State<SparkModeButton> createState() => _SparkModeButtonState();
+}
+
+class _SparkModeButtonState extends State<SparkModeButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.active;
+    final foreground = active
+        ? Colors.white
+        : (_hovered ? Colors.white : Colors.white60);
+
+    return Tooltip(
+      key: const Key('spark-mode-toggle'),
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => widget.onChanged(!active),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: SparkModeButton.height,
+            padding: EdgeInsets.symmetric(horizontal: widget.compact ? 7 : 10),
+            decoration: BoxDecoration(
+              color: active
+                  ? widget.themeColor.withValues(alpha: 0.16)
+                  : Colors.white.withValues(alpha: _hovered ? 0.07 : 0.04),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: active
+                    ? widget.themeColor.withValues(alpha: 0.75)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.electric_bolt,
+                  size: widget.compact ? 15 : 13,
+                  color: foreground,
+                ),
+                if (!widget.compact) ...[
+                  const SizedBox(width: 6),
+                  // Gives way rather than blowing the row open if the label
+                  // runs long in some language.
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ThinkingModeOption {
   final String value;
   final String label;
@@ -119,9 +225,11 @@ class ThinkingModeOption {
 /// every option sits on the bar and a tap commits it directly, no popup.
 /// Icon-only with a tooltip per segment - the composer doesn't have room to
 /// spell out all five modes at once, so a ring around the active icon
-/// carries the selection instead of a label. Agentic modes
-/// (spark/agentic/agents) keep the same violet accent the old popup used to
-/// flag them as a different kind of option.
+/// carries the selection instead of a label. Agentic modes (agentic/agents)
+/// keep the same violet accent the old popup used to flag them as a different
+/// kind of option; Spark left the bar for [SparkModeButton], so it is no
+/// longer one of them. The bar stays live while Spark runs - the level it
+/// carries is the effort Spark's own turns are sent with.
 ///
 /// Switching segments doesn't cross-fade the ring: the highlight is a
 /// droplet that travels to the new segment, and while it's in flight the
@@ -458,7 +566,7 @@ class _ThinkingSegment extends StatefulWidget {
 
 class _ThinkingSegmentState extends State<_ThinkingSegment> {
   static const Color _agenticAccent = Color(0xFFA78BFA);
-  static const Set<String> _agenticValues = {'spark', 'agentic', 'agents'};
+  static const Set<String> _agenticValues = {'agentic', 'agents'};
 
   bool _hovered = false;
 

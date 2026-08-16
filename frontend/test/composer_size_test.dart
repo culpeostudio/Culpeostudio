@@ -119,6 +119,7 @@ class _FakeScoutApi extends ScoutApi {
     String? responseStyle,
     String? botId,
     String? projectId,
+    String? connectionId,
   }) async {
     _fake.createdSessions++;
     return {

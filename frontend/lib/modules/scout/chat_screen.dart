@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import '../../core/app_state.dart';
-import './scout_tab.dart';
+import './chat_workspace.dart';
 
 export './scout_tab.dart';
 export './model_management_dialog.dart';
@@ -45,7 +45,7 @@ class ChatScreen extends StatelessWidget {
             },
             child: const Scaffold(
               backgroundColor: Colors.transparent,
-              body: ScoutTab(),
+              body: ChatWorkspace(),
             ),
           ),
         );

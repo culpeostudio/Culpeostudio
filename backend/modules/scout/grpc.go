@@ -20,6 +20,7 @@ import (
 	"github.com/culpeohq/backend/internal/bus"
 	"github.com/culpeohq/backend/internal/grpcmw"
 	"github.com/culpeohq/backend/internal/localinference"
+	"github.com/culpeohq/backend/internal/providerconn"
 	"github.com/culpeohq/backend/modules/scout/bots"
 	"github.com/culpeohq/backend/modules/spark"
 )
@@ -104,14 +105,15 @@ func (s *grpcService) CreateSession(
 	}
 
 	session := scoutSession{
-		ID:       newChatSessionID(),
-		UserID:   userID,
-		ModelRef: strings.TrimSpace(req.GetModelRef()),
-		Provider: apimodels.NormalizeProvider(req.GetProvider()),
-		ModelID:  strings.TrimSpace(req.GetModelId()),
-		Messages: []chatMessage{},
-		Thinking: normalizeThinkingLevel(req.GetThinkingLevel()),
-		Style:    bots.NormalizeResponseStyle(req.GetResponseStyle()),
+		ID:           newChatSessionID(),
+		UserID:       userID,
+		ModelRef:     strings.TrimSpace(req.GetModelRef()),
+		ConnectionID: strings.TrimSpace(req.GetConnectionId()),
+		Provider:     apimodels.NormalizeProvider(req.GetProvider()),
+		ModelID:      strings.TrimSpace(req.GetModelId()),
+		Messages:     []chatMessage{},
+		Thinking:     normalizeThinkingLevel(req.GetThinkingLevel()),
+		Style:        bots.NormalizeResponseStyle(req.GetResponseStyle()),
 	}
 
 	instanceID := strings.TrimSpace(req.GetInstanceId())
@@ -130,6 +132,7 @@ func (s *grpcService) CreateSession(
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
 			session.ModelRef = binding.ModelRef
+			session.ConnectionID = binding.ConnectionID
 			session.Provider = binding.Provider
 			session.ModelID = binding.ModelID
 			session.DisplayName = binding.DisplayName
@@ -141,7 +144,7 @@ func (s *grpcService) CreateSession(
 		}
 	}
 
-	if strings.HasPrefix(strings.ToLower(session.ModelRef), localinference.ProviderLocal+":") {
+	if session.ConnectionID == "" && strings.HasPrefix(strings.ToLower(session.ModelRef), localinference.ProviderLocal+":") {
 		refID := strings.TrimSpace(session.ModelRef[len(localinference.ProviderLocal)+1:])
 		if refID == "" && instanceID == "" && session.ModelID == "" {
 			return nil, status.Error(codes.InvalidArgument, "instance_id ist fuer ein lokales Modell erforderlich")
@@ -151,16 +154,16 @@ func (s *grpcService) CreateSession(
 		}
 		session.Provider = localinference.ProviderLocal
 	}
-	if session.Provider == localinference.ProviderLocal && instanceID == "" {
+	if session.ConnectionID == "" && session.Provider == localinference.ProviderLocal && instanceID == "" {
 		instanceID = session.ModelID
 	}
-	if instanceID != "" {
+	if session.ConnectionID == "" && instanceID != "" {
 		if err := s.configureLocalModel(&session, instanceID); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := s.configureHostedModel(&session); err != nil {
+	if err := s.configureHostedModel(userID, &session); err != nil {
 		return nil, err
 	}
 
@@ -168,6 +171,7 @@ func (s *grpcService) CreateSession(
 		session.DisplayName = session.ModelID
 	}
 	session.SelectedModelRef = session.ModelRef
+	session.SelectedConnectionID = session.ConnectionID
 	session.SelectedProvider = session.Provider
 	session.SelectedModelID = session.ModelID
 	session.SelectedDisplayName = session.DisplayName
@@ -186,23 +190,25 @@ func (s *grpcService) CreateSession(
 	s.module.persistSession(session.ID)
 
 	bus.Get().Emit("scout", bus.EventScoutSessionCreated, map[string]interface{}{
-		"session_id": session.ID,
-		"user_id":    session.UserID,
-		"model_ref":  session.ModelRef,
-		"provider":   session.Provider,
-		"model_id":   session.ModelID,
-		"thinking":   session.Thinking,
-		"style":      session.Style,
+		"session_id":    session.ID,
+		"user_id":       session.UserID,
+		"model_ref":     session.ModelRef,
+		"provider":      session.Provider,
+		"connection_id": session.ConnectionID,
+		"model_id":      session.ModelID,
+		"thinking":      session.Thinking,
+		"style":         session.Style,
 	})
 
 	response := &scoutv1.CreateSessionResponse{
-		SessionId:   session.ID,
-		ModelRef:    session.ModelRef,
-		Provider:    session.Provider,
-		ModelId:     session.ModelID,
-		DisplayName: session.DisplayName,
-		Thinking:    session.Thinking,
-		Style:       session.Style,
+		SessionId:    session.ID,
+		ModelRef:     session.ModelRef,
+		Provider:     session.Provider,
+		ModelId:      session.ModelID,
+		DisplayName:  session.DisplayName,
+		ConnectionId: session.ConnectionID,
+		Thinking:     session.Thinking,
+		Style:        session.Style,
 	}
 	if lockedBot != nil {
 		response.BotId = lockedBot.ID
@@ -227,32 +233,46 @@ func (s *grpcService) configureLocalModel(session *scoutSession, instanceID stri
 
 	localModel, err := s.module.localModels.ResolveLocalModel(instanceID)
 	if err != nil {
-		if errors.Is(err, localinference.ErrNotReady) {
-			if _, canWarm := s.module.localModels.(localinference.WarmupProvider); canWarm {
-				session.ModelID = instanceID
-				session.ModelRef = localinference.ProviderLocal + ":" + instanceID
-				if session.DisplayName == "" {
-					session.DisplayName = instanceID
-				}
-				return nil
-			}
-		}
 		if errors.Is(err, localinference.ErrNotFound) {
 			return status.Error(codes.NotFound, err.Error())
 		}
-		return status.Error(codes.FailedPrecondition, err.Error())
+		// Not ready (still warming up) or not reachable (offline node/worker)
+		// still means a valid chat: the model just cannot answer right now.
+		// That should surface when the user sends a message, not block them
+		// from starting the chat in the first place.
+		session.ModelID = instanceID
+		session.ModelRef = localinference.ProviderLocal + ":" + instanceID
+		if session.DisplayName == "" {
+			session.DisplayName = instanceID
+		}
+		return nil
 	}
 
 	session.ModelID = localModel.InstanceID
 	session.ModelRef = localinference.ProviderLocal + ":" + localModel.InstanceID
 	session.DisplayName = localModel.DisplayName
 	session.ContextLimit = localModel.ContextLimit
+	session.ModelContextLimit = localModel.ModelContextLimit
 	return nil
 }
 
 // configureHostedModel makes sure a hosted model is actually started for chat,
 // starting it when the caller named a provider and model it may use.
-func (s *grpcService) configureHostedModel(session *scoutSession) error {
+func (s *grpcService) configureHostedModel(userID string, session *scoutSession) error {
+	if connectionID := strings.TrimSpace(session.ConnectionID); connectionID != "" {
+		if session.ModelID == "" {
+			return status.Error(codes.InvalidArgument, "model_id ist fuer die Provider-Verbindung erforderlich")
+		}
+		connection, active, err := s.module.configuredConnectionForChat(userID, connectionID, session.ModelID)
+		if err != nil {
+			return configuredConnectionStatus(err)
+		}
+		session.ModelRef = active.ModelRef
+		session.Provider = configuredProviderDisplayName(connection)
+		session.ModelID = active.ModelID
+		session.DisplayName = active.DisplayName
+		return nil
+	}
 	if session.Provider == localinference.ProviderLocal {
 		return nil
 	}
@@ -290,6 +310,17 @@ func (s *grpcService) configureHostedModel(session *scoutSession) error {
 	session.ModelID = active.ModelID
 	session.DisplayName = active.DisplayName
 	return nil
+}
+
+func configuredConnectionStatus(err error) error {
+	switch {
+	case errors.Is(err, providerconn.ErrNotFound):
+		return status.Error(codes.NotFound, "Provider-Verbindung wurde nicht gefunden")
+	case errors.Is(err, providerconn.ErrActiveModelMissing):
+		return status.Error(codes.NotFound, "API-Modell ist nicht aktiviert. Bitte es in den Einstellungen für den Chat aktivieren.")
+	default:
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
 }
 
 func (s *grpcService) ListSessions(
@@ -335,6 +366,7 @@ func (s *grpcService) GetHistory(
 	response := &scoutv1.GetHistoryResponse{
 		SessionId:    sessionID,
 		Provider:     session.Provider,
+		ConnectionId: session.ConnectionID,
 		ModelId:      session.ModelID,
 		ModelRef:     session.ModelRef,
 		DisplayName:  session.DisplayName,
@@ -346,7 +378,20 @@ func (s *grpcService) GetHistory(
 	for _, message := range session.Messages {
 		response.Messages = append(response.Messages, chatMessageToProto(message))
 	}
+	usage := contextUsage{UsedTokens: sessionUsedTokensLocked(session), Compactions: session.Compactions}
+	modelLimit := session.ModelContextLimit
+	provider, connectionID, modelID, localLimit := session.Provider, session.ConnectionID, session.ModelID, session.ContextLimit
 	s.module.mu.Unlock()
+
+	// Resolving the window can reach the provider connection store, so it
+	// happens outside the session lock.
+	budget := s.module.resolveContextBudget(userID, provider, connectionID, modelID, localLimit)
+	usage.LimitTokens = budget.LimitTokens
+	usage.Source = budget.Source
+	if modelLimit > usage.LimitTokens {
+		usage.ModelLimitTokens = modelLimit
+	}
+	response.ContextUsage = contextUsageToProto(usage)
 
 	return response, nil
 }
@@ -430,9 +475,10 @@ func (s *grpcService) SetSessionModel(
 	req *scoutv1.SetSessionModelRequest,
 ) (*scoutv1.SetSessionModelResponse, error) {
 	provider := strings.TrimSpace(req.GetProvider())
+	connectionID := strings.TrimSpace(req.GetConnectionId())
 	modelID := strings.TrimSpace(req.GetModelId())
-	if provider == "" || modelID == "" {
-		return nil, status.Error(codes.InvalidArgument, "provider und model_id sind erforderlich")
+	if modelID == "" || (provider == "" && connectionID == "") {
+		return nil, status.Error(codes.InvalidArgument, "model_id und provider oder connection_id sind erforderlich")
 	}
 
 	sessionID := strings.TrimSpace(req.GetSessionId())
@@ -447,6 +493,10 @@ func (s *grpcService) SetSessionModel(
 	session.SelectedProvider = provider
 	session.SelectedModelID = modelID
 	session.SelectedModelRef = strings.TrimSpace(req.GetModelRef())
+	session.SelectedConnectionID = connectionID
+	if connectionID != "" && session.SelectedModelRef == "" {
+		session.SelectedModelRef = providerconn.ModelRef(connectionID, modelID)
+	}
 	session.SelectedDisplayName = strings.TrimSpace(req.GetDisplayName())
 	session.SelectedContextLimit = int(req.GetContextLimit())
 	summary := summarizeSession(session)
@@ -659,6 +709,14 @@ func (e *streamEmitter) modelWarmup(progress localinference.WarmupProgress) erro
 	})
 }
 
+func (e *streamEmitter) contextUsage(usage contextUsage) error {
+	return e.stream.Send(&scoutv1.StreamMessageResponse{
+		Event: &scoutv1.StreamMessageResponse_ContextUsage{
+			ContextUsage: contextUsageToProto(usage),
+		},
+	})
+}
+
 func (e *streamEmitter) done(done *scoutv1.StreamDone) error {
 	return e.stream.Send(&scoutv1.StreamMessageResponse{
 		Event: &scoutv1.StreamMessageResponse_Done{Done: done},
@@ -678,6 +736,11 @@ func (e *streamEmitter) emitAgentEvent(eventType string, data interface{}) error
 		if progress, ok := data.(localinference.WarmupProgress); ok {
 			return e.modelWarmup(progress)
 		}
+	case "context_usage":
+		if usage, ok := contextUsageFromPayload(data); ok {
+			return e.contextUsage(usage)
+		}
+		return nil
 	case "done":
 		return e.done(&scoutv1.StreamDone{
 			SessionId:     stringField(data, "session_id"),
@@ -806,4 +869,24 @@ func (s *grpcService) DeleteBot(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &scoutv1.DeleteBotResponse{}, nil
+}
+
+func (s *grpcService) ListReasoningProfiles(
+	ctx context.Context,
+	req *scoutv1.ListReasoningProfilesRequest,
+) (*scoutv1.ListReasoningProfilesResponse, error) {
+	profiles := s.module.reasoningCatalog.Profiles()
+	out := make([]*scoutv1.ReasoningProfile, 0, len(profiles))
+	for _, p := range profiles {
+		out = append(out, &scoutv1.ReasoningProfile{
+			Id:               p.ID,
+			Name:             p.Name,
+			Mandatory:        p.Mandatory,
+			DefaultEnabled:   p.DefaultEnabled,
+			SupportedEfforts: p.SupportedEfforts,
+			DefaultEffort:    p.DefaultEffort,
+			ContextLength:    int32(p.ContextLength),
+		})
+	}
+	return &scoutv1.ListReasoningProfilesResponse{Profiles: out}, nil
 }

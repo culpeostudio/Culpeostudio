@@ -9,6 +9,7 @@ import 'package:culpeo_studio/core/app_state.dart';
 import 'package:culpeo_studio/modules/engine/models.dart';
 import 'package:culpeo_studio/modules/scout/model_warmup.dart';
 import 'package:culpeo_studio/modules/scout/scout_tab.dart';
+import 'package:culpeo_studio/modules/spark/plan_checklist.dart';
 
 void main() {
   testWidgets(
@@ -58,6 +59,129 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('a planned run puts its worklist on screen and ticks it off', (
+    tester,
+  ) async {
+    final api = _FakeChatApi(
+      firstStreamEvents: const [
+        ScoutStreamEvent(
+          type: 'plan_started',
+          data: {
+            'session_id': 'session-1',
+            'total': 2,
+            'planning': {
+              'plan_summary': 'Zwei Schritte',
+              'plan_steps': [
+                {'number': 1, 'title': 'Config lesen', 'status': 'pending'},
+                {'number': 2, 'title': 'Timeout setzen', 'status': 'pending'},
+              ],
+            },
+          },
+        ),
+        ScoutStreamEvent(
+          type: 'plan_step_start',
+          data: {
+            'step': 1,
+            'total': 2,
+            'title': 'Config lesen',
+            'status': 'running',
+          },
+        ),
+        ScoutStreamEvent(
+          type: 'plan_step_result',
+          data: {
+            'step': 1,
+            'total': 2,
+            'title': 'Config lesen',
+            'status': 'done',
+            'result': 'Timeout steht auf 10s',
+          },
+        ),
+        ScoutStreamEvent(
+          type: 'plan_step_start',
+          data: {
+            'step': 2,
+            'total': 2,
+            'title': 'Timeout setzen',
+            'status': 'running',
+          },
+        ),
+      ],
+    );
+
+    final appState = AppState.test(api);
+    await _pumpChat(tester, api, appState);
+
+    await tester.enterText(find.byType(TextField).last, 'Timeout erhoehen');
+    await tester.pump();
+    _pressIconButton(tester, const Key('chat-send-button'));
+    await _pumpUntil(
+      tester,
+      () => find.byType(PlanChecklist).evaluate().isNotEmpty,
+    );
+    await _pumpFrames(tester);
+
+    final checklist = tester.widget<PlanChecklist>(find.byType(PlanChecklist));
+    expect(checklist.steps.length, 2);
+    expect(checklist.steps[0]['status'], 'done');
+    expect(checklist.steps[0]['result'], 'Timeout steht auf 10s');
+    expect(checklist.steps[1]['status'], 'running');
+    expect(checklist.running, isTrue);
+    expect(find.text('Timeout setzen'), findsOneWidget);
+  });
+
+  testWidgets('a worklist with every point green leaves the composer', (
+    tester,
+  ) async {
+    final api = _FakeChatApi(
+      firstStreamEvents: const [
+        ScoutStreamEvent(
+          type: 'plan_started',
+          data: {
+            'session_id': 'session-1',
+            'total': 1,
+            'planning': {
+              'plan_summary': 'Ein Schritt',
+              'plan_steps': [
+                {'number': 1, 'title': 'Config lesen', 'status': 'pending'},
+              ],
+            },
+          },
+        ),
+        ScoutStreamEvent(
+          type: 'plan_step_result',
+          data: {'step': 1, 'total': 1, 'status': 'done', 'result': 'fertig'},
+        ),
+        ScoutStreamEvent(
+          type: 'plan_finished',
+          data: {
+            'session_id': 'session-1',
+            'total': 1,
+            'done': 1,
+            'failed': 0,
+            'pending': 0,
+            'planning': {
+              'plan_steps': [
+                {'number': 1, 'title': 'Config lesen', 'status': 'done'},
+              ],
+            },
+          },
+        ),
+      ],
+    );
+
+    final appState = AppState.test(api);
+    await _pumpChat(tester, api, appState);
+
+    await tester.enterText(find.byType(TextField).last, 'Timeout erhoehen');
+    await tester.pump();
+    _pressIconButton(tester, const Key('chat-send-button'));
+    await _pumpUntil(tester, () => api.streamCalls == 1);
+    await _pumpFrames(tester);
+
+    expect(find.byType(PlanChecklist), findsNothing);
+  });
 
   testWidgets('a fast double retry starts only one additional SSE request', (
     tester,
@@ -360,6 +484,7 @@ class _FakeScoutApi extends ScoutApi {
     String? responseStyle,
     String? botId,
     String? projectId,
+    String? connectionId,
   }) async {
     _fake.createdSessions++;
     _fake.lastCreatedBotId = botId;
@@ -399,6 +524,8 @@ class _FakeScoutApi extends ScoutApi {
     List<String>? allowedRoots,
     bool? approvePlan,
     bool? planning,
+    String? reasoningEffort,
+    String? outputLevel,
   }) async* {
     _fake.streamCalls++;
     if (_fake.streamCalls == 1 && _fake.firstStreamEvents.isNotEmpty) {

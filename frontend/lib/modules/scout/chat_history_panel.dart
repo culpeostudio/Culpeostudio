@@ -323,41 +323,90 @@ class _ChatHistoryPanelState extends State<ChatHistoryPanel> {
   }
 
   Future<void> _confirmDeleteProject(ChatProject project) async {
+    // Deleting the folder used to leave its chats behind as loose sessions.
+    // They can go with it now, but only when asked for: chats are the work,
+    // the folder is only where it was filed.
+    final chatCount = _appState.sessionsInProject(project.id).length;
+    var alsoChats = false;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: CulpeoColors.panel,
-        shape: _dialogShape,
-        title: Text(
-          tr('chatHistory.deleteProject.title'),
-          style: TextStyle(
-            color: CulpeoColors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
-          tr('chatHistory.deleteProject.body', {'name': project.name}),
-          style: TextStyle(color: CulpeoColors.textSecondary, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            style: TextButton.styleFrom(
-              foregroundColor: CulpeoColors.textMuted,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: CulpeoColors.panel,
+          shape: _dialogShape,
+          title: Text(
+            tr('chatHistory.deleteProject.title'),
+            style: TextStyle(
+              color: CulpeoColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
-            child: Text(tr('chatHistory.deleteProject.cancel')),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: CulpeoColors.danger),
-            child: Text(tr('chatHistory.deleteProject.confirm')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tr('chatHistory.deleteProject.body', {'name': project.name}),
+                style: TextStyle(
+                  color: CulpeoColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              if (chatCount > 0) ...[
+                const SizedBox(height: 12),
+                InkWell(
+                  key: const Key('delete-project-with-chats'),
+                  onTap: () => setDialogState(() => alsoChats = !alsoChats),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: alsoChats,
+                        onChanged: (value) =>
+                            setDialogState(() => alsoChats = value ?? false),
+                        activeColor: CulpeoColors.danger,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      Expanded(
+                        child: Text(
+                          tr('chatHistory.deleteProject.withChats', {
+                            'count': '$chatCount',
+                          }),
+                          style: TextStyle(
+                            color: alsoChats
+                                ? CulpeoColors.danger
+                                : CulpeoColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              style: TextButton.styleFrom(
+                foregroundColor: CulpeoColors.textMuted,
+              ),
+              child: Text(tr('chatHistory.deleteProject.cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: TextButton.styleFrom(foregroundColor: CulpeoColors.danger),
+              child: Text(tr('chatHistory.deleteProject.confirm')),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed == true) {
-      await _appState.deleteChatProject(project.id);
+      await _appState.deleteChatProject(project.id, withSessions: alsoChats);
     }
   }
 

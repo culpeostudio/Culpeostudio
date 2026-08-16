@@ -7,10 +7,11 @@ import '../../core/app_theme.dart';
 import '../../core/startup_warmup.dart';
 import '../../core/app_background.dart';
 import '../../core/top_notification.dart';
+import '../../core/widgets/custom_title_bar.dart';
 import '../onboarding/onboarding_dialog.dart';
 import '../benchmark/benchmark_screen.dart';
 import '../scout/chat_history_panel.dart';
-import '../scout/scout_tab.dart';
+import '../scout/chat_workspace.dart';
 import '../scout/sidebar_model_panel.dart';
 import '../engine/engine_screen.dart';
 import '../marketplace/marketplace_screen.dart';
@@ -41,6 +42,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   static const double _sidebarWidthDesktop = 300;
   static const double _sidebarWidthDrawer = 285;
   int _sidebarView = 0;
+  String _lastActiveScreen = 'chat';
   bool _isSettingsHovered = false;
   bool _isLogoutHovered = false;
   late AnimationController _settingsRotationController;
@@ -57,13 +59,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     'engine': Icons.memory_outlined,
     'news': Icons.newspaper_outlined,
     'benchmark': Icons.speed_outlined,
-  };
-
-  static const Set<String> _nonSidebarScreens = {
-    'chat',
-    'settings',
-    'bot_management',
-    'spark',
   };
 
   static String _moduleLabel(String key) => tr('sidebar.$key');
@@ -207,9 +202,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildBody(String screen) {
     switch (screen) {
       case 'chat':
-        return const ScoutTab();
+        return const ChatWorkspace();
       case 'spark':
-        return const ScoutTab();
+        return const ChatWorkspace();
       case 'engine':
         return const EngineScreen();
       case 'marketplace':
@@ -219,11 +214,13 @@ class _DashboardScreenState extends State<DashboardScreen>
       case 'benchmark':
         return const BenchmarkScreen();
       case 'settings':
-        return const SettingsScreen();
+        final section = _appState.pendingSettingsSection;
+        _appState.pendingSettingsSection = null;
+        return SettingsScreen(initialSectionIndex: section);
       case 'bot_management':
         return const BotManagementScreen();
       default:
-        return const ScoutTab();
+        return const ChatWorkspace();
     }
   }
 
@@ -243,61 +240,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 38,
-                        height: 38,
-                        child: Image.asset(
-                          'assets/logo.png',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stack) => Text(
-                            'C',
-                            textAlign: TextAlign.center,
-                            style: AppFonts.serifItalic(
-                              fontSize: 23,
-                              color: AppColors.gold,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'CULPEO',
-                            maxLines: 1,
-                            overflow: TextOverflow.clip,
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          Text(
-                            'STUDIO',
-                            maxLines: 1,
-                            overflow: TextOverflow.clip,
-                            style: AppFonts.mono(
-                              fontSize: 9,
-                              color: textSecondary,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 18, 12, 12),
                   child: _SidebarViewSwitcher(
                     currentView: _sidebarView,
                     onChanged: _showSidebarView,
@@ -456,6 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _showSidebarView(int view) {
+    final opensModelSidebar = _sidebarViews[view] == 'models';
     setState(() {
       _sidebarView = view;
       // Chat-Verlauf und Modell-Auswahl gehören zur laufenden Chat-Sitzung -
@@ -470,6 +414,17 @@ class _DashboardScreenState extends State<DashboardScreen>
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
     );
+    if (opensModelSidebar) {
+      // The Model tab remains the one familiar global entry point.  Once the
+      // chat workspace has more than one pane it consumes this request with a
+      // target-chat dialog; a single pane deliberately ignores it and keeps
+      // the historic direct model selection flow.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _appState.currentScreen == 'chat') {
+          _appState.requestChatModelTargetSelection();
+        }
+      });
+    }
   }
 
   /// Die drei Sidebar-Ansichten liegen wie bei einem horizontalen Pager
@@ -622,14 +577,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       builder: (context, _) {
         final currentScreen = _appState.currentScreen;
 
-        if (_appState.frontendVersion == 'lite' &&
-            !_moduleIcons.containsKey(currentScreen) &&
-            !_nonSidebarScreens.contains(currentScreen)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _appState.setScreen('chat');
-          });
-        }
-
         return Scaffold(
           backgroundColor: Colors.transparent,
           appBar: isDesktop
@@ -654,31 +601,40 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ],
                 ),
           drawer: isDesktop ? null : Drawer(child: _buildSidebar(false)),
-          body: Stack(
+          body: Column(
             children: [
-              const Positioned.fill(child: AppBackground()),
-              Padding(
-                padding: EdgeInsets.all(isDesktop ? 10 : 0),
-                child: Row(
+              if (isDesktop) const CustomTitleBar(),
+              Expanded(
+                child: Stack(
                   children: [
-                    if (isDesktop) ...[
-                      _buildSidebar(true),
-                      const SizedBox(width: 14),
-                    ],
-                    Expanded(
-                      child: Stack(
+                    const Positioned.fill(child: AppBackground()),
+                    Padding(
+                      padding: EdgeInsets.all(isDesktop ? 10 : 0),
+                      child: Row(
                         children: [
-                          _buildContentPanel(currentScreen, isDesktop),
-                          if (_appState.selectedCode != null)
-                            Positioned(
-                              top: 20,
-                              right: 20,
-                              bottom: 20,
-                              width: _appState.codeDrawerWidth
-                                  .clamp(340.0, 620.0)
-                                  .toDouble(),
-                              child: _CodeAssistantDrawer(appState: _appState),
+                          if (isDesktop) ...[
+                            _buildSidebar(true),
+                            const SizedBox(width: 14),
+                          ],
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                _buildContentPanel(currentScreen, isDesktop),
+                                if (_appState.selectedCode != null)
+                                  Positioned(
+                                    top: 20,
+                                    right: 20,
+                                    bottom: 20,
+                                    width: _appState.codeDrawerWidth
+                                        .clamp(340.0, 620.0)
+                                        .toDouble(),
+                                    child: _CodeAssistantDrawer(
+                                      appState: _appState,
+                                    ),
+                                  ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -693,20 +649,47 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildContentPanel(String currentScreen, bool isDesktop) {
-    final panel = KeyedSubtree(
-      key: ValueKey<String>('locale-${_appState.language}'),
-      child: _buildBody(currentScreen),
+    if (currentScreen != 'settings') {
+      _lastActiveScreen = currentScreen;
+    }
+
+    final isSettings = currentScreen == 'settings';
+
+    final Widget activePanel = KeyedSubtree(
+      key: ValueKey<String>('locale-${_appState.language}-$_lastActiveScreen'),
+      child: _buildBody(_lastActiveScreen),
     );
 
-    if (!isDesktop) return panel;
+    final Widget bodyWidget = isSettings
+        ? Stack(
+            children: [
+              Positioned.fill(child: activePanel),
+              Positioned.fill(
+                child: KeyedSubtree(
+                  key: ValueKey<String>(
+                    'locale-${_appState.language}-settings',
+                  ),
+                  child: _buildBody('settings'),
+                ),
+              ),
+            ],
+          )
+        : activePanel;
+
+    if (!isDesktop) return bodyWidget;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: isSettings ? Colors.transparent : AppColors.bg,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(
+          color: isSettings ? Colors.transparent : AppColors.divider,
+        ),
       ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(22), child: panel),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: bodyWidget,
+      ),
     );
   }
 }

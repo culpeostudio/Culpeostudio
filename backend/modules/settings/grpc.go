@@ -16,11 +16,15 @@ import (
 
 type grpcService struct {
 	settingsv1.UnimplementedSettingsServiceServer
-	store *appsettings.Store
+	module *SettingsModule
+	store  *appsettings.Store
 }
 
 func (m *SettingsModule) RegisterGRPC(server *grpc.Server) {
-	settingsv1.RegisterSettingsServiceServer(server, &grpcService{store: m.store})
+	settingsv1.RegisterSettingsServiceServer(server, &grpcService{
+		module: m,
+		store:  m.store,
+	})
 }
 
 func (s *grpcService) GetSettings(ctx context.Context, req *settingsv1.GetSettingsRequest) (*settingsv1.GetSettingsResponse, error) {
@@ -31,9 +35,13 @@ func (s *grpcService) UpdateSettings(ctx context.Context, req *settingsv1.Update
 	ramReserve := req.EngineRamReserveBytes
 	gpuReserve := req.EngineGpuReserveBytes
 
-	warnings, err := validateEngineReserves(ctx, ramReserve, gpuReserve)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	var warnings []string
+	var err error
+	if s.module != nil && s.module.Node != nil {
+		warnings, err = s.module.Node.ValidateEngineReserves(ctx, ramReserve, gpuReserve)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 	}
 
 	updated, err := s.store.Update(appsettings.Update{
@@ -72,15 +80,19 @@ func (s *grpcService) GetSystemInfo(ctx context.Context, req *settingsv1.GetSyst
 func (s *grpcService) TestProvider(ctx context.Context, req *settingsv1.TestProviderRequest) (*settingsv1.TestProviderResponse, error) {
 	current := s.store.Get()
 
+	if s.module == nil || s.module.Anbieter == nil {
+		return nil, status.Error(codes.Internal, "Anbieter Modul nicht initialisiert")
+	}
+
 	var token string
 	var test func(string) (bool, string)
 	switch req.GetProvider() {
 	case settingsv1.Provider_PROVIDER_HUGGINGFACE:
-		token, test = current.HuggingFaceToken, testHuggingFace
+		token, test = current.HuggingFaceToken, s.module.Anbieter.TestHuggingFace
 	case settingsv1.Provider_PROVIDER_OPENROUTER:
-		token, test = current.OpenRouterToken, testOpenRouter
+		token, test = current.OpenRouterToken, s.module.Anbieter.TestOpenRouter
 	case settingsv1.Provider_PROVIDER_FEATHERLESS:
-		token, test = current.FeatherlessToken, testFeatherless
+		token, test = current.FeatherlessToken, s.module.Anbieter.TestFeatherless
 	default:
 		return nil, status.Error(codes.InvalidArgument, "Ungültiger Provider")
 	}

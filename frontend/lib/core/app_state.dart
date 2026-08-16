@@ -10,18 +10,23 @@ import './app_strings.dart';
 import './remaining_ui_strings.dart';
 import './api_service.dart';
 import './startup_warmup.dart';
+import '../modules/providers/provider_api.dart';
 
 class ModelFolder {
   final String id;
   String name;
   Color color;
   final List<String> modelIds;
+  String? parentId;
+  bool isProviderFolder;
 
   ModelFolder({
     required this.id,
     required this.name,
     required this.color,
     required this.modelIds,
+    this.parentId,
+    this.isProviderFolder = false,
   });
 }
 
@@ -31,23 +36,34 @@ class ActiveApiModel {
   final String displayName;
   final String modelRef;
 
+  /// Set for a model activated from the user-owned provider registry. It is
+  /// carried into Scout so the backend can resolve the matching encrypted
+  /// connection without treating a display label as an endpoint.
+  final String? connectionId;
+
   ActiveApiModel({
     required this.provider,
     required this.modelId,
     required this.displayName,
     required this.modelRef,
+    this.connectionId,
   });
 
   factory ActiveApiModel.fromJson(Map<String, dynamic> json) {
-    final provider = json['provider']?.toString() ?? '';
+    final providerLabel = json['provider_label']?.toString().trim() ?? '';
+    final provider = providerLabel.isNotEmpty
+        ? providerLabel
+        : (json['provider']?.toString() ?? '');
     final modelId = json['model_id']?.toString() ?? '';
     final displayName = json['display_name']?.toString() ?? modelId;
     final modelRef = json['model_ref']?.toString() ?? '';
+    final connectionId = json['connection_id']?.toString().trim() ?? '';
     return ActiveApiModel(
       provider: provider,
       modelId: modelId,
       displayName: displayName.isEmpty ? modelId : displayName,
       modelRef: modelRef,
+      connectionId: connectionId.isEmpty ? null : connectionId,
     );
   }
 }
@@ -59,6 +75,7 @@ class BotModelBinding {
   final String modelId;
   final String? instanceId;
   final String displayName;
+  final String? connectionId;
 
   const BotModelBinding({
     required this.kind,
@@ -67,6 +84,7 @@ class BotModelBinding {
     required this.modelId,
     this.instanceId,
     required this.displayName,
+    this.connectionId,
   });
 
   bool get isLocal => kind == 'local' || provider == 'local';
@@ -76,6 +94,7 @@ class BotModelBinding {
     final provider = json['provider']?.toString().trim() ?? '';
     final instanceId = json['instance_id']?.toString().trim() ?? '';
     final modelId = json['model_id']?.toString().trim() ?? '';
+    final connectionId = json['connection_id']?.toString().trim() ?? '';
     var modelRef = json['model_ref']?.toString().trim() ?? '';
     final local = kind == 'local' || provider == 'local';
     if (modelRef.isEmpty && local && instanceId.isNotEmpty) {
@@ -88,6 +107,7 @@ class BotModelBinding {
       modelId: modelId.isNotEmpty ? modelId : instanceId,
       instanceId: instanceId.isEmpty ? null : instanceId,
       displayName: json['display_name']?.toString().trim() ?? '',
+      connectionId: connectionId.isEmpty ? null : connectionId,
     );
   }
 
@@ -97,6 +117,7 @@ class BotModelBinding {
     'provider': provider,
     'model_id': modelId,
     if (instanceId?.isNotEmpty == true) 'instance_id': instanceId,
+    if (connectionId?.isNotEmpty == true) 'connection_id': connectionId,
     'display_name': displayName,
   };
 }
@@ -203,30 +224,21 @@ class ChatSubfolder {
 }
 
 class UserPreferences {
-  const UserPreferences({
-    required this.configured,
-    required this.language,
-    required this.frontendVersion,
-  });
+  const UserPreferences({required this.configured, required this.language});
 
   static const defaultLanguage = 'de';
-  static const defaultFrontendVersion = 'classic';
   static const supportedLanguages = {'de', 'en'};
-  static const supportedFrontendVersions = {'lite', 'classic'};
 
   final bool configured;
   final String language;
-  final String frontendVersion;
 
-  bool get hasSupportedValues =>
-      supportedLanguages.contains(language) &&
-      supportedFrontendVersions.contains(frontendVersion);
+  bool get hasSupportedValues => supportedLanguages.contains(language);
 
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
+    final lang = json['language']?.toString() ?? '';
     return UserPreferences(
       configured: json['configured'] == true,
-      language: json['language']?.toString() ?? '',
-      frontendVersion: json['frontend_version']?.toString() ?? '',
+      language: lang.isEmpty ? UserPreferences.defaultLanguage : lang,
     );
   }
 }
@@ -381,8 +393,11 @@ class AppState extends ChangeNotifier {
 
   bool _sessionExpiryHandled = false;
 
+  /// Section a navigation to the settings screen should land on, consumed
+  /// (and cleared) the next time that screen is built. Null opens on General.
+  int? pendingSettingsSection;
+
   String language = UserPreferences.defaultLanguage;
-  String frontendVersion = UserPreferences.defaultFrontendVersion;
 
   bool _hasUserPrefs = true;
   bool _userPreferencesLoaded = false;
@@ -401,14 +416,7 @@ class AppState extends ChangeNotifier {
       isLoggedIn && _userPreferencesLoaded && !_hasUserPrefs;
 
   Future<bool> setLanguage(String lang) {
-    return saveUserPreferences(
-      language: lang,
-      frontendVersion: frontendVersion,
-    );
-  }
-
-  Future<bool> setFrontendVersion(String version) {
-    return saveUserPreferences(language: language, frontendVersion: version);
+    return saveUserPreferences(language: lang);
   }
 
   Future<bool> loadUserPrefs() async {
@@ -443,15 +451,8 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> saveUserPreferences({
-    required String language,
-    required String frontendVersion,
-  }) async {
-    final requested = UserPreferences(
-      configured: true,
-      language: language,
-      frontendVersion: frontendVersion,
-    );
+  Future<bool> saveUserPreferences({required String language}) async {
+    final requested = UserPreferences(configured: true, language: language);
     if (!requested.hasSupportedValues) {
       _pendingUserPreferences = requested;
       _userPreferencesError = remainingUiText('preferences.invalidChoice');
@@ -472,7 +473,6 @@ class AppState extends ChangeNotifier {
 
     final result = await api.login.updateUserPreferences(
       language: requested.language,
-      frontendVersion: requested.frontendVersion,
     );
     _isSavingUserPreferences = false;
 
@@ -503,23 +503,18 @@ class AppState extends ChangeNotifier {
   Future<bool> retryUserPreferencesSave() async {
     final pending = _pendingUserPreferences;
     if (pending == null) return false;
-    return saveUserPreferences(
-      language: pending.language,
-      frontendVersion: pending.frontendVersion,
-    );
+    return saveUserPreferences(language: pending.language);
   }
 
   Future<bool> retryUserPreferencesLoad() => loadUserPrefs();
 
   void _applyUserPreferences(UserPreferences preferences) {
     language = preferences.language;
-    frontendVersion = preferences.frontendVersion;
     appLanguage = language;
   }
 
   void _resetUserPreferencesForUnknownUser() {
     language = UserPreferences.defaultLanguage;
-    frontendVersion = UserPreferences.defaultFrontendVersion;
     appLanguage = language;
     _hasUserPrefs = true;
     _userPreferencesLoaded = false;
@@ -588,6 +583,22 @@ class AppState extends ChangeNotifier {
 
   ChatModelPickerState? _chatModelPicker;
   ChatModelPickerState? get chatModelPicker => _chatModelPicker;
+
+  /// Monotonically increasing UI request for choosing the chat whose model is
+  /// about to be changed.  The workspace owns the actual pane list and
+  /// consumes this signal only when it has more than one open pane.  Keeping
+  /// the event in [AppState] lets the persistent sidebar ask the mounted chat
+  /// workspace for a target without importing any scout widgets here.
+  int _chatModelTargetSelectionRequest = 0;
+  int get chatModelTargetSelectionRequest => _chatModelTargetSelectionRequest;
+
+  /// Asks the active chat workspace to choose a target pane before the model
+  /// sidebar is used.  A single-chat workspace deliberately ignores it, so
+  /// the classic model-panel flow remains unchanged.
+  void requestChatModelTargetSelection() {
+    _chatModelTargetSelectionRequest++;
+    notifyListeners();
+  }
 
   /// The active chat session (today: `ScoutTab`) calls this whenever its
   /// model list, selection, or warmup state changes, so the sidebar can
@@ -770,6 +781,8 @@ class AppState extends ChangeNotifier {
 
   bool? _totpConfigured;
   bool? get totpConfigured => _totpConfigured;
+  bool _guestModeActive = false;
+  bool get guestModeActive => _guestModeActive;
 
   String? _setupSecret;
   String? get setupSecret => _setupSecret;
@@ -799,6 +812,7 @@ class AppState extends ChangeNotifier {
     String? instanceId,
     String? botId,
     String? projectId,
+    String? connectionId,
   }) async {
     _isLoading = true;
     _lastChatError = null;
@@ -811,6 +825,7 @@ class AppState extends ChangeNotifier {
       instanceId: instanceId,
       botId: botId,
       projectId: projectId,
+      connectionId: connectionId ?? selected?.connectionId,
     );
     _isLoading = false;
     if (result.containsKey('session_id')) {
@@ -939,9 +954,20 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<void> deleteChatProject(String projectId) async {
+  /// Deletes a folder. [withSessions] also deletes the chats filed in it -
+  /// otherwise they stay and only lose their folder, which is what happened
+  /// unconditionally before.
+  Future<void> deleteChatProject(
+    String projectId, {
+    bool withSessions = false,
+  }) async {
     final index = chatProjects.indexWhere((p) => p.id == projectId);
     if (index == -1) return;
+    if (withSessions) {
+      for (final sId in sessionsInProject(projectId)) {
+        deleteSession(sId);
+      }
+    }
     chatProjects.removeAt(index);
 
     sessionProjects.removeWhere((_, pId) => pId == projectId);
@@ -1233,26 +1259,54 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> refreshActiveApiModels() async {
-    final result = await api.marketplace.listActiveAPIModels();
-    if (result.containsKey('error')) {
-      _lastChatError = result['error']?.toString();
+    String? providerError;
+    Future<List<ActiveProviderModel>> loadProviderModels() async {
+      try {
+        return await api.providers.listActiveModels();
+      } catch (error) {
+        providerError = error.toString();
+        return const [];
+      }
+    }
+
+    final results = await Future.wait<Object>([
+      api.marketplace.listActiveAPIModels(),
+      loadProviderModels(),
+    ]);
+    final legacyResult = results[0] as Map<String, dynamic>;
+    final providerModels = results[1] as List<ActiveProviderModel>;
+    if (legacyResult.containsKey('error') && providerError != null) {
+      _lastChatError = providerError;
       notifyListeners();
       return false;
     }
 
-    final rawModels = result['models'];
     final loaded = <ActiveApiModel>[];
+    final loadedRefs = <String>{};
+    final rawModels = legacyResult['models'];
     if (rawModels is List) {
       for (final item in rawModels) {
         if (item is Map) {
           final model = ActiveApiModel.fromJson(
             Map<String, dynamic>.from(item),
           );
-          if (model.modelRef.isNotEmpty) {
+          if (model.modelRef.isNotEmpty && loadedRefs.add(model.modelRef)) {
             loaded.add(model);
           }
         }
       }
+    }
+    for (final model in providerModels) {
+      if (model.modelRef.isEmpty || !loadedRefs.add(model.modelRef)) continue;
+      loaded.add(
+        ActiveApiModel(
+          provider: model.providerLabel,
+          modelId: model.modelId,
+          displayName: model.displayName,
+          modelRef: model.modelRef,
+          connectionId: model.connectionId,
+        ),
+      );
     }
 
     activeApiModels
@@ -1272,19 +1326,66 @@ class AppState extends ChangeNotifier {
         (id) => !isLocalModelFolderRef(id) && !activeRefs.contains(id),
       );
     }
-    final generalFolder = modelFolders.firstWhere((f) => f.id == 'general');
     for (final model in loaded) {
       final alreadyFoldered = modelFolders.any(
         (f) => f.modelIds.contains(model.modelRef),
       );
       if (!alreadyFoldered) {
-        generalFolder.modelIds.add(model.modelRef);
+        final providerName = model.provider.trim().isNotEmpty
+            ? model.provider.trim()
+            : 'API';
+        final folderId =
+            'provider_${providerName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase()}';
+        final providerFolder = modelFolders.firstWhere(
+          (f) =>
+              f.id == folderId ||
+              f.name.toLowerCase() == providerName.toLowerCase(),
+          orElse: () {
+            final pf = ModelFolder(
+              id: folderId,
+              name: providerName,
+              color: _colorForProviderName(providerName),
+              modelIds: [],
+              parentId: 'general',
+              isProviderFolder: true,
+            );
+            modelFolders.add(pf);
+            return pf;
+          },
+        );
+        providerFolder.modelIds.add(model.modelRef);
       }
     }
+
+    // Prune auto-generated provider folders that have no active models
+    modelFolders.removeWhere((f) => f.isProviderFolder && f.modelIds.isEmpty);
     if (_selectedModelId == null || !activeRefs.contains(_selectedModelId)) {
       _selectedModelId = loaded.isNotEmpty ? loaded.first.modelRef : null;
     }
 
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> deleteActiveApiModel(String modelRef) async {
+    try {
+      await api.marketplace.deleteActiveAPIModel(modelRef);
+    } catch (_) {}
+    try {
+      await api.providers.deleteActiveModel(modelRef);
+    } catch (_) {}
+
+    activeApiModels.removeWhere((m) => m.modelRef == modelRef);
+    availableModelIds.remove(modelRef);
+    for (final folder in modelFolders) {
+      folder.modelIds.remove(modelRef);
+    }
+    modelFolders.removeWhere((f) => f.isProviderFolder && f.modelIds.isEmpty);
+    if (_selectedModelId == modelRef) {
+      _selectedModelId = activeApiModels.isNotEmpty
+          ? activeApiModels.first.modelRef
+          : null;
+    }
     notifyListeners();
     return true;
   }
@@ -1447,9 +1548,42 @@ class AppState extends ChangeNotifier {
       return false;
     }
     _totpConfigured = result['totp_configured'] == true;
+    _guestModeActive = result['guest_mode_active'] == true;
     _authenticatorApp = result['authenticator_app'] == '2fas'
         ? '2fas'
         : 'google';
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> enableGuestMode() async {
+    _isLoading = true;
+    _authError = null;
+    notifyListeners();
+    final result = await api.login.enableGuestMode();
+    _isLoading = false;
+    if (result.containsKey('error')) {
+      _authError = result['error'];
+      notifyListeners();
+      return false;
+    }
+    _guestModeActive = true;
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> disableGuestMode() async {
+    _isLoading = true;
+    _authError = null;
+    notifyListeners();
+    final result = await api.login.disableGuestMode();
+    _isLoading = false;
+    if (result.containsKey('error')) {
+      _authError = result['error'];
+      notifyListeners();
+      return false;
+    }
+    _guestModeActive = false;
     notifyListeners();
     return true;
   }
@@ -1719,6 +1853,20 @@ class AppState extends ChangeNotifier {
     allCodeBlocks = [];
     selectedFilePath = null;
     selectedFileType = null;
-    notifyListeners();
   }
+}
+
+Color _colorForProviderName(String provider) {
+  final lower = provider.toLowerCase();
+  if (lower.contains('openai')) return const Color(0xFF10A37F);
+  if (lower.contains('anthropic')) return const Color(0xFFD97706);
+  if (lower.contains('gemini') || lower.contains('google')) {
+    return const Color(0xFF4285F4);
+  }
+  if (lower.contains('mistral')) return const Color(0xFFFF7043);
+  if (lower.contains('deepseek')) return const Color(0xFF009688);
+  if (lower.contains('perplexity')) return const Color(0xFF22D3EE);
+  if (lower.contains('together')) return const Color(0xFF8B5CF6);
+  if (lower.contains('ollama')) return const Color(0xFFEAB308);
+  return CulpeoColors.metric;
 }

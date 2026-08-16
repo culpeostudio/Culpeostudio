@@ -39,6 +39,14 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.warmup.phase.healthcheck': 'Healthcheck des Modellservers läuft',
   'chatAux.warmup.phase.preparing': 'Modellstart wird vorbereitet',
 
+  'chatAux.plan.title': 'Abarbeitungsliste',
+  'chatAux.plan.progress': 'Schritt {current} von {total}',
+  'chatAux.plan.doneCount': '{done} von {total} erledigt',
+  'chatAux.plan.notRun': 'offen geblieben',
+  'chatAux.plan.openLeft': 'noch {open} offen',
+  'chatAux.plan.resume': 'Weiterarbeiten',
+  'chatAux.plan.discard': 'Plan verwerfen',
+
   'chatAux.permission.title': 'Zugriffsanfrage',
   'chatAux.permission.body':
       'Scout möchte außerhalb des Projektpfads arbeiten ({tool}):',
@@ -112,6 +120,26 @@ const Map<String, String> chatAuxStringsDe = {
   'chatAux.fileChange.diffSkipped': 'Diff übersprungen (Datei zu groß)',
   'chatAux.reasoning.title': 'Gedankengang',
   'chatAux.reasoning.titleWithWords': 'Gedankengang · {count} Wörter',
+
+  'chatAux.context.tooltip': 'Kontext: {used} von {limit} Tokens ({percent} %)',
+  'chatAux.context.semantics': 'Kontextfenster zu {percent} Prozent gefüllt',
+  'chatAux.context.source.local': 'Fenster der laufenden lokalen Instanz',
+  'chatAux.context.source.provider': 'Angabe der Provider-Verbindung',
+  'chatAux.context.source.catalog': 'Angabe aus dem Modellkatalog',
+  'chatAux.context.source.average':
+      'Schätzwert: Durchschnitt aller bekannten Modelle',
+  'chatAux.context.compacted': 'Älterer Verlauf {count}× zusammengefasst',
+  'chatAux.context.belowModelMaximum':
+      'Das Modell könnte {model} – die Engine hat die Instanz kleiner gestartet',
+
+  'chatAux.output.title': 'Antwortlänge',
+  'chatAux.output.level.short': 'Kurz',
+  'chatAux.output.level.normal': 'Normal',
+  'chatAux.output.level.max': 'Maximum',
+  'chatAux.output.hint.short': 'Knappe Antworten, spart Tokens',
+  'chatAux.output.hint.normal': 'Ausreichend für die meisten Antworten',
+  'chatAux.output.hint.max': 'So lang, wie das Modell schreiben kann',
+
   'chatAux.visual.defaultTitle': 'Visualisierung',
   'chatAux.visual.invalidJson': 'Die KI-Grafik enthält kein gültiges JSON.',
   'chatAux.visual.valueFallback': 'Wert {number}',
@@ -154,6 +182,14 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.warmup.phase.resourcePlan': 'Checking memory plan',
   'chatAux.warmup.phase.healthcheck': 'Model server health check is running',
   'chatAux.warmup.phase.preparing': 'Preparing model start',
+
+  'chatAux.plan.title': 'Worklist',
+  'chatAux.plan.progress': 'Step {current} of {total}',
+  'chatAux.plan.doneCount': '{done} of {total} done',
+  'chatAux.plan.notRun': 'still open',
+  'chatAux.plan.openLeft': '{open} still open',
+  'chatAux.plan.resume': 'Keep going',
+  'chatAux.plan.discard': 'Discard plan',
 
   'chatAux.permission.title': 'Access request',
   'chatAux.permission.body':
@@ -227,6 +263,25 @@ const Map<String, String> chatAuxStringsEn = {
   'chatAux.fileChange.diffSkipped': 'Diff skipped (file too large)',
   'chatAux.reasoning.title': 'Reasoning',
   'chatAux.reasoning.titleWithWords': 'Reasoning · {count} words',
+
+  'chatAux.context.tooltip': 'Context: {used} of {limit} tokens ({percent}%)',
+  'chatAux.context.semantics': 'Context window {percent} percent full',
+  'chatAux.context.source.local': 'Window of the running local instance',
+  'chatAux.context.source.provider': 'Reported by the provider connection',
+  'chatAux.context.source.catalog': 'Reported by the model catalogue',
+  'chatAux.context.source.average': 'Estimate: average across all known models',
+  'chatAux.context.compacted': 'Older history summarised {count}×',
+  'chatAux.context.belowModelMaximum':
+      'The model could do {model} – the engine started this instance smaller',
+
+  'chatAux.output.title': 'Answer length',
+  'chatAux.output.level.short': 'Short',
+  'chatAux.output.level.normal': 'Normal',
+  'chatAux.output.level.max': 'Maximum',
+  'chatAux.output.hint.short': 'Brief answers, saves tokens',
+  'chatAux.output.hint.normal': 'Enough for most answers',
+  'chatAux.output.hint.max': 'As long as the model can write',
+
   'chatAux.visual.defaultTitle': 'Visualization',
   'chatAux.visual.invalidJson': 'The AI graphic contains invalid JSON.',
   'chatAux.visual.valueFallback': 'Value {number}',

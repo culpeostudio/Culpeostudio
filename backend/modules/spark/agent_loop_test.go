@@ -102,6 +102,7 @@ func TestRunToolLoopExecutesToolThenAnswers(t *testing.T) {
 		chatTurn,
 		nil,
 		"",
+		ContextBudget{},
 	)
 	if err != nil {
 		t.Fatalf("runToolLoop: %v", err)
@@ -135,7 +136,7 @@ func TestRunToolLoopStopsAtIterationCap(t *testing.T) {
 		return `<tool_call>{"name":"list_dir","arguments":{"path":"."}}</tool_call>`, nil
 	}
 
-	final, err := runToolLoop(context.Background(), nil, "", []string{root}, nil, nil, chatTurn, nil, "")
+	final, err := runToolLoop(context.Background(), nil, "", []string{root}, nil, nil, chatTurn, nil, "", ContextBudget{})
 	if err != nil {
 		t.Fatalf("runToolLoop: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestRunToolLoopRejectsMissingRoot(t *testing.T) {
 		func(convo []Message, systemPrompt string, filterEmit func(string) error) (string, error) {
 			t.Fatalf("chatTurn darf ohne gueltigen Root nicht aufgerufen werden")
 			return "", nil
-		}, nil, "")
+		}, nil, "", ContextBudget{})
 	if err == nil {
 		t.Fatalf("erwartete Fehler bei leerem Root")
 	}

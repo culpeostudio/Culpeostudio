@@ -89,4 +89,10 @@ class ScoutServiceStub extends scoutpb.ScoutServiceBase {
     ServiceCall call,
     scoutpb.DeleteBotRequest request,
   ) async => _unused('DeleteBot');
+
+  @override
+  Future<scoutpb.ListReasoningProfilesResponse> listReasoningProfiles(
+    ServiceCall call,
+    scoutpb.ListReasoningProfilesRequest request,
+  ) async => _unused('ListReasoningProfiles');
 }

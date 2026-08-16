@@ -18,18 +18,56 @@ import (
 	"github.com/culpeohq/backend/internal/webtools"
 )
 
+// How far back a named folder still counts. Long enough to survive a couple of
+// clarifying turns, short enough that a folder from a different task earlier in
+// the session does not linger.
+const maxRootHistoryMessages = 12
+
 // resolveToolRoots collects the folders the agent may touch: the project folder
-// the session is bound to plus any path the user named in the message.
-func resolveToolRoots(projectPath, message string) []string {
+// the session is bound to, plus any path the user named - in this message or in
+// an earlier one. Earlier turns count because a folder named three messages ago
+// is still the folder the user means; forgetting it was what made the agent ask
+// for the path it had already been given.
+//
+// Only the user's own messages are read. The agent must not widen its own reach
+// by writing a path into its reply, and a path it read out of a file has no
+// business becoming a root either.
+func resolveToolRoots(projectPath, message string, history []Message) []string {
 	var roots []string
-	if strings.TrimSpace(projectPath) != "" {
-		roots = append(roots, projectPath)
+	seen := map[string]struct{}{}
+	add := func(path string) {
+		key := strings.ToLower(path)
+		if _, dup := seen[key]; dup {
+			return
+		}
+		seen[key] = struct{}{}
+		roots = append(roots, path)
 	}
-	mentioned := pathmention.Extract(message)
-	if len(mentioned) > 0 {
-		log.Printf("[spark] In der Nachricht genannte Ordner freigegeben: %v", mentioned)
+
+	if trimmed := strings.TrimSpace(projectPath); trimmed != "" {
+		add(trimmed)
 	}
-	return append(roots, mentioned...)
+	for _, path := range pathmention.Extract(message) {
+		add(path)
+	}
+	current := len(roots)
+
+	if len(history) > maxRootHistoryMessages {
+		history = history[len(history)-maxRootHistoryMessages:]
+	}
+	for _, msg := range history {
+		if msg.Role != "user" {
+			continue
+		}
+		for _, path := range pathmention.Extract(msg.Content) {
+			add(path)
+		}
+	}
+
+	if len(roots) > current {
+		log.Printf("[spark] Ordner aus dem Gespraech weiter freigegeben: %v", roots[current:])
+	}
+	return roots
 }
 
 const toolCallOpen = "<tool_call>"
@@ -215,9 +253,10 @@ func runToolLoop(
 	chatTurn ChatTurn,
 	asker tools.Asker,
 	sessionID string,
+	budget ContextBudget,
 ) (string, error) {
 	return swallowExhausted(runToolLoopWithLimit(ctx, history, baseSystemPrompt, roots, emitText, emitEvent,
-		chatTurn, asker, sessionID, maxToolLoopIterations))
+		chatTurn, asker, sessionID, maxToolLoopIterations, budget))
 }
 
 func runToolLoopWithLimit(
@@ -231,6 +270,7 @@ func runToolLoopWithLimit(
 	asker tools.Asker,
 	sessionID string,
 	maxIterations int,
+	budget ContextBudget,
 ) (string, error) {
 	executor, err := tools.NewExecutor(ctx, roots, asker, emitEvent, sessionID)
 	if err != nil {
@@ -244,7 +284,7 @@ func runToolLoopWithLimit(
 		}
 		return executor.Execute(name, args)
 	}
-	return driveToolLoop(ctx, history, systemPrompt, emitText, emitEvent, chatTurn, dispatch, maxIterations)
+	return driveToolLoop(ctx, history, systemPrompt, emitText, emitEvent, chatTurn, dispatch, maxIterations, budget)
 }
 
 func runWebOnlyToolLoop(
@@ -254,9 +294,10 @@ func runWebOnlyToolLoop(
 	emitText func(string) error,
 	emitEvent func(eventType string, data interface{}) error,
 	chatTurn ChatTurn,
+	budget ContextBudget,
 ) (string, error) {
 	return swallowExhausted(runWebOnlyToolLoopWithLimit(ctx, history, baseSystemPrompt, emitText, emitEvent,
-		chatTurn, maxToolLoopIterations))
+		chatTurn, maxToolLoopIterations, budget))
 }
 
 func runWebOnlyToolLoopWithLimit(
@@ -267,6 +308,7 @@ func runWebOnlyToolLoopWithLimit(
 	emitEvent func(eventType string, data interface{}) error,
 	chatTurn ChatTurn,
 	maxIterations int,
+	budget ContextBudget,
 ) (string, error) {
 	web := newWebTools()
 	if web == nil {
@@ -290,7 +332,7 @@ func runWebOnlyToolLoopWithLimit(
 		return web.Execute(ctx, name, args)
 	}
 	return driveToolLoop(ctx, history, buildWebOnlySystemPrompt(baseSystemPrompt),
-		emitText, emitEvent, chatTurn, dispatch, maxIterations)
+		emitText, emitEvent, chatTurn, dispatch, maxIterations, budget)
 }
 
 func driveToolLoop(
@@ -302,6 +344,7 @@ func driveToolLoop(
 	chatTurn ChatTurn,
 	dispatch func(name string, args map[string]interface{}) map[string]interface{},
 	maxIterations int,
+	budget ContextBudget,
 ) (string, error) {
 	if maxIterations <= 0 {
 		maxIterations = maxToolLoopIterations
@@ -312,6 +355,35 @@ func driveToolLoop(
 	failureStreak := 0
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
+		// Tool results are what makes this conversation grow, and they grow
+		// fast: a dozen steps of file reads run past any window. Shortening the
+		// older ones before the request goes out is what keeps a long run from
+		// dying on a refusal from the provider.
+		if shrunk, didShrink := shrinkToolResults(convo, systemPrompt, budget); didShrink {
+			convo = shrunk
+			if emitEvent != nil {
+				_ = emitEvent("context_compacted", map[string]interface{}{
+					"scope": "tool_results",
+				})
+			}
+		}
+		// Only growth this loop caused is worth bailing on. On the first pass
+		// the conversation is exactly what the chat handed over, already folded
+		// against this same window - refusing to even try would deny an answer
+		// over a heuristic, and a genuinely oversized prompt still surfaces as
+		// the provider error it always did.
+		if iteration > 0 && budget.known() && estimateConversation(convo, systemPrompt) > budget.LimitTokens {
+			// Nothing left to give. Handing back what the run produced so far
+			// beats an error from the far end of the wire.
+			log.Printf("[spark] Kontextfenster erschoepft nach %d Schritten (Limit %d Tokens)", iteration, budget.LimitTokens)
+			final := "Das Kontextfenster ist voll, auch nach dem Kuerzen aelterer Werkzeug-Ergebnisse. Ich halte hier an - starte einen neuen Chat oder gib dem Modell mehr Kontext."
+			if emitText != nil {
+				_ = emitText(final)
+			}
+			return final, errToolLoopExhausted
+		}
+		emitLoopContextUsage(emitEvent, convo, systemPrompt, budget)
+
 		filter := newToolCallStreamFilter(emitText)
 		reply, err := chatTurn(convo, systemPrompt, filter.Emit)
 		if err != nil {

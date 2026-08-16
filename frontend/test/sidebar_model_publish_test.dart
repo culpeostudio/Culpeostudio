@@ -165,6 +165,7 @@ class _FakeScoutApi extends ScoutApi {
     String? responseStyle,
     String? botId,
     String? projectId,
+    String? connectionId,
   }) async {
     _fake.createdSessions++;
     final sessionId = 'session-${_fake.createdSessions}';
@@ -186,6 +187,7 @@ class _FakeScoutApi extends ScoutApi {
     required String modelId,
     String? modelRef,
     String? displayName,
+    String? connectionId,
   }) async {
     _fake.setModelCalls++;
     return {

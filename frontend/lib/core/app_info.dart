@@ -11,7 +11,7 @@ class AppInfo {
 
   static const String version = String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '1.2.0-alpha',
+    defaultValue: '2.0.0 beta',
   );
 
   /// Fusszeile fuer Splash und Info-Ansichten, z. B. `1.2.0-alpha · by culpeohq`.

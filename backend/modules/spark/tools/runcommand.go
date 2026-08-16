@@ -29,8 +29,13 @@ var blockedCommands = map[string]struct{}{
 }
 
 const (
-	defaultCommandTimeout = 30 * time.Second
-	maxCommandTimeout     = 120 * time.Second
+	// A command gets long enough for the builds an agent actually runs: a Go
+	// build over a whole module, a Flutter analyze, a test suite. The old
+	// ceiling of two minutes turned those into failures the agent then tried to
+	// work around. A command that hangs is still stopped - that is what the
+	// ceiling is for - but the number has to be beyond real work, not inside it.
+	defaultCommandTimeout = 5 * time.Minute
+	maxCommandTimeout     = 30 * time.Minute
 	maxCommandOutputRunes = 32000
 )
 

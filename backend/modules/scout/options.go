@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode string, allowedRoots []string, approvePlan, planning bool) chatOptions {
+func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode string, allowedRoots []string, approvePlan, planning bool, reasoningEffort, outputLevel string) chatOptions {
 	index := -1
 	if editIndex != nil {
 		index = *editIndex
@@ -21,7 +21,9 @@ func normalizeChatOptions(thinking, style string, editIndex *int, agenticMode st
 		AllowedRoots:     bots.NormalizeAllowedRoots(allowedRoots),
 		ApprovePlan:      approvePlan,
 
-		Planning: planning || mode == "planning",
+		Planning:        planning || mode == "planning",
+		ReasoningEffort: normalizeReasoningEffort(reasoningEffort),
+		OutputLevel:     normalizeOutputLevel(outputLevel),
 	}
 }
 
@@ -48,6 +50,16 @@ func normalizeAgenticMode(value string) string {
 		return "planning"
 	default:
 		return "execute"
+	}
+}
+
+func normalizeReasoningEffort(value string) string {
+	token := strings.ToLower(strings.TrimSpace(value))
+	switch token {
+	case "none", "minimal", "low", "medium", "high", "xhigh", "max":
+		return token
+	default:
+		return ""
 	}
 }
 

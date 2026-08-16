@@ -11,12 +11,10 @@ const Map<String, String> appStringsEn = {
   'onboarding.languageTitle': 'Language',
   'onboarding.languageGerman': 'Deutsch',
   'onboarding.languageEnglish': 'English',
-  'onboarding.versionTitle': 'Frontend version',
-  'onboarding.versionClassic': 'Classic',
-  'onboarding.versionClassicDesc': 'All modules are shown.',
-  'onboarding.versionLite': 'Lite',
-  'onboarding.versionLiteDesc':
-      'Only Chat, Engine, Marketplace, News and Benchmark are shown.',
+  'onboarding.providerTitle': 'Connect a provider',
+  'onboarding.providerDescription':
+      'Chatting needs a connected AI provider. Connect one now or later under Settings › Server / API.',
+  'onboarding.providerButton': 'Open provider settings',
   'onboarding.start': 'Get started',
 
   'sidebar.chat': 'Chat',
@@ -30,10 +28,6 @@ const Map<String, String> appStringsEn = {
 
   'settings.appearance': 'Appearance',
   'settings.language': 'Language',
-  'settings.frontendVersion': 'Frontend version',
-  'settings.frontendVersionClassic': 'Classic (all modules)',
-  'settings.frontendVersionLite':
-      'Lite (Chat, Engine, Marketplace, News, Benchmark)',
 
   'dashboard.logoutTitle': 'Log out',
   'dashboard.logoutConfirm': 'Do you really want to log out?',
@@ -179,6 +173,9 @@ const Map<String, String> appStringsEn = {
       'the appropriate bot.',
   'settings.chatBot.defaultLabel': 'DEFAULT FOR NEW CHATS',
   'settings.chatBot.note': 'Running chats keep their previously used bot.',
+  'settings.chatBot.empty':
+      'No bots available. Create a bot in Bot Management first.',
+  'settings.chatBot.openManagement': 'Open Bot Management',
 
   'settings.skills.title': 'Agent Skills',
   'settings.skills.description':
@@ -254,6 +251,8 @@ const Map<String, String> appStringsEn = {
   'chatHistory.deleteProject.body':
       '"{name}" will be deleted. The chats it contains are kept and move back to the general list.',
   'chatHistory.deleteProject.cancel': 'Cancel',
+  'chatHistory.deleteProject.withChats':
+      'Delete the {count} chats inside as well',
   'chatHistory.deleteProject.confirm': 'Delete',
 
   'chatHistory.newFolder': 'New folder',

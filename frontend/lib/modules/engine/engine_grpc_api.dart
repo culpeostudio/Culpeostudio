@@ -508,7 +508,9 @@ class EngineGrpcApi implements EngineApi {
   /// session token like any other call.
   @override
   Stream<EngineStreamEvent> streamEngineEvents() async* {
-    final stream = _client.streamEvents(pb.StreamEventsRequest());
+    // An event feed outlives any single answer, so it runs on the client
+    // built without the unary deadline.
+    final stream = _c.engineStreamClient.streamEvents(pb.StreamEventsRequest());
     try {
       await for (final entry in stream) {
         final event = _streamEvent(entry);

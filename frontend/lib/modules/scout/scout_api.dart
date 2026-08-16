@@ -24,6 +24,7 @@ class ScoutApi {
     String? responseStyle,
     String? botId,
     String? projectId,
+    String? connectionId,
   }) async {
     try {
       final response = await _c.scoutClient.createSession(
@@ -36,6 +37,7 @@ class ScoutApi {
           thinkingLevel: thinkingLevel?.trim() ?? '',
           responseStyle: responseStyle?.trim() ?? '',
           projectId: projectId?.trim() ?? '',
+          connectionId: connectionId?.trim() ?? '',
         ),
       );
       return {
@@ -46,6 +48,8 @@ class ScoutApi {
         'display_name': response.displayName,
         'thinking': response.thinking,
         'style': response.style,
+        if (response.connectionId.isNotEmpty)
+          'connection_id': response.connectionId,
         if (response.lockedBotId.isNotEmpty) 'bot_id': response.botId,
         if (response.lockedBotId.isNotEmpty) 'bot_name': response.botName,
         if (response.lockedBotId.isNotEmpty)
@@ -65,6 +69,7 @@ class ScoutApi {
     required String modelId,
     String? modelRef,
     String? displayName,
+    String? connectionId,
   }) async {
     try {
       final response = await _c.scoutClient.setSessionModel(
@@ -74,6 +79,7 @@ class ScoutApi {
           modelId: modelId,
           modelRef: modelRef ?? '',
           displayName: displayName ?? '',
+          connectionId: connectionId?.trim() ?? '',
         ),
       );
       return {'status': 'ok', 'session': _summaryToMap(response.session)};
@@ -88,6 +94,8 @@ class ScoutApi {
     String? thinkingLevel,
     String? responseStyle,
     int? editMessageIndex,
+    String? reasoningEffort,
+    String? outputLevel,
   }) async {
     try {
       final response = await _c.scoutClient.sendMessage(
@@ -98,6 +106,8 @@ class ScoutApi {
             thinkingLevel: thinkingLevel,
             responseStyle: responseStyle,
             editMessageIndex: editMessageIndex,
+            reasoningEffort: reasoningEffort,
+            outputLevel: outputLevel,
           ),
         ),
       );
@@ -128,7 +138,11 @@ class ScoutApi {
         'model_id': response.modelId,
         'model_ref': response.modelRef,
         'display_name': response.displayName,
+        if (response.connectionId.isNotEmpty)
+          'connection_id': response.connectionId,
         'context_limit': response.contextLimit,
+        if (response.hasContextUsage())
+          'context_usage': _contextUsageToMap(response.contextUsage),
         'locked_bot_id': response.lockedBotId,
         'active_bot_id': response.activeBotId,
         'messages': response.messages
@@ -160,6 +174,8 @@ class ScoutApi {
     List<String>? allowedRoots,
     bool? approvePlan,
     bool? planning,
+    String? reasoningEffort,
+    String? outputLevel,
   }) async* {
     final request = scpb.StreamMessageRequest(
       sessionId: sessionId,
@@ -172,11 +188,15 @@ class ScoutApi {
         allowedRoots: allowedRoots,
         approvePlan: approvePlan,
         planning: planning,
+        reasoningEffort: reasoningEffort,
+        outputLevel: outputLevel,
       ),
     );
 
     try {
-      await for (final event in _c.scoutClient.streamMessage(request)) {
+      // The deadline-free client, not scoutClient: per-call options cannot
+      // clear a client's timeout, they only override a set one.
+      await for (final event in _c.scoutStreamClient.streamMessage(request)) {
         final converted = _eventToStreamEvent(event);
         if (converted != null) yield converted;
       }
@@ -200,6 +220,31 @@ class ScoutApi {
     try {
       final response = await _c.scoutClient.listBots(scpb.ListBotsRequest());
       return {'bots': response.bots.map(_botToMap).toList()};
+    } catch (e) {
+      return {'error': _c.grpcErrorMessage(e)};
+    }
+  }
+
+  Future<Map<String, dynamic>> listReasoningProfiles() async {
+    try {
+      final response = await _c.scoutClient.listReasoningProfiles(
+        scpb.ListReasoningProfilesRequest(),
+      );
+      return {
+        'profiles': response.profiles
+            .map(
+              (p) => {
+                'id': p.id,
+                'name': p.name,
+                'mandatory': p.mandatory,
+                'default_enabled': p.defaultEnabled,
+                'supported_efforts': p.supportedEfforts.toList(),
+                'default_effort': p.defaultEffort,
+                'context_length': p.contextLength,
+              },
+            )
+            .toList(),
+      };
     } catch (e) {
       return {'error': _c.grpcErrorMessage(e)};
     }
@@ -304,6 +349,8 @@ class ScoutApi {
     List<String>? allowedRoots,
     bool? approvePlan,
     bool? planning,
+    String? reasoningEffort,
+    String? outputLevel,
   }) {
     final options = scpb.ChatOptions();
     if (thinkingLevel != null && thinkingLevel.trim().isNotEmpty) {
@@ -317,6 +364,12 @@ class ScoutApi {
     if (allowedRoots != null) options.allowedRoots.addAll(allowedRoots);
     if (approvePlan != null) options.approvePlan = approvePlan;
     if (planning != null) options.planning = planning;
+    if (reasoningEffort != null && reasoningEffort.trim().isNotEmpty) {
+      options.reasoningEffort = reasoningEffort.trim();
+    }
+    if (outputLevel != null && outputLevel.trim().isNotEmpty) {
+      options.outputLevel = outputLevel.trim();
+    }
     return options;
   }
 
@@ -351,6 +404,11 @@ class ScoutApi {
         return ScoutStreamEvent(
           type: 'model_warmup',
           data: _warmupToMap(event.modelWarmup),
+        );
+      case scpb.StreamMessageResponse_Event.contextUsage:
+        return ScoutStreamEvent(
+          type: 'context_usage',
+          data: _contextUsageToMap(event.contextUsage),
         );
       case scpb.StreamMessageResponse_Event.done:
         return ScoutStreamEvent(
@@ -387,6 +445,17 @@ class ScoutApi {
     }
   }
 
+  Map<String, dynamic> _contextUsageToMap(scpb.ContextUsage usage) {
+    return {
+      'limit_tokens': usage.limitTokens,
+      'used_tokens': usage.usedTokens,
+      'source': usage.source,
+      'model_limit_tokens': usage.modelLimitTokens,
+      'compactions': usage.compactions,
+      'compacted': usage.compacted,
+    };
+  }
+
   Map<String, dynamic> _warmupToMap(scpb.ModelWarmup warmup) {
     return {
       if (warmup.operationId.isNotEmpty) 'operation_id': warmup.operationId,
@@ -408,6 +477,8 @@ class ScoutApi {
       'provider': summary.provider,
       'model_id': summary.modelId,
       'display_name': summary.displayName,
+      if (summary.connectionId.isNotEmpty)
+        'connection_id': summary.connectionId,
       if (summary.lockedBotId.isNotEmpty) 'locked_bot_id': summary.lockedBotId,
       if (summary.projectId.isNotEmpty) 'project_id': summary.projectId,
       'message_count': summary.messageCount,
@@ -433,6 +504,8 @@ class ScoutApi {
           'provider': bot.modelBinding.provider,
           'model_id': bot.modelBinding.modelId,
           'instance_id': bot.modelBinding.instanceId,
+          if (bot.modelBinding.connectionId.isNotEmpty)
+            'connection_id': bot.modelBinding.connectionId,
           'display_name': bot.modelBinding.displayName,
         },
     };
@@ -459,6 +532,7 @@ class ScoutApi {
         modelId: binding['model_id']?.toString() ?? '',
         instanceId: binding['instance_id']?.toString() ?? '',
         displayName: binding['display_name']?.toString() ?? '',
+        connectionId: binding['connection_id']?.toString() ?? '',
       );
     }
     return message;

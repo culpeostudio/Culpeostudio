@@ -108,7 +108,9 @@ func (s *grpcService) RenameProject(ctx context.Context, req *sparkv1.RenameProj
 	if color := normalizeProjectColor(req.GetColor()); color != "" {
 		project.Color = color
 	}
+	previousPath := strings.TrimSpace(project.Path)
 	project.Path = normalizeProjectPath(req.GetPath())
+	pathAdded := previousPath == "" && project.Path != ""
 	// Absent leaves the icon alone; present but empty clears it.
 	if req.Icon != nil {
 		project.Icon = normalizeProjectIcon(req.GetIcon())
@@ -118,6 +120,13 @@ func (s *grpcService) RenameProject(ctx context.Context, req *sparkv1.RenameProj
 	m.mu.Unlock()
 
 	m.persistProject(projectID)
+	if pathAdded {
+		// A project can be created without a folder and bound to one later.
+		// The scope is opened here as well, so a project that got its path
+		// afterwards remembers just as much as one that had it from the start.
+		m.ensureProjectMemory(userID, projectID)
+		log.Printf("[spark] Projekt %s nachtraeglich an %s gebunden", projectID, project.Path)
+	}
 	return &sparkv1.RenameProjectResponse{Project: renamed}, nil
 }
 

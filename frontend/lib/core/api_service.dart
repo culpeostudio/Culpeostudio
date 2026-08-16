@@ -8,6 +8,7 @@ import '../modules/engine/models.dart';
 import '../modules/marketplace/marketplace_api.dart';
 import '../modules/news/news_api.dart';
 import '../modules/nodes/node_api.dart';
+import '../modules/providers/provider_api.dart';
 import '../modules/scout/scout_api.dart';
 import '../modules/settings/settings_api.dart';
 import '../modules/spark/spark_api.dart';
@@ -52,6 +53,15 @@ class ApiService implements EngineApi {
   late final NewsApi news = NewsApi(client);
   late final NodeApi nodes = NodeApi(client);
   late final BenchmarkApi benchmark = BenchmarkApi(client);
+  late final ProviderApi _providersApi = ProviderApi(client);
+  ProviderApi? _providersOverride;
+
+  /// User-owned external AI connections.  Unlike the legacy marketplace
+  /// providers, this API never surfaces an API key to Flutter.
+  ProviderApi get providers => _providersOverride ?? _providersApi;
+
+  @visibleForTesting
+  void debugSetProvidersApi(ProviderApi api) => _providersOverride = api;
 
   String get baseUrl => client.baseUrl;
   set baseUrl(String value) => client.baseUrl = value;

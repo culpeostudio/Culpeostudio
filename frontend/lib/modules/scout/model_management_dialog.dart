@@ -324,6 +324,7 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                                   name: folder.name,
                                   color: folder.color,
                                   modelCount: folder.modelIds.length,
+                                  isSubfolder: folder.parentId != null,
                                   onEdit: () => _showFolderFormDialog(
                                     existingFolder: folder,
                                   ),
@@ -714,7 +715,20 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
                   }).toList();
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 16,
+                  color: CulpeoColors.danger,
+                ),
+                tooltip: 'Modell entfernen',
+                onPressed: () async {
+                  await widget.appState.deleteActiveApiModel(modelId);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(width: 4),
               if (isActive)
                 Icon(Icons.check_circle, color: widget.themeColor, size: 18)
               else
@@ -740,13 +754,15 @@ class _ModelManagementDialogState extends State<ModelManagementDialog> {
     required String name,
     required Color color,
     required int modelCount,
+    bool isSubfolder = false,
     VoidCallback? onEdit,
     VoidCallback? onDelete,
   }) {
     final isSelected = _selectedFolderId == id;
     return Container(
       key: key,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2)
+          .copyWith(left: isSubfolder ? 24 : 12),
       decoration: BoxDecoration(
         color: isSelected ? color.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),

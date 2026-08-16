@@ -28,12 +28,13 @@ func modelBindingToProto(binding *bots.ModelBinding) *scoutv1.ModelBinding {
 		return nil
 	}
 	return &scoutv1.ModelBinding{
-		Kind:        binding.Kind,
-		ModelRef:    binding.ModelRef,
-		Provider:    binding.Provider,
-		ModelId:     binding.ModelID,
-		InstanceId:  binding.InstanceID,
-		DisplayName: binding.DisplayName,
+		Kind:         binding.Kind,
+		ModelRef:     binding.ModelRef,
+		Provider:     binding.Provider,
+		ModelId:      binding.ModelID,
+		InstanceId:   binding.InstanceID,
+		DisplayName:  binding.DisplayName,
+		ConnectionId: binding.ConnectionID,
 	}
 }
 
@@ -42,12 +43,13 @@ func modelBindingFromProto(binding *scoutv1.ModelBinding) *bots.ModelBinding {
 		return nil
 	}
 	return &bots.ModelBinding{
-		Kind:        binding.GetKind(),
-		ModelRef:    binding.GetModelRef(),
-		Provider:    binding.GetProvider(),
-		ModelID:     binding.GetModelId(),
-		InstanceID:  binding.GetInstanceId(),
-		DisplayName: binding.GetDisplayName(),
+		Kind:         binding.GetKind(),
+		ModelRef:     binding.GetModelRef(),
+		Provider:     binding.GetProvider(),
+		ModelID:      binding.GetModelId(),
+		InstanceID:   binding.GetInstanceId(),
+		DisplayName:  binding.GetDisplayName(),
+		ConnectionID: binding.GetConnectionId(),
 	}
 }
 
@@ -93,6 +95,7 @@ func sessionSummaryToProto(summary scoutSessionSummary) *scoutv1.SessionSummary 
 		LockedBotId:  summary.LockedBotID,
 		ProjectId:    summary.ProjectID,
 		MessageCount: int32(summary.MessageCount),
+		ConnectionId: summary.ConnectionID,
 	}
 	if !summary.UpdatedAt.IsZero() {
 		message.UpdatedAt = timestamppb.New(summary.UpdatedAt)
@@ -133,11 +136,55 @@ func warmupToProto(progress localinference.WarmupProgress) *scoutv1.ModelWarmup 
 	}
 }
 
+func contextUsageToProto(usage contextUsage) *scoutv1.ContextUsage {
+	return &scoutv1.ContextUsage{
+		LimitTokens:      int32(usage.LimitTokens),
+		UsedTokens:       int32(usage.UsedTokens),
+		Source:           usage.Source,
+		Compactions:      int32(usage.Compactions),
+		Compacted:        usage.Compacted,
+		ModelLimitTokens: int32(usage.ModelLimitTokens),
+	}
+}
+
+// contextUsageFromPayload reads back the map the reply path emits its readings
+// as. The emitter is the generic event channel shared with the agent loop, so
+// the typed value has to survive a trip through interface{}.
+func contextUsageFromPayload(data interface{}) (contextUsage, bool) {
+	payload, ok := data.(map[string]interface{})
+	if !ok {
+		return contextUsage{}, false
+	}
+	usage := contextUsage{
+		LimitTokens:      intField(payload, "limit_tokens"),
+		UsedTokens:       intField(payload, "used_tokens"),
+		Compactions:      intField(payload, "compactions"),
+		ModelLimitTokens: intField(payload, "model_limit_tokens"),
+	}
+	usage.Source, _ = payload["source"].(string)
+	usage.Compacted, _ = payload["compacted"].(bool)
+	return usage, usage.LimitTokens > 0
+}
+
+func intField(payload map[string]interface{}, key string) int {
+	switch value := payload[key].(type) {
+	case int:
+		return value
+	case int32:
+		return int(value)
+	case int64:
+		return int(value)
+	case float64:
+		return int(value)
+	}
+	return 0
+}
+
 // chatOptionsFromProto keeps the normalisation the query body went through, so
 // an unset field still lands on the same default it always did.
 func chatOptionsFromProto(options *scoutv1.ChatOptions) chatOptions {
 	if options == nil {
-		return normalizeChatOptions("", "", nil, "", nil, false, false)
+		return normalizeChatOptions("", "", nil, "", nil, false, false, "", "")
 	}
 
 	var editIndex *int
@@ -153,6 +200,8 @@ func chatOptionsFromProto(options *scoutv1.ChatOptions) chatOptions {
 		options.GetAllowedRoots(),
 		options.GetApprovePlan(),
 		options.GetPlanning(),
+		options.GetReasoningEffort(),
+		options.GetOutputLevel(),
 	)
 }
 

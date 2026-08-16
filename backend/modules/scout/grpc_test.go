@@ -85,24 +85,42 @@ func TestScoutLocalEngineSessionAndMessage(t *testing.T) {
 	}
 }
 
-func TestScoutLocalEngineSessionReportsNotFoundAndNotReady(t *testing.T) {
+func TestScoutLocalEngineSessionReportsNotFound(t *testing.T) {
+	module := newTestModule(t, filepath.Join(t.TempDir(), "settings.json"))
+	module.SetLocalModels(&fakeLocalModels{resolveErr: localinference.ErrNotFound})
+	service := newTestService(t, module)
+
+	_, err := service.CreateSession(context.Background(), &scoutv1.CreateSessionRequest{
+		Provider: "local", ModelId: "inst-x",
+	})
+	requireCode(t, err, codes.NotFound)
+}
+
+// A model that is not ready yet, or whose worker/node cannot currently be
+// reached, still describes a valid chat - only the answer is delayed. The
+// unavailability belongs to the send, not to starting the chat.
+func TestScoutLocalEngineSessionSucceedsWhenModelNotYetAvailable(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		err  error
-		want codes.Code
 	}{
-		{name: "not found", err: localinference.ErrNotFound, want: codes.NotFound},
-		{name: "not ready", err: localinference.ErrNotReady, want: codes.FailedPrecondition},
+		{name: "not ready", err: localinference.ErrNotReady},
+		{name: "worker unavailable", err: localinference.ErrWorkerUnavailable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			module := newTestModule(t, filepath.Join(t.TempDir(), "settings.json"))
 			module.SetLocalModels(&fakeLocalModels{resolveErr: tc.err})
 			service := newTestService(t, module)
 
-			_, err := service.CreateSession(context.Background(), &scoutv1.CreateSessionRequest{
+			resp, err := service.CreateSession(context.Background(), &scoutv1.CreateSessionRequest{
 				Provider: "local", ModelId: "inst-x",
 			})
-			requireCode(t, err, tc.want)
+			if err != nil {
+				t.Fatalf("CreateSession: %v", err)
+			}
+			if resp.GetSessionId() == "" {
+				t.Fatal("CreateSession returned no session id")
+			}
 		})
 	}
 }

@@ -12,7 +12,12 @@ const (
 	permissionDeny    = "deny"
 )
 
-const permissionAskTimeout = 3 * time.Minute
+// How long the agent waits for a decision on an access prompt. This is a human
+// on the other end, not a machine: three minutes meant a run died because
+// somebody went for coffee. The wait ends when the user answers or when the
+// chat is cancelled, which is the ctx below - the clock is only the last resort
+// against a prompt nobody will ever see.
+const permissionAskTimeout = 30 * time.Minute
 
 type PermissionRequest struct {
 	ID   string

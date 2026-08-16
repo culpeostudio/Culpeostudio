@@ -28,6 +28,8 @@ type Config struct {
 	UseHTTPS            bool
 	AgenticTimeoutSec   int
 
+	ProviderEncryptionSecret string
+
 	MemoryDataDir          string
 	MemoryProjectTag       string
 	MemoryAPIToken         string
@@ -85,6 +87,11 @@ func Load() *Config {
 		TLSKey:              getEnv("TLS_KEY", ""),
 		UseHTTPS:            getEnv("USE_HTTPS", "false") == "true",
 		AgenticTimeoutSec:   getEnvInt("AGENTIC_TIMEOUT_SEC", 300),
+
+		// Provider credentials are encrypted at rest with their own stable
+		// secret.  It must not be derived from the JWT signing secret: rotating
+		// JWT_SECRET should invalidate sessions, not provider API credentials.
+		ProviderEncryptionSecret: getOrCreateSecret("PROVIDER_ENCRYPTION_SECRET", filepath.Join(memoryDataDir, "provider_encryption_secret")),
 
 		MemoryDataDir:          memoryDataDir,
 		MemoryProjectTag:       getEnv("MEMORY_PROJECT_TAG", "culpeostudio"),

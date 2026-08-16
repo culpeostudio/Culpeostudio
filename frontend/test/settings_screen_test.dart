@@ -24,11 +24,15 @@ Future<void> openSection(WidgetTester tester, String label) async {
   await tester.tap(find.text(label).last, warnIfMissed: false);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
-  tester.takeException();
+  expect(
+    tester.takeException(),
+    isNull,
+    reason: 'Bereich "$label" darf keinen Layout-Fehler werfen',
+  );
 }
 
 void main() {
-  testWidgets('zeigt alle sechs Bereiche in der Navigation', (tester) async {
+  testWidgets('zeigt jeden Bereich in der Navigation', (tester) async {
     await pumpSettings(tester);
 
     for (final label in const [
@@ -38,9 +42,16 @@ void main() {
       'Bot-Verwaltung',
       'Chat-Bot',
       'Skills',
+      'Nodes',
     ]) {
       expect(
-        find.text(label),
+        // Scoped to the navigation itself: the window header repeats the
+        // active section as a breadcrumb, so the label legitimately appears
+        // twice on screen.
+        find.descendant(
+          of: find.byKey(const PageStorageKey('settings-left-navigation')),
+          matching: find.text(label),
+        ),
         findsOneWidget,
         reason: 'Navigationspunkt $label',
       );
@@ -57,33 +68,28 @@ void main() {
     await disposeSettings(tester);
   });
 
-  testWidgets('wechselt auf Server / API und zeigt die Provider-Karten', (
-    tester,
-  ) async {
-    await pumpSettings(tester);
-    await openSection(tester, 'Server / API');
+  testWidgets(
+    'wechselt auf Server / API und zeigt die sichere Provider-Verwaltung',
+    (tester) async {
+      await pumpSettings(tester);
+      await openSection(tester, 'Server / API');
 
-    for (final provider in const [
-      'Lokaler Server',
-      'Hugging Face',
-      'OpenRouter',
-      'Featherless',
-    ]) {
-      expect(find.text(provider), findsWidgets, reason: 'Provider $provider');
-    }
+      expect(find.text('KI-Anbieter & API-Modelle'), findsOneWidget);
+      expect(find.text('Hugging Face'), findsNothing);
 
-    await disposeSettings(tester);
-  });
+      await disposeSettings(tester);
+    },
+  );
 
   testWidgets('verlaesst den Provider-Bereich wieder beim Wechsel', (
     tester,
   ) async {
     await pumpSettings(tester);
     await openSection(tester, 'Server / API');
-    expect(find.text('Hugging Face'), findsWidgets);
+    expect(find.text('KI-Anbieter & API-Modelle'), findsOneWidget);
 
     await openSection(tester, 'Shortkarts');
-    expect(find.text('Hugging Face'), findsNothing);
+    expect(find.text('KI-Anbieter & API-Modelle'), findsNothing);
 
     await disposeSettings(tester);
   });
@@ -116,16 +122,48 @@ void main() {
     await disposeSettings(tester);
   });
 
-  testWidgets('bekannter Layout-Ueberlauf im schmalen Fenster', (tester) async {
-    await pumpSettings(tester, size: const Size(720, 900));
+  testWidgets(
+    'zeigt im Chat-Bot-Bereich einen Empty-State statt Endlos-Spinner',
+    (tester) async {
+      await pumpSettings(tester);
+      await openSection(tester, 'Chat-Bot');
 
-    final error = tester.takeException();
-    expect(
-      error,
-      isA<FlutterError>(),
-      reason: 'erwartet den bekannten RenderFlex-Overflow bei 720px Breite',
-    );
+      expect(
+        find.text(
+          'Keine Bots verfügbar. Erstelle zuerst einen Bot in der Bot-Verwaltung.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Bot-Verwaltung öffnen'), findsOneWidget);
 
-    await disposeSettings(tester);
-  });
+      // Der Verweis springt in die Bot-Verwaltung.
+      await tester.tap(find.text('Bot-Verwaltung öffnen'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const Key('bot-management-wide-layout')),
+        findsOneWidget,
+      );
+
+      await disposeSettings(tester);
+    },
+  );
+
+  testWidgets(
+    'baut die Server/API-Verwaltung im schmalen Fenster ohne Ueberlauf auf',
+    (tester) async {
+      await pumpSettings(tester, size: const Size(720, 900));
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Server / API').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('KI-Anbieter & API-Modelle'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await disposeSettings(tester);
+    },
+  );
 }

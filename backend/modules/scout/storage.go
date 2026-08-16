@@ -135,6 +135,7 @@ type scoutSessionSummary struct {
 	Title        string    `json:"title"`
 	Preview      string    `json:"preview"`
 	Provider     string    `json:"provider"`
+	ConnectionID string    `json:"connection_id,omitempty"`
 	ModelID      string    `json:"model_id"`
 	DisplayName  string    `json:"display_name"`
 	LockedBotID  string    `json:"locked_bot_id,omitempty"`
@@ -165,6 +166,7 @@ func summarizeSession(session *scoutSession) scoutSessionSummary {
 		Title:        title,
 		Preview:      preview,
 		Provider:     session.Provider,
+		ConnectionID: session.ConnectionID,
 		ModelID:      session.ModelID,
 		DisplayName:  session.DisplayName,
 		LockedBotID:  session.LockedBotID,

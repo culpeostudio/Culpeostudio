@@ -14,6 +14,7 @@ class ChatModelChoice {
   final String modelRef;
   final String provider;
   final String modelId;
+  final String? connectionId;
   final String? instanceId;
   final String label;
   final String subtitle;
@@ -29,6 +30,7 @@ class ChatModelChoice {
     required this.modelId,
     required this.label,
     required this.subtitle,
+    this.connectionId,
     this.instanceId,
     this.selectable = true,
     this.state = 'ready',
@@ -58,6 +60,7 @@ class ChatModelChoice {
       modelRef: model.modelRef,
       provider: model.provider,
       modelId: model.modelId,
+      connectionId: model.connectionId,
       label: model.displayName,
       subtitle: '${model.provider} • ${model.modelId}',
       state: 'ready',
@@ -91,6 +94,7 @@ class ChatModelChoice {
     required String provider,
     required String modelId,
     String? instanceId,
+    String? connectionId,
     String? displayName,
   }) {
     final isLocal = provider == 'local' || modelRef.startsWith('local:');
@@ -103,6 +107,7 @@ class ChatModelChoice {
       modelRef: modelRef,
       provider: provider,
       modelId: modelId,
+      connectionId: connectionId,
       instanceId: isLocal ? stableId : null,
       label: displayName?.trim().isNotEmpty == true
           ? displayName!.trim()
@@ -124,6 +129,7 @@ class ChatModelChoice {
       modelRef: binding.modelRef,
       provider: binding.provider,
       modelId: binding.modelId,
+      connectionId: binding.connectionId,
       instanceId: isLocal ? instanceId : null,
       label: binding.displayName.isNotEmpty
           ? binding.displayName
@@ -168,6 +174,7 @@ ChatModelChoice? chatModelChoiceFromSessionMetadata(
   var modelRef = metadata['model_ref']?.toString().trim() ?? '';
   final provider = metadata['provider']?.toString().trim() ?? '';
   final modelId = metadata['model_id']?.toString().trim() ?? '';
+  final connectionId = metadata['connection_id']?.toString().trim() ?? '';
   final instanceId = metadata['instance_id']?.toString().trim() ?? '';
   final displayName = metadata['display_name']?.toString().trim() ?? '';
   final isLocal = provider == 'local' || modelRef.startsWith('local:');
@@ -188,6 +195,7 @@ ChatModelChoice? chatModelChoiceFromSessionMetadata(
     provider: provider,
     modelId: modelId.isNotEmpty ? modelId : instanceId,
     instanceId: instanceId.isEmpty ? null : instanceId,
+    connectionId: connectionId.isEmpty ? null : connectionId,
     displayName: displayName.isEmpty ? null : displayName,
   );
 }
@@ -467,7 +475,11 @@ class _ModelPopupTriggerState extends State<_ModelPopupTrigger> {
           child: Material(
             color: Colors.transparent,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 390, minWidth: 330),
+              constraints: const BoxConstraints(
+                maxWidth: 390,
+                minWidth: 330,
+                maxHeight: 420,
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
@@ -486,7 +498,7 @@ class _ModelPopupTriggerState extends State<_ModelPopupTrigger> {
                 ),
                 child: widget.choices.isEmpty
                     ? Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         child: Text(
                           tr('chatAux.modelPicker.noneAvailable'),
                           style: const TextStyle(
@@ -495,11 +507,13 @@ class _ModelPopupTriggerState extends State<_ModelPopupTrigger> {
                           ),
                         ),
                       )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: widget.choices
-                            .map((choice) => _modelRow(choice))
-                            .toList(),
+                    : SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: widget.choices
+                              .map((choice) => _modelRow(choice))
+                              .toList(),
+                        ),
                       ),
               ),
             ),

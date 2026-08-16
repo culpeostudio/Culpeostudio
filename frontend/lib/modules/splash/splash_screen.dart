@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/app_info.dart';
@@ -40,7 +41,7 @@ class _SplashGateState extends State<SplashGate>
   // Zeit dazwischen traegt der Fortschrittsbalken.
   late final Animation<double> _markFade = _curve(0.0, 0.12, Curves.easeOut);
   late final Animation<double> _markScale = Tween<double>(
-    begin: 0.90,
+    begin: 0.95,
     end: 1.0,
   ).animate(_curve(0.0, 0.20, Curves.easeOutCubic));
   late final Animation<double> _progress = _curve(
@@ -107,66 +108,77 @@ class _SplashGateState extends State<SplashGate>
   Widget _splash(BuildContext context) {
     return Semantics(
       label: '${AppInfo.name} wird gestartet',
-      child: ColoredBox(
-        color: AppColors.bg,
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FadeTransition(
-                    opacity: _markFade,
-                    child: ScaleTransition(
-                      scale: _markScale,
-                      child: Image.asset(
-                        // Helle Fassung: das "Studio" der Wortmarke ist im
-                        // Original dunkelblau und auf dieser Flaeche unlesbar.
-                        'assets/wordmark_light.png',
-                        width: _markWidth(context),
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
+      child: Material(
+        type: MaterialType.transparency,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0, -0.1),
+              radius: 0.8,
+              colors: [AppColors.surface, AppColors.bg],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FadeTransition(
+                      opacity: _markFade,
+                      child: ScaleTransition(
+                        scale: _markScale,
+                        child: Image.asset(
+                          'assets/wordmark_light.png',
+                          width: _markWidth(context),
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 34),
-                  _progressBar(),
-                ],
+                    const SizedBox(height: 50),
+                    AnimatedBuilder(
+                      animation: Listenable.merge([_progress, StartupWarmup.instance]),
+                      builder: (context, _) => _TypingConsole(progress: _barProgress()),
+                    ),
+                    const SizedBox(height: 24),
+                    _progressBar(),
+                  ],
+                ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 40,
-              child: FadeTransition(
-                opacity: _footerFade,
-                child: Text(
-                  AppInfo.versionLine,
-                  textAlign: TextAlign.center,
-                  style: AppFonts.mono(
-                    fontSize: 10,
-                    color: AppColors.textSecondary.withValues(alpha: 0.45),
-                    letterSpacing: 1.4,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 40,
+                child: FadeTransition(
+                  opacity: _footerFade,
+                  child: Text(
+                    AppInfo.versionLine,
+                    textAlign: TextAlign.center,
+                    style: AppFonts.mono(
+                      fontSize: 10,
+                      color: AppColors.textSecondary.withValues(alpha: 0.2),
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Die Wortmarke ist breit; auf schmalen Fenstern skaliert sie mit statt
-  /// an den Rand zu stossen.
+  /// Das Logo wurde um 50% vergrössert, um präsenter zu wirken.
   double _markWidth(BuildContext context) {
     final available = MediaQuery.sizeOf(context).width;
-    return (available * 0.55).clamp(200.0, 360.0);
+    return (available * 0.75).clamp(300.0, 540.0);
   }
 
   Widget _progressBar() {
     return SizedBox(
-      width: 132,
+      width: 180,
       height: 2,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(1),
@@ -174,7 +186,7 @@ class _SplashGateState extends State<SplashGate>
           children: [
             Positioned.fill(
               child: ColoredBox(
-                color: AppColors.textSecondary.withValues(alpha: 0.10),
+                color: AppColors.textSecondary.withValues(alpha: 0.05),
               ),
             ),
             AnimatedBuilder(
@@ -183,7 +195,13 @@ class _SplashGateState extends State<SplashGate>
                 key: const Key('splash-progress-fill'),
                 alignment: Alignment.centerLeft,
                 widthFactor: _barProgress(),
-                child: ColoredBox(color: AppColors.accent),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.hoverGlow, AppColors.accent],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -200,5 +218,106 @@ class _SplashGateState extends State<SplashGate>
     final animated = _progress.value;
     final warmFactor = StartupWarmup.instance.value.clamp(0.0, 1.0) * 0.86;
     return animated > warmFactor ? animated : warmFactor;
+  }
+}
+
+/// A professional developer-console typing effect widget.
+class _TypingConsole extends StatefulWidget {
+  final double progress;
+  const _TypingConsole({required this.progress});
+
+  @override
+  State<_TypingConsole> createState() => _TypingConsoleState();
+}
+
+class _TypingConsoleState extends State<_TypingConsole> with SingleTickerProviderStateMixin {
+  late final AnimationController _cursorController;
+  Timer? _typeTimer;
+  String _currentText = "";
+  String _previousTarget = "";
+
+  String get _targetText {
+    if (widget.progress >= 0.99) return "Workspace Ready.";
+    if (widget.progress >= 0.80) return "Establishing secure port hooks...";
+    if (widget.progress >= 0.60) return "Loading AI model weights...";
+    if (widget.progress >= 0.40) return "Mounting local filesystem...";
+    if (widget.progress >= 0.20) return "Allocating workspace memory...";
+    return "Initializing local neural engine...";
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _cursorController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..repeat(reverse: true);
+    _previousTarget = _targetText;
+    _startTyping();
+  }
+
+  @override
+  void didUpdateWidget(_TypingConsole oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_targetText != _previousTarget) {
+      _previousTarget = _targetText;
+      _startTyping();
+    }
+  }
+
+  void _startTyping() {
+    _typeTimer?.cancel();
+    _currentText = "";
+    int index = 0;
+    final target = _previousTarget;
+    _typeTimer = Timer.periodic(const Duration(milliseconds: 15), (timer) {
+      if (index < target.length) {
+        if (mounted) {
+          setState(() {
+            _currentText += target[index];
+            index++;
+          });
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _typeTimer?.cancel();
+    _cursorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = widget.progress >= 0.99;
+    return SizedBox(
+      height: 20, // Keep height stable
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text("> ", style: AppFonts.mono(fontSize: 11, color: isDone ? AppColors.accent : AppColors.hoverGlow)),
+          Text(
+            _currentText, 
+            style: AppFonts.mono(
+              fontSize: 11, 
+              color: AppColors.textSecondary.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
+            ),
+          ),
+          if (!isDone)
+            FadeTransition(
+              opacity: _cursorController,
+              child: Container(
+                width: 6,
+                height: 12,
+                margin: const EdgeInsets.only(left: 4),
+                color: AppColors.accent,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/culpeohq/backend/internal/engineruntime"
 	"github.com/culpeohq/backend/internal/hardware"
 	"github.com/culpeohq/backend/internal/modelcatalog"
-	"github.com/culpeohq/backend/modules/node"
+	"github.com/culpeohq/backend/internal/noderouting"
 )
 
 type EngineModule struct {
@@ -56,7 +56,7 @@ type EngineModule struct {
 
 	// nodes is nil until a node registry is wired in. Without one the engine
 	// is exactly what it was: the models and instances of this machine.
-	nodes node.Directory
+	nodes noderouting.Directory
 
 	installer   *engineruntime.Installer
 	supervisor  *engineruntime.Supervisor

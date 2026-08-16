@@ -38,15 +38,30 @@ type Request struct {
 	ProjectPath  string
 	Planning     bool
 	ApprovePlan  bool
-	EmitText     func(string) error
-	EmitEvent    func(eventType string, data interface{}) error
+	// Budget is the context window of the model that answers this run. The
+	// tool loop needs it because its own conversation grows with every tool
+	// result, and nothing else in this package can know how much room there is.
+	Budget    ContextBudget
+	EmitText  func(string) error
+	EmitEvent func(eventType string, data interface{}) error
 }
 
-// PlanStore holds a proposed plan until the user approves it. The owner of the
-// chat session implements it, so a pending plan survives a restart.
+// PlanStore holds a plan across turns. The owner of the chat session implements
+// it, so neither a proposal waiting for approval nor a half-worked plan is lost
+// when the process goes down.
 type PlanStore interface {
 	StorePendingPlan(userID, sessionID string, plan *agentplan.Plan)
 	TakePendingPlan(userID, sessionID string) *agentplan.Plan
+
+	// StoreActivePlan records the plan being worked off, after every step, so a
+	// crash mid-run leaves the worklist exactly where it stopped.
+	StoreActivePlan(userID, sessionID string, plan *agentplan.Plan)
+
+	// ActivePlan returns the plan being worked off without clearing it.
+	ActivePlan(userID, sessionID string) *agentplan.Plan
+
+	// ClearActivePlan drops it once every step is green.
+	ClearActivePlan(userID, sessionID string)
 }
 
 // MemoryProvider gives every project its own recall scope.
@@ -137,16 +152,16 @@ func (m *Module) Run(ctx context.Context, req Request, turn ChatTurn) (string, e
 		return reply, err
 	}
 
-	roots := resolveToolRoots(req.ProjectPath, req.Message)
+	roots := resolveToolRoots(req.ProjectPath, req.Message, req.History)
 	if len(roots) == 0 {
-		return runWebOnlyToolLoop(ctx, req.History, req.SystemPrompt, req.EmitText, req.EmitEvent, turn)
+		return runWebOnlyToolLoop(ctx, req.History, req.SystemPrompt, req.EmitText, req.EmitEvent, turn, req.Budget)
 	}
 
 	broker := tools.NewBroker()
 	m.attachBroker(req.SessionID, broker)
 	defer m.releaseBroker(req.SessionID, broker)
 	return runToolLoop(ctx, req.History, req.SystemPrompt, roots, req.EmitText, req.EmitEvent,
-		turn, broker, req.SessionID)
+		turn, broker, req.SessionID, req.Budget)
 }
 
 func (m *Module) attachBroker(sessionID string, broker *tools.Broker) {

@@ -20,7 +20,7 @@ func TestWebOnlyLoopRejectsFileTools(t *testing.T) {
 		return "Ich kann ohne Projekt keine Dateien lesen.", nil
 	}
 
-	final, err := runWebOnlyToolLoop(context.Background(), nil, "Basis-Prompt", nil, nil, chatTurn)
+	final, err := runWebOnlyToolLoop(context.Background(), nil, "Basis-Prompt", nil, nil, chatTurn, ContextBudget{})
 	if err != nil {
 		t.Fatalf("runWebOnlyToolLoop: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestWebOnlyLoopPassesThroughPlainAnswer(t *testing.T) {
 	}
 
 	final, err := runWebOnlyToolLoop(context.Background(), nil, "Basis-Prompt",
-		func(s string) error { visible.WriteString(s); return nil }, nil, chatTurn)
+		func(s string) error { visible.WriteString(s); return nil }, nil, chatTurn, ContextBudget{})
 	if err != nil {
 		t.Fatalf("runWebOnlyToolLoop: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestToolLoopBrichtBeiWiederholtemFehlerAb(t *testing.T) {
 		return map[string]interface{}{"ok": false, "error": "geht nicht"}
 	}
 
-	reply, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 20)
+	reply, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 20, ContextBudget{})
 	if !errors.Is(err, errToolLoopExhausted) {
 		t.Fatalf("erwartete errToolLoopExhausted, bekam %v", err)
 	}
@@ -116,7 +116,7 @@ func TestToolLoopZaehlerSetztBeiErfolgZurueck(t *testing.T) {
 		return map[string]interface{}{"ok": calls%2 == 0, "error": "mal so mal so"}
 	}
 
-	if _, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 20); err != nil {
+	if _, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 20, ContextBudget{}); err != nil {
 		t.Fatalf("abwechselnde Fehlschlaege sollten nicht abbrechen: %v", err)
 	}
 }
@@ -129,7 +129,7 @@ func TestToolLoopMeldetIterationslimit(t *testing.T) {
 		return map[string]interface{}{"ok": true}
 	}
 
-	_, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 3)
+	_, err := driveToolLoop(context.Background(), nil, "prompt", nil, nil, chatTurn, dispatch, 3, ContextBudget{})
 	if !errors.Is(err, errToolLoopExhausted) {
 		t.Fatalf("erwartete errToolLoopExhausted, bekam %v", err)
 	}

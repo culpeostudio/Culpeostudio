@@ -277,32 +277,27 @@ class ModelWarmupProgress extends ChangeNotifier {
   }
 }
 
+/// The progress of a model that is starting, shown in the chat while it warms.
+///
+/// Failures deliberately do not belong here. A full-width panel stretched
+/// across the chat is right for a live progress bar and wrong for an error,
+/// which is why a failed start is announced through [showTopNotification]
+/// instead - same place, same shape as every other message the app sends.
 class ModelWarmupPanel extends StatelessWidget {
-  const ModelWarmupPanel({
-    super.key,
-    required this.progress,
-    this.onCancel,
-    this.onRetry,
-    this.onChangeBinding,
-    this.onChooseAnother,
-  });
+  const ModelWarmupPanel({super.key, required this.progress, this.onCancel});
 
   final ModelWarmupProgress progress;
   final VoidCallback? onCancel;
-  final VoidCallback? onRetry;
-  final VoidCallback? onChangeBinding;
-  final VoidCallback? onChooseAnother;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: progress,
       builder: (context, _) {
-        if (progress.status == 'idle') return const SizedBox.shrink();
-        final failed = progress.hasFailed;
-        final color = failed
-            ? const Color(0xFFEF5350)
-            : CulpeoColors.metricBright;
+        if (progress.status == 'idle' || progress.hasFailed) {
+          return const SizedBox.shrink();
+        }
+        final color = CulpeoColors.metricBright;
         return Semantics(
           liveRegion: true,
           label: tr('chatAux.warmup.semanticProgress', {
@@ -325,20 +320,14 @@ class ModelWarmupPanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      failed ? Icons.error_outline : Icons.memory_outlined,
-                      color: color,
-                      size: 20,
-                    ),
+                    Icon(Icons.memory_outlined, color: color, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            failed
-                                ? tr('chatAux.warmup.startFailed')
-                                : tr('chatAux.warmup.waiting'),
+                            tr('chatAux.warmup.waiting'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -378,17 +367,14 @@ class ModelWarmupPanel extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            failed
-                                ? progress.message
-                                : _phaseLabel(progress.phase),
-                            style: TextStyle(
-                              color: failed ? color : Colors.white70,
+                            _phaseLabel(progress.phase),
+                            style: const TextStyle(
+                              color: Colors.white70,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (!failed &&
-                              progress.message.isNotEmpty &&
+                          if (progress.message.isNotEmpty &&
                               progress.message !=
                                   tr('chatAux.warmup.waiting') &&
                               progress.message !=
@@ -428,32 +414,7 @@ class ModelWarmupPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (failed) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (onChooseAnother != null)
-                        TextButton(
-                          onPressed: onChooseAnother,
-                          child: Text(tr('chatAux.warmup.chooseAnother')),
-                        ),
-                      if (onChangeBinding != null)
-                        TextButton(
-                          onPressed: onChangeBinding,
-                          child: Text(tr('chatAux.warmup.changeBinding')),
-                        ),
-                      if (onRetry != null)
-                        FilledButton.tonalIcon(
-                          onPressed: onRetry,
-                          icon: const Icon(Icons.refresh, size: 17),
-                          label: Text(tr('common.retry')),
-                        ),
-                    ],
-                  ),
-                ] else if (progress.isActive && onCancel != null) ...[
+                if (progress.isActive && onCancel != null) ...[
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
