@@ -38,19 +38,6 @@ backend/server.exe
 backend/sidecar/server.exe
 *.bak
 
-
-.claude/scheduled_tasks.lock
-**/.claude/
-
-
-AGENTS.md
-
-
-
 backend/modules/*/data/
 
-
 sync-to-github.sh
-
-
-CLAUDE.md
